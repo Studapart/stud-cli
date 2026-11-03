@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Guard\Resolver;
 
+use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\DTO\MessageRef;
@@ -217,6 +218,7 @@ final class IssueTrackerProviderResolver
             return false;
         }
 
+        $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
         $providers = $this->globalResolver->resolveIssueTrackerProviders($globalConfig);
         if (! $this->globalResolver->collectsJira($providers)
             || ! $this->globalResolver->collectsLinear($providers)) {

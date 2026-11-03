@@ -20,7 +20,7 @@ class FilterListHandlerTest extends CommandTestCase
 
         $portSupplier = $this->createMock(IssueTrackerPortSupplier::class);
         $portSupplier->method('resolveForProvider')
-            ->with('jira', $this->anything())
+            ->with('jira', $this->anything(), $this->anything())
             ->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
 
         $this->handler = new FilterListHandler(
@@ -145,7 +145,7 @@ class FilterListHandlerTest extends CommandTestCase
 
         $supplier = $this->createMock(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturnCallback(
-            static function (string $provider) use ($jiraPort, $linearPort): array {
+            static function (string $provider, mixed ...$ignored) use ($jiraPort, $linearPort): array {
                 return match ($provider) {
                     IssueTrackerProvider::Jira->value => ['ok' => false, 'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured')],
                     IssueTrackerProvider::Linear->value => ['ok' => true, 'provider' => 'linear', 'port' => $linearPort],
@@ -202,7 +202,7 @@ class FilterListHandlerTest extends CommandTestCase
 
         $supplier = $this->createMock(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturnCallback(
-            static function (string $provider) use ($jiraPort, $linearPort): array {
+            static function (string $provider, mixed ...$ignored) use ($jiraPort, $linearPort): array {
                 return match ($provider) {
                     IssueTrackerProvider::Jira->value => ['ok' => true, 'provider' => 'jira', 'port' => $jiraPort],
                     IssueTrackerProvider::Linear->value => ['ok' => true, 'provider' => 'linear', 'port' => $linearPort],

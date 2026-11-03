@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\DTO\MessageRef;
@@ -57,7 +58,7 @@ class ItemListHandler implements JiraAware, LinearAware
         $seenKeys = [];
 
         foreach ($providers as $providerSlug) {
-            $resolution = $this->portSupplier->resolveForProvider($providerSlug, $this->globalConfig);
+            $resolution = $this->portSupplier->resolveForProvider($providerSlug, $this->globalConfig, $this->projectConfig);
             if (! $resolution['ok']) {
                 if (count($providers) === 1) {
                     return ItemListResponse::error($resolution['error']);
@@ -182,14 +183,15 @@ class ItemListHandler implements JiraAware, LinearAware
             return false;
         }
 
-        $providers = $this->globalProviderResolver->resolveIssueTrackerProviders($this->globalConfig);
+        $credentials = (new EffectiveIssueTrackerCredentials())->overlay($this->globalConfig, $this->projectConfig);
+        $providers = $this->globalProviderResolver->resolveIssueTrackerProviders($credentials);
         if (! $this->globalProviderResolver->collectsJira($providers)
             || ! $this->globalProviderResolver->collectsLinear($providers)) {
             return false;
         }
 
-        return GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, $this->globalConfig)
-            && GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Linear, $this->globalConfig);
+        return GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, $credentials)
+            && GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Linear, $credentials);
     }
 
     private function projectKeyForProvider(string $provider, ?string $project): ?string

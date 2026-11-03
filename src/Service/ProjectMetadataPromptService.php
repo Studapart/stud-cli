@@ -38,7 +38,7 @@ class ProjectMetadataPromptService
         array $projectConfig,
     ): ?int {
         $scopeKey = $this->scopeKeyResolver->resolveJiraProjectKey($projectConfig) ?? $projectKey;
-        $response = $this->fetchWorkflow(IssueTrackerProvider::Jira->value, $scopeKey);
+        $response = $this->fetchWorkflow(IssueTrackerProvider::Jira->value, $scopeKey, $projectConfig);
         if (! $response->isSuccess()) {
             $this->logWorkflowFailure($recorder, $response);
 
@@ -77,7 +77,7 @@ class ProjectMetadataPromptService
         array $projectConfig,
     ): ?string {
         $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($projectConfig) ?? $projectKey;
-        $response = $this->fetchWorkflow(IssueTrackerProvider::Linear->value, $scopeKey);
+        $response = $this->fetchWorkflow(IssueTrackerProvider::Linear->value, $scopeKey, $projectConfig);
         if (! $response->isSuccess()) {
             $this->logWorkflowFailure($recorder, $response);
 
@@ -114,7 +114,7 @@ class ProjectMetadataPromptService
         array $projectConfig,
     ): ?string {
         $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($projectConfig) ?? $projectKey;
-        $response = $this->fetchLabelGroups(IssueTrackerProvider::Linear->value, $scopeKey);
+        $response = $this->fetchLabelGroups(IssueTrackerProvider::Linear->value, $scopeKey, $projectConfig);
         if (! $response->isSuccess()) {
             $this->logLabelsFailure($recorder, $response);
 
@@ -155,7 +155,7 @@ class ProjectMetadataPromptService
         string $labelGroupId,
     ): ?array {
         $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($projectConfig) ?? $projectKey;
-        $response = $this->fetchLabelGroups(IssueTrackerProvider::Linear->value, $scopeKey);
+        $response = $this->fetchLabelGroups(IssueTrackerProvider::Linear->value, $scopeKey, $projectConfig);
         if (! $response->isSuccess()) {
             $this->logLabelsFailure($recorder, $response);
 
@@ -332,9 +332,12 @@ class ProjectMetadataPromptService
         );
     }
 
-    protected function fetchWorkflow(string $provider, string $scopeKey): ProjectsWorkflowResponse
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function fetchWorkflow(string $provider, string $scopeKey, array $projectConfig): ProjectsWorkflowResponse
     {
-        $resolution = $this->portSupplier->resolveForProvider($provider, $this->globalConfig);
+        $resolution = $this->portSupplier->resolveForProvider($provider, $this->globalConfig, $projectConfig);
         if (! $resolution['ok']) {
             return ProjectsWorkflowResponse::error($resolution['error']);
         }
@@ -361,9 +364,12 @@ class ProjectMetadataPromptService
         return ProjectsWorkflowResponse::success($mapped);
     }
 
-    protected function fetchLabelGroups(string $provider, string $scopeKey): ProjectsLabelsResponse
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function fetchLabelGroups(string $provider, string $scopeKey, array $projectConfig): ProjectsLabelsResponse
     {
-        $resolution = $this->portSupplier->resolveForProvider($provider, $this->globalConfig);
+        $resolution = $this->portSupplier->resolveForProvider($provider, $this->globalConfig, $projectConfig);
         if (! $resolution['ok']) {
             return ProjectsLabelsResponse::error($resolution['error']);
         }

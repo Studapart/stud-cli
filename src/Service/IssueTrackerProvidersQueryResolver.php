@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\Enum\IssueTrackerProvider;
@@ -84,8 +85,7 @@ final class IssueTrackerProvidersQueryResolver
      */
     private function shouldDualAutoAggregate(array $globalConfig, array $projectConfig): bool
     {
-        unset($projectConfig);
-
+        $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
         $providers = $this->globalProviderResolver->resolveIssueTrackerProviders($globalConfig);
         if (! $this->globalProviderResolver->collectsJira($providers)
             || ! $this->globalProviderResolver->collectsLinear($providers)) {

@@ -99,12 +99,15 @@ Project config (`.git/stud.config`):
 | `projectKey` | Jira project key (issue prefix, default scope) |
 | `transitionId` | Workflow transition applied by `stud items:start` / `items:transition` |
 | `JIRA_DEFAULT_PROJECT` | Default project for create when not passed on CLI |
+| `JIRA_URL` | Jira site for this repository. Overrides the global URL when the value is a non-empty string |
+| `JIRA_EMAIL` | Jira account email for this repository. Overrides the global email when the value is a non-empty string |
+| `JIRA_API_TOKEN` | Jira API token for this repository. Overrides the global token when the value is a non-empty string |
 
 Discover workflow transitions interactively during `stud config:project-init`, or list them with `stud projects:workflow`.
 
 ## Linear setup
 
-When `ISSUE_TRACKER_PROVIDERS` includes `linear`, configure `LINEAR_API_KEY` during `stud init` (global). Repository-specific Linear fields live in `.git/stud.config`.
+When `ISSUE_TRACKER_PROVIDERS` includes `linear`, configure `LINEAR_API_KEY` during `stud init` (global). A non-empty `LINEAR_API_KEY` in `.git/stud.config` overrides that global key for this repository. Other repository-specific Linear fields live in the same file.
 
 ### API key
 
@@ -147,6 +150,8 @@ echo '{"project":"ENG","groupsOnly":true}' | stud projects:labels --agent
 ## Project configuration
 
 Repository-specific values live in `.git/stud.config`.
+
+`JIRA_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and `LINEAR_API_KEY` in this file each override the same global key when the project value is a non-empty string. A blank or whitespace-only value does not override and is not stored. `JIRA_URL` has trailing slashes removed. `stud config:project-init` asks for the Jira fields when this repository uses Jira or `auto`, and for the Linear key when it uses Linear or `auto`. Leaving a prompt blank keeps the value already stored. Agent JSON uses `jiraUrl`, `jiraEmail`, `jiraApiToken`, and `linearApiKey`. `stud config:show -k JIRA_URL` prints the URL in effect. `stud config:show` still redacts the token and the Linear key. A project value does not change the global-file warning that a credential is missing from `~/.config/stud/config.yml`.
 
 Optional label lists stay absent until you set them:
 

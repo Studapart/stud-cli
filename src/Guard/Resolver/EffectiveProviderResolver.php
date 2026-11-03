@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Guard\Resolver;
 
+use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\Enum\IssueTrackerProvider;
@@ -76,7 +77,7 @@ class EffectiveProviderResolver
             return ['providers' => [$active['provider']], 'ambiguous' => false];
         }
 
-        if ($dualAutoAggregate && $this->isProjectAuto($projectConfig) && $this->isDualPmWithCredentials($globalConfig)) {
+        if ($dualAutoAggregate && $this->isProjectAuto($projectConfig) && $this->isDualPmWithCredentials($globalConfig, $projectConfig)) {
             return [
                 'providers' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
                 'ambiguous' => false,
@@ -104,9 +105,11 @@ class EffectiveProviderResolver
 
     /**
      * @param array<string, mixed> $globalConfig
+     * @param array<string, mixed> $projectConfig
      */
-    private function isDualPmWithCredentials(array $globalConfig): bool
+    private function isDualPmWithCredentials(array $globalConfig, array $projectConfig = []): bool
     {
+        $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
         $providers = $this->globalResolver->resolveIssueTrackerProviders($globalConfig);
         if (! $this->globalResolver->collectsJira($providers)
             || ! $this->globalResolver->collectsLinear($providers)) {
