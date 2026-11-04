@@ -12,21 +12,20 @@ use App\Service\MigrationRegistry;
 use App\Service\TranslationService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class MigrationRegistryTest extends TestCase
 {
     private MigrationRegistry $registry;
-    private Logger&MockObject $logger;
-    private TranslationService&MockObject $translator;
+    private Logger&\PHPUnit\Framework\MockObject\Stub $logger;
+    private TranslationService&\PHPUnit\Framework\MockObject\Stub $translator;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->logger = $this->createMock(Logger::class);
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->logger = $this->createStub(Logger::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->registry = $this->createRegistryWithInMemoryFilesystem();
     }
 
@@ -104,11 +103,11 @@ class MigrationRegistryTest extends TestCase
     public function testGetPendingMigrationsWithCurrentVersion(): void
     {
         // Use mock migrations to ensure we have migrations to test
-        $migration1 = $this->createMock(MigrationInterface::class);
+        $migration1 = $this->createStub(MigrationInterface::class);
         $migration1->method('getId')->willReturn('202501150000001');
         $migration1->method('getScope')->willReturn(MigrationScope::GLOBAL);
 
-        $migration2 = $this->createMock(MigrationInterface::class);
+        $migration2 = $this->createStub(MigrationInterface::class);
         $migration2->method('getId')->willReturn('202501150000002');
         $migration2->method('getScope')->willReturn(MigrationScope::GLOBAL);
 
@@ -148,15 +147,15 @@ class MigrationRegistryTest extends TestCase
     {
         // Test that getPendingMigrations returns migrations sorted by ID
         // Use mock migrations to ensure we have at least 2 migrations for testing
-        $migration1 = $this->createMock(MigrationInterface::class);
+        $migration1 = $this->createStub(MigrationInterface::class);
         $migration1->method('getId')->willReturn('202501150000002');
         $migration1->method('getScope')->willReturn(MigrationScope::GLOBAL);
 
-        $migration2 = $this->createMock(MigrationInterface::class);
+        $migration2 = $this->createStub(MigrationInterface::class);
         $migration2->method('getId')->willReturn('202501150000001');
         $migration2->method('getScope')->willReturn(MigrationScope::GLOBAL);
 
-        $migration3 = $this->createMock(MigrationInterface::class);
+        $migration3 = $this->createStub(MigrationInterface::class);
         $migration3->method('getId')->willReturn('202501150000003');
         $migration3->method('getScope')->willReturn(MigrationScope::GLOBAL);
 
@@ -176,15 +175,15 @@ class MigrationRegistryTest extends TestCase
     {
         // Test sortMigrations method directly using reflection
         // Create mock migrations with different IDs to test sorting
-        $migration1 = $this->createMock(MigrationInterface::class);
+        $migration1 = $this->createStub(MigrationInterface::class);
         $migration1->method('getId')->willReturn('202501150000002');
         $migration1->method('getScope')->willReturn(MigrationScope::GLOBAL);
 
-        $migration2 = $this->createMock(MigrationInterface::class);
+        $migration2 = $this->createStub(MigrationInterface::class);
         $migration2->method('getId')->willReturn('202501150000001');
         $migration2->method('getScope')->willReturn(MigrationScope::GLOBAL);
 
-        $migration3 = $this->createMock(MigrationInterface::class);
+        $migration3 = $this->createStub(MigrationInterface::class);
         $migration3->method('getId')->willReturn('202501150000003');
         $migration3->method('getScope')->willReturn(MigrationScope::GLOBAL);
 
@@ -208,7 +207,7 @@ class MigrationRegistryTest extends TestCase
     public function testGetPendingMigrationsFiltersCorrectly(): void
     {
         // Use mock migrations to ensure we have migrations to test
-        $migration = $this->createMock(MigrationInterface::class);
+        $migration = $this->createStub(MigrationInterface::class);
         $migration->method('getId')->willReturn('202501150000001');
         $migration->method('getScope')->willReturn(MigrationScope::GLOBAL);
 

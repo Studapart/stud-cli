@@ -18,18 +18,7 @@ class PageViewConfigTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $sections = [
-            new Section(
-                'Details',
-                [
-                    new DefinitionItem('item.show.label_key', fn ($dto) => $dto->key),
-                    new DefinitionItem('item.show.label_title', fn ($dto) => $dto->title),
-                ]
-            ),
-        ];
-
-        $this->config = new PageViewConfig($sections, $this->translationService, null);
+        $this->bindSubject();
     }
 
     public function testGetTypeReturnsPage(): void
@@ -65,6 +54,9 @@ class PageViewConfigTest extends CommandTestCase
 
     public function testRenderDefinitionListCallsIoWithCorrectData(): void
     {
+        $this->translationService = $this->createTranslationMock();
+        $this->bindSubject();
+
         $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
 
         $this->translationService->expects($this->exactly(2))
@@ -205,6 +197,9 @@ class PageViewConfigTest extends CommandTestCase
 
     public function testRenderWithColorHelperRegistersStyles(): void
     {
+        $this->translationService = $this->createTranslationMock();
+        $this->bindSubject();
+
         $colorHelper = $this->createMock(ColorHelper::class);
         $sections = [
             new Section(
@@ -263,6 +258,9 @@ class PageViewConfigTest extends CommandTestCase
 
     public function testRenderDefinitionListWithColorHelperAppliesColors(): void
     {
+        $this->translationService = $this->createTranslationMock();
+        $this->bindSubject();
+
         $colorHelper = $this->createMock(ColorHelper::class);
         $section = new Section('Details', [
             new DefinitionItem('item.show.label_key', fn ($dto) => $dto->key),
@@ -398,5 +396,21 @@ class PageViewConfigTest extends CommandTestCase
 
         $logger = $this->createLogger($io);
         $config->render([$issue], $logger);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $sections = [
+            new Section(
+                'Details',
+                [
+                    new DefinitionItem('item.show.label_key', fn ($dto) => $dto->key),
+                    new DefinitionItem('item.show.label_title', fn ($dto) => $dto->title),
+                ]
+            ),
+        ];
+
+        $this->config = new PageViewConfig($sections, $this->translationService, null);
     }
 }

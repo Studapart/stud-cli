@@ -18,21 +18,22 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ProjectsWorkflowResponderTest extends CommandTestCase
 {
-    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+    private SymfonyStyle $io;
 
     private ProjectsWorkflowResponder $responder;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService);
-        $this->io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new ProjectsWorkflowResponder($helper, $this->createLogger($this->io));
+        $this->io = $this->createStub(SymfonyStyle::class);
+        $this->bindSubject();
     }
 
     public function testRespondRendersTableOnSuccess(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = ProjectsWorkflowResponse::success([
             ['id' => '11', 'name' => 'Start', 'targetStatus' => 'In Progress', 'provider' => IssueTrackerProvider::Jira->value],
         ]);
@@ -71,6 +72,9 @@ class ProjectsWorkflowResponderTest extends CommandTestCase
 
     public function testRespondReturnsNullOnError(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = ProjectsWorkflowResponse::error('project.workflow.error_no_provider');
 
         $this->io->expects($this->never())->method('table');
@@ -97,5 +101,12 @@ class ProjectsWorkflowResponderTest extends CommandTestCase
         ]);
 
         $this->assertNull($responder->respond($this->io, $response));
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new ProjectsWorkflowResponder($helper, $this->createLogger($this->io));
     }
 }

@@ -19,7 +19,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 
 class ConfigValidateHandlerTest extends CommandTestCase
 {
-    private GitHostingPort&MockObject $gitProvider;
+    private GitHostingPort $gitProvider;
 
     /**
      * @param IssueTrackerPort|MockObject|null|false $jiraIssueTracker false uses setUp mock; null means not configured
@@ -111,12 +111,16 @@ class ConfigValidateHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
 
-        $this->gitProvider = $this->createMock(GitHostingPort::class);
+        $this->gitProvider = $this->createStub(GitHostingPort::class);
     }
 
     public function testHandleReturnsAllOkWhenBothServicesSucceed(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->issueTracker->expects($this->once())
             ->method('ping');
         $this->gitProvider->expects($this->once())
@@ -137,6 +141,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsJiraFailWhenGetProjectsThrows(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->issueTracker->expects($this->once())
             ->method('ping')
             ->willThrowException(new \RuntimeException('Jira API error'));
@@ -155,6 +162,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsJiraFailWhenPingThrowsApiException(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->issueTracker->expects($this->once())
             ->method('ping')
             ->willThrowException(new ApiException('Jira unavailable', 'GET /myself failed'));
@@ -170,6 +180,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsGitFailWhenGetLabelsThrows(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->issueTracker->expects($this->once())
             ->method('ping');
         $this->gitProvider->expects($this->once())
@@ -187,6 +200,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsGitFailWhenGetLabelsThrowsApiException(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->issueTracker->expects($this->once())
             ->method('ping');
         $this->gitProvider->expects($this->once())
@@ -201,6 +217,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsBothSkippedWhenSkipFlagsTrue(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->issueTracker->expects($this->never())
             ->method('ping');
         $this->gitProvider->expects($this->never())
@@ -217,6 +236,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleFailsProjectWhenSelectedJiraNotGloballyConfigured(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->issueTracker->expects($this->never())
             ->method('ping');
         $this->gitProvider->expects($this->once())
@@ -236,6 +258,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSkipsGitWhenValidateGitFalse(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->issueTracker->expects($this->once())
             ->method('ping');
         $this->gitProvider->expects($this->never())
@@ -388,6 +413,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSkipsJiraOnlyWhenSkipJiraTrue(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->issueTracker->expects($this->never())
             ->method('ping');
         $this->gitProvider->expects($this->once())
@@ -404,6 +432,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSkipsGitOnlyWhenSkipGitTrue(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->issueTracker->expects($this->once())
             ->method('ping');
         $this->gitProvider->expects($this->never())
@@ -419,6 +450,8 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsJiraFailWhenJiraApiClientNullAndNotSkipped(): void
     {
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->gitProvider->expects($this->once())
             ->method('getLabels')
             ->willReturn([]);
@@ -468,6 +501,8 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsJiraSetupErrorWhenPortSetupFailed(): void
     {
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $setupError = MessageRef::key('issue_tracker_provider.missing_jira_configuration');
         $this->gitProvider->expects($this->once())
             ->method('getLabels')
@@ -493,6 +528,8 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsGitFailWhenGitProviderNullAndNotSkipped(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+
         $this->issueTracker->expects($this->once())
             ->method('ping');
 
@@ -506,6 +543,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testShortReasonTruncatesLongMessages(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $longMessage = str_repeat('x', 150);
         $this->issueTracker->expects($this->once())
             ->method('ping')
@@ -525,6 +565,8 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSmokeChecksNonProjectGitHostWithGetAuthenticatedUser(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+
         $githubSmoke = $this->createMock(GitHostingPort::class);
         $githubSmoke->expects($this->once())->method('getAuthenticatedUser');
 
@@ -554,6 +596,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSuccessWhenGlobalPartialButProjectOk(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $linearProvider = $this->createMock(IssueTrackerPort::class);
         $linearProvider->expects($this->once())->method('ping')
             ->willThrowException(new ApiException('Linear down', 'x'));

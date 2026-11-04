@@ -18,7 +18,7 @@ class PrCommentResponderTest extends CommandTestCase
 {
     public function testRespondSerializesSuccessForAgentMode(): void
     {
-        $responder = new PrCommentResponder(new ResponderHelper($this->translationService), $this->createMock(Logger::class));
+        $responder = new PrCommentResponder(new ResponderHelper($this->translationService), $this->createStub(Logger::class));
         $response = PrCommentResponse::replied('Reply posted', 123, 'github:review_thread:thread-1', true);
 
         $agentResponse = $responder->respond($this->io(), $response, OutputFormat::Json);
@@ -31,7 +31,7 @@ class PrCommentResponderTest extends CommandTestCase
 
     public function testRespondSerializesErrorForAgentMode(): void
     {
-        $responder = new PrCommentResponder(new ResponderHelper($this->translationService), $this->createMock(Logger::class));
+        $responder = new PrCommentResponder(new ResponderHelper($this->translationService), $this->createStub(Logger::class));
 
         $agentResponse = $responder->respond($this->io(), PrCommentResponse::error('Failed'), OutputFormat::Json);
 

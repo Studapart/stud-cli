@@ -26,9 +26,8 @@ class InitPromptCollectorTest extends TestCase
         parent::setUp();
         $translationsPath = __DIR__ . '/../../src/resources/translations';
         $translationService = new TranslationService('en', $translationsPath);
-        $prompt = $this->createMock(PromptInterface::class);
         $this->collector = new InitPromptCollector(
-            $prompt,
+            $this->createStub(PromptInterface::class),
             new GitTokenPromptResolver(),
             new MessageRenderer($translationService),
             new GlobalConfigProviderResolver(),
@@ -69,17 +68,17 @@ class InitPromptCollectorTest extends TestCase
 
     public function testBuildGlobalConfigNormalizesLegacyAgentIssueTrackerProviders(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('choice')->willReturn('English (en)');
 
-        $jiraCollector = $this->createMock(JiraCredentialsCollector::class);
+        $jiraCollector = $this->createStub(JiraCredentialsCollector::class);
         $jiraCollector->method('collect')->willReturn([]);
         $jiraCollector->method('collectTransitionEnabled')->willReturn(false);
 
-        $linearCollector = $this->createMock(LinearApiKeyCollector::class);
+        $linearCollector = $this->createStub(LinearApiKeyCollector::class);
         $linearCollector->method('collect')->willReturn([]);
 
-        $gitTokensCollector = $this->createMock(GitProviderTokensCollector::class);
+        $gitTokensCollector = $this->createStub(GitProviderTokensCollector::class);
         $gitTokensCollector->method('collect')->willReturn([]);
 
         $translationsPath = __DIR__ . '/../../src/resources/translations';

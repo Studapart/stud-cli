@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- **stud-cli 5.x (SCI-229):** This `develop` line will ship as 5.x and requires PHP 8.5 (8.5.12 or newer). PHP 8.4 stays on stud-cli 4.x. PHP 8.6 will be stud-cli 6.x. CI runs on PHP 8.5 and posts one coverage comment. The installer no longer installs a distro PHP package or the Ondřej PPA. Debian and Ubuntu users are pointed at <https://packages.sury.org/php/>. The bundled portable runtime remains PHP 8.4.23.
+
 ### Added
+
+- **Complexity gates (SCI-229):** PHPMD fails cyclomatic complexity above 10, NPath above 200, method length above 40, class length above 400, more than 4 arguments, and more than 10 properties. `phpmd.baseline.xml` records violations that already existed. CRAP above 10 fails from the Clover report of the same PHPUnit run. `crap.baseline.txt` records the score of methods that were already above 10, and a higher score fails. CI runs both gates on PHP 8.5.
 
 - **Project issue-tracker credentials (SCI-228):** `.git/stud.config` may set `JIRA_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and `LINEAR_API_KEY`. A non-empty value replaces that one global field for clients, readiness checks, and `config:validate` pings. A blank value, or a non-string agent value, does not clear or replace the stored field. `config:show -k JIRA_URL` shows the URL in effect. Warnings about credentials missing from the global file still describe that file.
 
@@ -16,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Jira create field ids and create-screen fallback (SCI-221):** `items:create` reads Jira createmeta `fieldId` values, so labels stay `labels` instead of `customfield_<index>`. When Jira rejects optional fields on the create screen, stud retries create once without those fields and applies them with `items:update`. The create error keeps the full Jira body so a long field-error list still parses, while the failure text stays within the 500-character technical-detail cap. Auto-filled values that were not user inputs, such as the current-user assignee, are restored on that update or named in `updateWarnings` when the edit screen rejects them. If that retry also fails, the error names the deferred fields. Agent success JSON can include `deferredFields` and `updateWarnings`. Linear create is unchanged.
 
 ### Changed
+
+- **Direct libraries (SCI-229):** Castor is 1.9.1 and PHPUnit is 13. php-cs-fixer is 3.95.28. Symfony console, http-client, translation, and yaml are 8.1.11. Command output, options, and agent JSON are unchanged. Composer resolves dependencies as PHP 8.5.12.
+
+- **PHPUnit 13 test doubles (SCI-229):** Shared fixtures are stubs. A test that verifies a call builds its own mock and rebinds the object under test, so `#[AllowMockObjectsWithoutExpectations]` is not used. `with()` always has an `expects()` count, and `expects($this->any())` is gone. PHPUnit now fails on PHPUnit notices, PHPUnit deprecations, and warnings. The CI coverage comment runs PHPUnit with `--colors=never`, because PHPUnit 13 colours the text report even when piped and the summary came out empty. Internal/dev-facing only.
 
 - **Test outcome asserts (SCI-227):** Update-handler tests assert message refs, recorded workflow entries, and the binary on disk. Integration tests assert catalog-rendered agent text, JSON fields, and exact commit subjects. Handler and responder tests keep a prose-assert allowlist. Internal/dev-facing only.
 

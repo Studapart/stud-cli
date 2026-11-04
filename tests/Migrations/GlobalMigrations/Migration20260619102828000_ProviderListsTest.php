@@ -8,21 +8,20 @@ use App\Migrations\GlobalMigrations\Migration20260619102828000_ProviderLists;
 use App\Migrations\MigrationScope;
 use App\Service\Logger;
 use App\Service\TranslationService;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class Migration20260619102828000_ProviderListsTest extends TestCase
 {
     private Migration20260619102828000_ProviderLists $migration;
-    private Logger&MockObject $logger;
-    private TranslationService&MockObject $translator;
+    private Logger&\PHPUnit\Framework\MockObject\Stub $logger;
+    private TranslationService&\PHPUnit\Framework\MockObject\Stub $translator;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->logger = $this->createMock(Logger::class);
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->logger = $this->createStub(Logger::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->migration = new Migration20260619102828000_ProviderLists($this->logger, $this->translator);
     }
 

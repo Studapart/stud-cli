@@ -10,11 +10,12 @@ We release patches for security vulnerabilities for the following versions of st
 
 | Version | Supported          |
 |---------|--------------------|
-| 4.x     | :white_check_mark: |
+| 5.x     | :white_check_mark: (current line, PHP 8.5) |
+| 4.x     | :white_check_mark: (PHP 8.4) |
 | 3.x     | :x: (frozen after 4.x GA; pin last 3.x release at own risk) |
 | < 3.0   | :x:                |
 
-In general, only the current major line (4.x) receives security updates. Users who cannot move to PHP 8.4.1 should pin the last 3.x release and plan a migration — see [migrating 3.x → 4.x](documentation/setup/migrating-3x-to-4x.md). We encourage users to upgrade to the [latest release](https://github.com/studapart/stud-cli/releases).
+In general, the current line is stud-cli 5.x and requires PHP 8.5. stud-cli 4.x is the PHP 8.4 line. When PHP 8.6 is released, that line will be stud-cli 6.x. The 3.x line is frozen — see [migrating 3.x → 4.x](documentation/setup/migrating-3x-to-4x.md). We encourage users to upgrade to the [latest release](https://github.com/studapart/stud-cli/releases).
 
 ## Reporting a Vulnerability
 

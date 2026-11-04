@@ -4,6 +4,7 @@ namespace App\Tests\Service;
 
 use App\Service\DurationParser;
 use App\Service\IssueFieldResolver;
+use App\Service\JiraApiClient;
 use App\Tests\CommandTestCase;
 
 class IssueFieldResolverTest extends CommandTestCase
@@ -14,8 +15,8 @@ class IssueFieldResolverTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->durationParser = new DurationParser();
-        $this->resolver = new IssueFieldResolver($this->jiraApiClient, $this->durationParser);
+        $this->jiraApiClient = $this->createStub(JiraApiClient::class);
+        $this->bindSubject();
     }
 
     public function testResolveIssueTypeNameReturnsSubTaskWhenParentKey(): void
@@ -38,6 +39,9 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testResolveIssueTypeIdReturnsIdWhenFound(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
@@ -48,6 +52,9 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testResolveIssueTypeIdReturnsNullWhenNotFound(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
@@ -58,6 +65,9 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testResolveIssueTypeIdReturnsNullWhenApiThrows(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->willThrowException(new \RuntimeException('API error'));
@@ -85,6 +95,9 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testBuildBaseFieldsIncludesDescription(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('descriptionToAdf')
             ->with('desc text', 'plain')
@@ -110,6 +123,9 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testDefaultAssigneeWhenFieldPresent(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('user-123');
@@ -123,6 +139,9 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testDefaultAssigneeUsesOptionWhenProvided(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->never())->method('getCurrentUserAccountId');
 
         $meta = ['assignee' => ['required' => false, 'name' => 'Assignee']];
@@ -158,6 +177,9 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testGetExtraRequiredFieldsList(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
@@ -173,6 +195,9 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testGetExtraRequiredFieldsListFallsBackOnApiError(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->willThrowException(new \RuntimeException('API error'));
@@ -264,6 +289,9 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testResolveStandardFieldsAndExtraRequired(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('user-id');
@@ -300,5 +328,11 @@ class IssueFieldResolverTest extends CommandTestCase
 
         $this->assertSame(['customfield_10001'], $extra);
         $this->assertSame(['accountId' => 'user-id'], $fields['reporter']);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->durationParser = new DurationParser();
+        $this->resolver = new IssueFieldResolver($this->jiraApiClient, $this->durationParser);
     }
 }

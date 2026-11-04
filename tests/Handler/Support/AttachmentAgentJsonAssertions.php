@@ -56,7 +56,7 @@ trait AttachmentAgentJsonAssertions
     protected function uploadAgentPayload(ItemUploadResponse $response, TranslationService $translator): array
     {
         $helper = new ResponderHelper($translator);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $logger = $this->createAttachmentTestLogger($io);
         $responder = new ItemUploadResponder($helper, [], $logger);
         $agent = $responder->respond($io, $response, OutputFormat::Json);
@@ -71,7 +71,7 @@ trait AttachmentAgentJsonAssertions
     protected function downloadAgentPayload(ItemDownloadResponse $response, TranslationService $translator): array
     {
         $helper = new ResponderHelper($translator);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $logger = $this->createAttachmentTestLogger($io);
         $responder = new ItemDownloadResponder($helper, [], $logger);
         $agent = $responder->respond($io, $response, OutputFormat::Json);

@@ -30,16 +30,15 @@ class ItemListHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $this->handler = new ItemListHandler(
-            $this->createPortSupplier($this->issueTracker),
-            $this->globalConfig,
-            $this->projectConfig,
-        );
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
+        $this->bindSubject();
     }
 
     public function testHandleDefaultReturnsSuccessResponse(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $issue = new WorkItem(
             '1000',
             'TPW-35',
@@ -68,6 +67,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleAllReturnsSuccessResponse(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $issue = new WorkItem(
             '1000',
             'TPW-35',
@@ -92,6 +94,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleProjectReturnsSuccessResponse(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $issue = new WorkItem(
             '1000',
             'TPW-35',
@@ -116,6 +121,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleWithSortByKeySortsIssues(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $issue1 = new WorkItem('1000', 'TPW-100', 'Feature A', 'In Progress', 'John Doe', 'description', ['tests'], 'Task');
         $issue2 = new WorkItem('1001', 'TPW-10', 'Feature B', 'To Do', 'Jane Doe', 'description', ['tests'], 'Task');
         $issue3 = new WorkItem('1002', 'TPW-35', 'Feature C', 'In Progress', 'John Doe', 'description', ['tests'], 'Task');
@@ -134,6 +142,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleWithSortByStatusSortsIssues(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $issue1 = new WorkItem('1000', 'TPW-35', 'Feature A', 'In Progress', 'John Doe', 'description', ['tests'], 'Task');
         $issue2 = new WorkItem('1001', 'TPW-10', 'Feature B', 'To Do', 'Jane Doe', 'description', ['tests'], 'Task');
         $issue3 = new WorkItem('1002', 'TPW-100', 'Feature C', 'In Progress', 'John Doe', 'description', ['tests'], 'Task');
@@ -152,6 +163,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessResponseWithEmptyIssues(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with('SCI', true)
@@ -165,6 +179,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with('SCI', true)
@@ -179,15 +196,15 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleDualAutoAggregateMergesProviders(): void
     {
-        $jiraPort = $this->createMock(IssueTrackerPort::class);
-        $linearPort = $this->createMock(IssueTrackerPort::class);
+        $jiraPort = $this->createStub(IssueTrackerPort::class);
+        $linearPort = $this->createStub(IssueTrackerPort::class);
         $jiraIssue = new WorkItem('1', 'SCI-1', 'Jira issue', 'Open', null, '', [], 'Story');
         $linearIssue = new WorkItem('2', 'ENG-1', 'Linear issue', 'Open', null, '', [], 'Story');
 
         $jiraPort->method('listAssignedActive')->willReturn([$jiraIssue]);
         $linearPort->method('listAssignedActive')->willReturn([$linearIssue]);
 
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturnCallback(
             static function (string $provider, mixed ...$ignored) use ($jiraPort, $linearPort): array {
                 return match ($provider) {
@@ -224,6 +241,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleProviderOverrideUsesExplicitProvider(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with('ENG', true)
@@ -246,6 +266,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleFallsBackToPortSupplierWhenProvidersUnresolved(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with('SCI', true)
@@ -264,7 +287,7 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenFallbackResolveFails(): void
     {
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolve')->willReturn(['ok' => false, 'error' => 'missing credentials']);
         $supplier->method('resolveForProvider')->willReturn(['ok' => false, 'error' => 'missing credentials']);
 
@@ -282,8 +305,8 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleDualAutoSkipsDuplicateKeys(): void
     {
-        $jiraPort = $this->createMock(IssueTrackerPort::class);
-        $linearPort = $this->createMock(IssueTrackerPort::class);
+        $jiraPort = $this->createStub(IssueTrackerPort::class);
+        $linearPort = $this->createStub(IssueTrackerPort::class);
         $sharedIssue = new WorkItem('1', 'SCI-1', 'Shared', 'Open', null, '', [], 'Story');
 
         $jiraPort->method('listAssignedActive')->willReturn([$sharedIssue]);
@@ -303,8 +326,8 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleDualAutoContinuesWhenOneProviderFails(): void
     {
-        $jiraPort = $this->createMock(IssueTrackerPort::class);
-        $linearPort = $this->createMock(IssueTrackerPort::class);
+        $jiraPort = $this->createStub(IssueTrackerPort::class);
+        $linearPort = $this->createStub(IssueTrackerPort::class);
         $linearIssue = new WorkItem('2', 'ENG-1', 'Linear issue', 'Open', null, '', [], 'Story');
 
         $jiraPort->method('listAssignedActive')->willThrowException(new \Exception('jira down'));
@@ -325,11 +348,11 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleDualAutoContinuesWhenOneProviderCannotResolve(): void
     {
-        $linearPort = $this->createMock(IssueTrackerPort::class);
+        $linearPort = $this->createStub(IssueTrackerPort::class);
         $linearIssue = new WorkItem('2', 'ENG-1', 'Linear issue', 'Open', null, '', [], 'Story');
         $linearPort->method('listAssignedActive')->willReturn([$linearIssue]);
 
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturnCallback(
             static function (string $provider, mixed ...$ignored) use ($linearPort): array {
                 return match ($provider) {
@@ -355,8 +378,8 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleProjectScopeUsesDualAutoWhenScopeMatchesBoth(): void
     {
-        $jiraPort = $this->createMock(IssueTrackerPort::class);
-        $linearPort = $this->createMock(IssueTrackerPort::class);
+        $jiraPort = $this->createStub(IssueTrackerPort::class);
+        $linearPort = $this->createStub(IssueTrackerPort::class);
         $jiraIssue = new WorkItem('1', 'SCI-1', 'Jira issue', 'Open', null, '', [], 'Story');
         $linearIssue = new WorkItem('2', 'SCI-2', 'Linear issue', 'Open', null, '', [], 'Story');
         $jiraPort->method('listAssignedActive')->willReturn([$jiraIssue]);
@@ -381,6 +404,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleUsesLinearTeamKeyWhenNoProjectOverride(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with('ENG', true)
@@ -403,7 +429,7 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleProviderOverrideReturnsErrorWhenResolveFails(): void
     {
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturn(['ok' => false, 'error' => 'linear unavailable']);
 
         $handler = new ItemListHandler(
@@ -420,6 +446,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleUnknownProjectScopeFallsBackWhenDualAutoUnavailable(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with('UNKNOWN', true)
@@ -451,7 +480,7 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleDualAutoReturnsErrorWhenAllProvidersFail(): void
     {
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturnCallback(
             static fn (string $provider, mixed ...$ignored): array => match ($provider) {
                 IssueTrackerProvider::Jira->value => ['ok' => false, 'error' => 'jira missing'],
@@ -475,6 +504,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleProjectScopeResolvesJiraOnly(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with('SCI', true)
@@ -493,6 +525,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleProjectScopeResolvesLinearOnly(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with('ENG', true)
@@ -511,8 +546,8 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleSortPreservesProviderMapping(): void
     {
-        $jiraPort = $this->createMock(IssueTrackerPort::class);
-        $linearPort = $this->createMock(IssueTrackerPort::class);
+        $jiraPort = $this->createStub(IssueTrackerPort::class);
+        $linearPort = $this->createStub(IssueTrackerPort::class);
         $jiraIssue = new WorkItem('1', 'SCI-2', 'Jira', 'Open', null, '', [], 'Story');
         $linearIssue = new WorkItem('2', 'ENG-1', 'Linear', 'Open', null, '', [], 'Story');
 
@@ -533,7 +568,7 @@ class ItemListHandlerTest extends CommandTestCase
 
     private function createPortSupplier(IssueTrackerPort $port): IssueTrackerPortSupplier
     {
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolve')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $port]);
         $supplier->method('resolveForProvider')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $port]);
 
@@ -542,7 +577,7 @@ class ItemListHandlerTest extends CommandTestCase
 
     private function createLinearPortSupplier(IssueTrackerPort $port): IssueTrackerPortSupplier
     {
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolve')->willReturn(['ok' => true, 'provider' => 'linear', 'port' => $port]);
         $supplier->method('resolveForProvider')->willReturnCallback(
             static fn (string $provider, mixed ...$ignored) => match ($provider) {
@@ -556,7 +591,7 @@ class ItemListHandlerTest extends CommandTestCase
 
     private function createDualPortSupplier(IssueTrackerPort $jiraPort, IssueTrackerPort $linearPort): IssueTrackerPortSupplier
     {
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturnCallback(
             static function (string $provider, mixed ...$ignored) use ($jiraPort, $linearPort): array {
                 return match ($provider) {
@@ -594,5 +629,15 @@ class ItemListHandlerTest extends CommandTestCase
             'projectKey' => 'SCI',
             'linearTeamKey' => 'ENG',
         ];
+    }
+
+    private function bindSubject(): void
+    {
+
+        $this->handler = new ItemListHandler(
+            $this->createPortSupplier($this->issueTracker),
+            $this->globalConfig,
+            $this->projectConfig,
+        );
     }
 }

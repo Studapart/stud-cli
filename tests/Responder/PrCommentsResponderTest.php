@@ -24,17 +24,15 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class PrCommentsResponderTest extends CommandTestCase
 {
-    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+    private SymfonyStyle $io;
 
     private PrCommentsResponder $responder;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService);
-        $this->io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new PrCommentsResponder($helper, new CommentBodyParser(), $this->createLogger($this->io));
+        $this->io = $this->createStub(SymfonyStyle::class);
+        $this->bindSubject();
     }
 
     /**
@@ -79,6 +77,9 @@ class PrCommentsResponderTest extends CommandTestCase
 
     public function testRespondRendersSectionAndTextForIssueComments(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $comment = new PullRequestComment('alice', new \DateTimeImmutable(), 'Body text', null, null);
         $response = PrCommentsResponse::success([$comment], [], [], 42);
 
@@ -100,6 +101,9 @@ class PrCommentsResponderTest extends CommandTestCase
 
     public function testRespondRendersSectionAndTextForReviewComments(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $comment = new PullRequestComment('bob', new \DateTimeImmutable(), 'Review body', 'src/File.php', 10);
         $response = PrCommentsResponse::success([], [$comment], [], 42);
 
@@ -118,6 +122,9 @@ class PrCommentsResponderTest extends CommandTestCase
 
     public function testRespondRendersSectionsAndTextWhenBothCommentTypesPresent(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $issueComment = new PullRequestComment('alice', new \DateTimeImmutable(), 'Issue', null, null);
         $reviewComment = new PullRequestComment('bob', new \DateTimeImmutable(), 'Review', 'file.php', 5);
         $response = PrCommentsResponse::success([$issueComment], [$reviewComment], [], 42);
@@ -195,6 +202,9 @@ class PrCommentsResponderTest extends CommandTestCase
 
     public function testRespondRendersTableBlockWhenCommentBodyContainsMarkdownTable(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $body = "Some intro.\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\nAfter table.";
         $comment = new PullRequestComment('alice', new \DateTimeImmutable(), $body, null, null);
         $response = PrCommentsResponse::success([$comment], [], [], 42);
@@ -213,6 +223,9 @@ class PrCommentsResponderTest extends CommandTestCase
 
     public function testRespondRendersListingWhenCommentBodyContainsMarkdownList(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $body = "Items:\n\n- one\n- two\n- three";
         $comment = new PullRequestComment('bob', new \DateTimeImmutable(), $body, null, null);
         $response = PrCommentsResponse::success([$comment], [], [], 42);
@@ -231,6 +244,9 @@ class PrCommentsResponderTest extends CommandTestCase
 
     public function testRespondStripsBackticksFromCommentBodyForTerminalSafety(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $body = 'Run `ls -la` or use ```bash echo 1 ```';
         $comment = new PullRequestComment('alice', new \DateTimeImmutable(), $body, null, null);
         $response = PrCommentsResponse::success([$comment], [], [], 42);
@@ -269,6 +285,9 @@ class PrCommentsResponderTest extends CommandTestCase
 
     public function testRespondRendersReviewsSectionWithReviewBodies(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $reviewComment = new PullRequestComment('reviewer', new \DateTimeImmutable(), 'Please fix the nits.', null, null);
         $response = PrCommentsResponse::success([], [], [$reviewComment], 42);
 
@@ -329,6 +348,9 @@ class PrCommentsResponderTest extends CommandTestCase
 
     public function testRespondRendersThreadedConversationSections(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $conversation = $this->createFeedbackConversation();
         $truncated = new PullRequestFeedbackConversation(
             new PullRequestFeedbackIds('github', 'pr_comment'),
@@ -365,6 +387,9 @@ class PrCommentsResponderTest extends CommandTestCase
 
     public function testRespondRendersNoteForEmptyThreadedConversations(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = PrCommentsResponse::success([], [], [], 42, [], true);
 
         $sections = [];
@@ -426,5 +451,12 @@ class PrCommentsResponderTest extends CommandTestCase
         );
 
         return new PullRequestFeedbackConversation($ids, 'review_thread', $state, [$comment], $actions, location: $location);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new PrCommentsResponder($helper, new CommentBodyParser(), $this->createLogger($this->io));
     }
 }

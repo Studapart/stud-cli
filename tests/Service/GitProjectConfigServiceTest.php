@@ -16,20 +16,17 @@ use Symfony\Component\Process\Process;
 
 class GitProjectConfigServiceTest extends TestCase
 {
-    private ProcessFactory&MockObject $processFactory;
-    private GitRemoteUrlParser&MockObject $remoteUrlParser;
+    private ProcessFactory $processFactory;
+    private GitRemoteUrlParser $remoteUrlParser;
     private FileSystem $fileSystem;
     private FlysystemFilesystem $flysystem;
     private GitProjectConfigService $service;
 
     protected function setUp(): void
     {
-        $adapter = new InMemoryFilesystemAdapter();
-        $this->flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($this->flysystem);
-        $this->processFactory = $this->createMock(ProcessFactory::class);
-        $this->remoteUrlParser = $this->createMock(GitRemoteUrlParser::class);
-        $this->service = new GitProjectConfigService($this->processFactory, $this->fileSystem, $this->remoteUrlParser);
+        $this->processFactory = $this->createStub(ProcessFactory::class);
+        $this->remoteUrlParser = $this->createStub(GitRemoteUrlParser::class);
+        $this->bindSubject();
     }
 
     public function testGetProjectKeyFromIssueKey(): void
@@ -47,6 +44,9 @@ class GitProjectConfigServiceTest extends TestCase
 
     public function testGetGitProviderFromConfig(): void
     {
+        $this->remoteUrlParser = $this->createMock(GitRemoteUrlParser::class);
+        $this->bindSubject();
+
         $this->mockGitDir('/test/git-dir');
         $this->flysystem->write(
             '/test/git-dir/stud.config',
@@ -60,6 +60,9 @@ class GitProjectConfigServiceTest extends TestCase
 
     public function testGetGitProviderAutoDetectsFromRemote(): void
     {
+        $this->remoteUrlParser = $this->createMock(GitRemoteUrlParser::class);
+        $this->bindSubject();
+
         $this->mockGitDir('.git');
         $this->remoteUrlParser->expects($this->once())
             ->method('parseRemote')
@@ -71,6 +74,9 @@ class GitProjectConfigServiceTest extends TestCase
 
     public function testGetGitProviderReturnsNullWhenUnknown(): void
     {
+        $this->remoteUrlParser = $this->createMock(GitRemoteUrlParser::class);
+        $this->bindSubject();
+
         $this->mockGitDir('.git');
         $this->remoteUrlParser->expects($this->once())
             ->method('parseRemote')
@@ -81,7 +87,8 @@ class GitProjectConfigServiceTest extends TestCase
 
     public function testReadProjectConfigReturnsEmptyArrayWhenParseFails(): void
     {
-        $mockFileSystem = $this->createMock(FileSystem::class);
+        $this->processFactory = $this->createMock(ProcessFactory::class);
+        $mockFileSystem = $this->createStub(FileSystem::class);
         $service = new GitProjectConfigService($this->processFactory, $mockFileSystem, $this->remoteUrlParser);
 
         $this->mockGitDir('.git');
@@ -108,6 +115,11 @@ class GitProjectConfigServiceTest extends TestCase
 
     private function mockGitDir(string $gitDir): void
     {
+        if (! $this->processFactory instanceof MockObject) {
+            $this->processFactory = $this->createMock(ProcessFactory::class);
+            $this->bindSubject();
+        }
+
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->atLeastOnce())
             ->method('create')
@@ -117,5 +129,13 @@ class GitProjectConfigServiceTest extends TestCase
         $process->expects($this->atLeastOnce())->method('run');
         $process->expects($this->atLeastOnce())->method('isSuccessful')->willReturn(true);
         $process->expects($this->atLeastOnce())->method('getOutput')->willReturn($gitDir);
+    }
+
+    private function bindSubject(): void
+    {
+        $adapter = new InMemoryFilesystemAdapter();
+        $this->flysystem = new FlysystemFilesystem($adapter);
+        $this->fileSystem = new FileSystem($this->flysystem);
+        $this->service = new GitProjectConfigService($this->processFactory, $this->fileSystem, $this->remoteUrlParser);
     }
 }

@@ -20,8 +20,8 @@ class IssueTrackerPortSupplierTest extends TestCase
 {
     public function testResolveReturnsPortForJira(): void
     {
-        $jira = $this->createMock(JiraApiClient::class);
-        $attachments = $this->createMock(JiraAttachmentService::class);
+        $jira = $this->createStub(JiraApiClient::class);
+        $attachments = $this->createStub(JiraAttachmentService::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
         $supplier = new IssueTrackerPortSupplier(
@@ -49,7 +49,7 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveReturnsLinearDiscoveryPort(): void
     {
-        $linear = $this->createMock(LinearApiClient::class);
+        $linear = $this->createStub(LinearApiClient::class);
         $linear->method('getTeamWorkflowStates')->willReturn([
             ['id' => 's1', 'name' => 'Todo', 'type' => 'unstarted'],
         ]);
@@ -81,8 +81,8 @@ class IssueTrackerPortSupplierTest extends TestCase
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createMock(JiraApiClient::class),
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraApiClient::class),
+            $this->createStub(JiraAttachmentService::class),
             null,
         );
 
@@ -116,14 +116,14 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForProviderReturnsJiraPort(): void
     {
-        $jira = $this->createMock(JiraApiClient::class);
+        $jira = $this->createStub(JiraApiClient::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
             $jira,
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraAttachmentService::class),
             null,
         );
 
@@ -144,14 +144,14 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForDiscoveryInfersLinearFromScopeKey(): void
     {
-        $linear = $this->createMock(LinearApiClient::class);
+        $linear = $this->createStub(LinearApiClient::class);
         $linear->method('getTeamWorkflowStates')->willReturn([]);
 
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createMock(JiraApiClient::class),
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraApiClient::class),
+            $this->createStub(JiraAttachmentService::class),
             $linear,
         );
 
@@ -180,9 +180,9 @@ class IssueTrackerPortSupplierTest extends TestCase
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createMock(JiraApiClient::class),
-            $this->createMock(JiraAttachmentService::class),
-            $this->createMock(LinearApiClient::class),
+            $this->createStub(JiraApiClient::class),
+            $this->createStub(JiraAttachmentService::class),
+            $this->createStub(LinearApiClient::class),
         );
 
         $result = $supplier->resolveForDiscovery(
@@ -209,8 +209,8 @@ class IssueTrackerPortSupplierTest extends TestCase
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createMock(JiraApiClient::class),
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraApiClient::class),
+            $this->createStub(JiraAttachmentService::class),
             null,
         );
 
@@ -222,14 +222,14 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForDiscoveryUsesExplicitProjectProvider(): void
     {
-        $linear = $this->createMock(LinearApiClient::class);
+        $linear = $this->createStub(LinearApiClient::class);
         $linear->method('getTeamWorkflowStates')->willReturn([]);
 
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createMock(JiraApiClient::class),
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraApiClient::class),
+            $this->createStub(JiraAttachmentService::class),
             $linear,
         );
 
@@ -251,14 +251,14 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForDiscoveryFallsBackToResolveWhenSingleProvider(): void
     {
-        $jira = $this->createMock(JiraApiClient::class);
+        $jira = $this->createStub(JiraApiClient::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
             $jira,
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraAttachmentService::class),
             null,
         );
 
@@ -295,14 +295,14 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForDiscoveryFallsBackToResolveWhenDualPmNotFullyConfigured(): void
     {
-        $jira = $this->createMock(JiraApiClient::class);
+        $jira = $this->createStub(JiraApiClient::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
             $jira,
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraAttachmentService::class),
             null,
         );
 
@@ -330,9 +330,9 @@ class IssueTrackerPortSupplierTest extends TestCase
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createMock(JiraApiClient::class),
-            $this->createMock(JiraAttachmentService::class),
-            $this->createMock(LinearApiClient::class),
+            $this->createStub(JiraApiClient::class),
+            $this->createStub(JiraAttachmentService::class),
+            $this->createStub(LinearApiClient::class),
         );
 
         $result = $supplier->resolveForDiscovery(
@@ -360,8 +360,8 @@ class IssueTrackerPortSupplierTest extends TestCase
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createMock(JiraApiClient::class),
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraApiClient::class),
+            $this->createStub(JiraAttachmentService::class),
             null,
         );
 
@@ -379,8 +379,8 @@ class IssueTrackerPortSupplierTest extends TestCase
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createMock(JiraApiClient::class),
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraApiClient::class),
+            $this->createStub(JiraAttachmentService::class),
             null,
         );
 
@@ -396,14 +396,14 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForDiscoveryIgnoresInvalidExplicitProjectProvider(): void
     {
-        $jira = $this->createMock(JiraApiClient::class);
+        $jira = $this->createStub(JiraApiClient::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
             $jira,
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraAttachmentService::class),
             null,
         );
 
@@ -430,8 +430,8 @@ class IssueTrackerPortSupplierTest extends TestCase
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createMock(JiraApiClient::class),
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraApiClient::class),
+            $this->createStub(JiraAttachmentService::class),
             null,
         );
 
@@ -451,14 +451,14 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForDiscoveryUsesProjectJiraCredentials(): void
     {
-        $jira = $this->createMock(JiraApiClient::class);
+        $jira = $this->createStub(JiraApiClient::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
             $jira,
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraAttachmentService::class),
             null,
         );
 
@@ -479,14 +479,14 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForDiscoveryInfersLinearFromProjectCredentials(): void
     {
-        $linear = $this->createMock(LinearApiClient::class);
+        $linear = $this->createStub(LinearApiClient::class);
         $linear->method('getTeamWorkflowStates')->willReturn([]);
 
         $supplier = new IssueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createMock(JiraApiClient::class),
-            $this->createMock(JiraAttachmentService::class),
+            $this->createStub(JiraApiClient::class),
+            $this->createStub(JiraAttachmentService::class),
             $linear,
         );
 

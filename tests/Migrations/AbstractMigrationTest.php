@@ -8,20 +8,20 @@ use App\Migrations\AbstractMigration;
 use App\Migrations\MigrationScope;
 use App\Service\Logger;
 use App\Service\TranslationService;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 class AbstractMigrationTest extends TestCase
 {
-    private Logger&MockObject $logger;
-    private TranslationService&MockObject $translator;
+    private Logger&Stub $logger;
+    private TranslationService&Stub $translator;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->logger = $this->createMock(Logger::class);
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->logger = $this->createStub(Logger::class);
+        $this->translator = $this->createStub(TranslationService::class);
     }
 
     public function testExecuteCallsUpMethod(): void

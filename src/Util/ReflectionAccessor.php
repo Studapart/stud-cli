@@ -5,17 +5,13 @@ declare(strict_types=1);
 namespace App\Util;
 
 /**
- * Guards {@see \ReflectionMethod::setAccessible()} / {@see \ReflectionProperty::setAccessible()}
- * so public members skip the call (deprecated/no-op noise on PHP 8.1+).
+ * Kept so callers can mark a reflected member before invoke or getValue.
+ * setAccessible() has had no effect since PHP 8.1 and is deprecated in PHP 8.5.
  */
 final class ReflectionAccessor
 {
     public static function ensureAccessible(\ReflectionMethod|\ReflectionProperty $member): void
     {
-        if ($member->isPublic()) {
-            return;
-        }
-
-        $member->setAccessible(true);
+        unset($member);
     }
 }

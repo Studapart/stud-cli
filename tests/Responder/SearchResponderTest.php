@@ -17,23 +17,22 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class SearchResponderTest extends CommandTestCase
 {
-    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+    private SymfonyStyle $io;
 
     private SearchResponder $responder;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService, null);
-        $this->io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new SearchResponder($helper, [
-            'JIRA_URL' => 'https://your-company.atlassian.net',
-        ], $this->createLogger($this->io));
+        $this->io = $this->createStub(SymfonyStyle::class);
+        $this->bindSubject();
     }
 
     public function testRespondReturnsZeroOnEmptyIssues(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = SearchResponse::success([], 'project = TPW');
 
         $this->io->expects($this->once())
@@ -48,6 +47,9 @@ class SearchResponderTest extends CommandTestCase
 
     public function testRespondRendersTableOnSuccess(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = SearchResponse::success([$issue], 'project = TPW');
 
@@ -114,7 +116,7 @@ class SearchResponderTest extends CommandTestCase
         $input = new ArrayInput([]);
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
-        $colorHelper = $this->createMock(ColorHelper::class);
+        $colorHelper = $this->createStub(ColorHelper::class);
         $colorHelper->method('registerStyles')->willReturnCallback(function (): void {
         });
         $colorHelper->method('format')->willReturnCallback(fn ($_, $text) => is_string($text) ? $text : '');
@@ -182,5 +184,14 @@ class SearchResponderTest extends CommandTestCase
 
         $this->assertNotNull($result);
         $this->assertAgentJsonErrorString($result->toPayload(), 'API error');
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService, null);
+        $this->responder = new SearchResponder($helper, [
+            'JIRA_URL' => 'https://your-company.atlassian.net',
+        ], $this->createLogger($this->io));
     }
 }

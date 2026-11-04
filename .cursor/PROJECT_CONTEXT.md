@@ -7,7 +7,7 @@ playbook routing live here only.
 
 - Purpose: Terminal CLI that streamlines Jira, Linear, and Git work (work items, branches, conventional commits, pull requests, Confluence)
 - Primary languages: PHP
-- Runtime / framework: PHP >= 8.4.1, Symfony 8.1 components, jolicode/castor 1.8.1
+- Runtime / framework: PHP 8.5 (8.5.12 or newer) on the stud-cli 5.x line, Symfony 8.1 components, jolicode/castor 1.9.1. stud-cli 4.x is the PHP 8.4 line. stud-cli 6.x will track PHP 8.6.
 - Package / task runner: Composer; tests and static analysis run as direct `vendor/bin` commands (Castor is the application runtime, not a test wrapper)
 
 ## Scope and paths
@@ -42,7 +42,7 @@ No repository playbook overrides. Skills use the bundled software-engineering pl
 - Integration / e2e: `vendor/bin/phpunit tests/Integration`; no end-to-end suite
 - Coverage: whole-project, threshold 100%, VERIFICATION row Coverage
 - Preferred task runner: none
-- Complexity: none (no checked-in command fails on the threshold)
+- Complexity: `vendor/bin/phpmd analyze --no-progress src castor.php`
 - Test frameworks:
   - unit: Unit tests (full)
   - integration: Integration / acceptance
@@ -82,10 +82,10 @@ No repository playbook overrides. Skills use the bundled software-engineering pl
   - `origin/HEAD` is `develop`. `main` also exists.
   - Omit project key and `--provider` unless the user specifies them.
   - Whole-project line coverage must stay at 100%. CI comments the coverage summary and does not fail the job on the percentage.
-  - New and modified code must stay within CC ≤ 10, CRAP ≤ 10, NPath ≤ 200, nesting depth ≤ 3, class ≤ 400 lines, method ≤ 40 lines. No command fails the build on those thresholds.
+  - PHPMD fails CC above 10, NPath above 200, method length above 40, class length above 400, more than 4 arguments, and more than 10 properties. CRAP above 10 fails from the Clover report. `crap.baseline.txt` stores the current score and a higher score fails. Nesting depth and LCOM4 stay review notes.
   - `documentation/reference/commands.md` is generated. After command-signature changes run `stud docs:generate` and `stud docs:check`.
   - Invoke the installed `stud` binary on `PATH`.
-  - PHP platform is 8.4.1 (Composer `config.platform.php`).
+  - This develop line is stud-cli 5.x. PHP platform is 8.5.12. The installer rejects anything below that. stud-cli 4.x is the PHP 8.4 line. stud-cli 6.x will track PHP 8.6. The bundled portable runtime stays PHP 8.4.23.
   - `.cursor/tmp/` is local scratch and stays gitignored.
 
 ## Stack addenda
@@ -95,7 +95,7 @@ None.
 ## Sources
 
 - `README.md` — purpose, docs index
-- `composer.json` — PHP >= 8.4.1, Symfony 8.1, Castor 1.8.1, PHPUnit, PHP-CS-Fixer, PHPStan
+- `composer.json` — PHP >= 8.5.12, Symfony 8.1, Castor 1.9.1, PHPUnit 13, PHP-CS-Fixer, PHPStan, PHPMD, PDepend
 - `CONTRIBUTING.md` — install, lint, test, default branch `develop`, changelog under `## [Unreleased]`
 - `documentation/development/index.md` — `composer install`, PHPUnit, PHPStan, PHP-CS-Fixer, coverage command, `stud docs:generate` / `stud docs:check`
 - `.github/workflows/tests.yml` — CI install, PHP-CS-Fixer dry-run, PHPStan, coverage comment (no percentage failure)

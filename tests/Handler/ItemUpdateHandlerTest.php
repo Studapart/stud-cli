@@ -7,6 +7,7 @@ use App\Exception\ApiException;
 use App\Handler\ItemUpdateHandler;
 use App\Service\DurationParser;
 use App\Service\FieldsParser;
+use App\Service\IssueTrackerPort;
 use App\Tests\CommandTestCase;
 
 class ItemUpdateHandlerTest extends CommandTestCase
@@ -16,7 +17,8 @@ class ItemUpdateHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->fieldsParser = new FieldsParser(new DurationParser());
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
+        $this->bindSubject();
     }
 
     private function createHandler(): ItemUpdateHandler
@@ -30,6 +32,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateSummarySuccess(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->with('SCI-71')
@@ -47,6 +52,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateDescriptionPlainSuccess(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->with('SCI-71')
@@ -67,6 +75,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateDescriptionMarkdownSuccess(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['description' => ['required' => false, 'name' => 'Description']]);
@@ -84,6 +95,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateViaFieldsOption(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->with('SCI-71')
@@ -109,6 +123,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateViaFieldsMap(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['labels' => ['required' => false, 'name' => 'Labels']]);
@@ -127,6 +144,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUnmatchedFieldsReportedAsSkipped(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['labels' => ['required' => false, 'name' => 'Labels']]);
@@ -162,6 +182,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testErrorEditmetaFetchFailure(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willThrowException(new ApiException('Not found', 'HTTP 404', 404));
@@ -175,6 +198,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testErrorEditmetaThrowableFailure(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willThrowException(new \RuntimeException('Network error'));
@@ -188,6 +214,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testErrorUpdateApiFailure(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
@@ -204,6 +233,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testErrorUpdateThrowableFailure(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
@@ -220,6 +252,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testEmptyDescriptionIsIgnored(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
@@ -235,6 +270,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testEmptyFieldsOptionIsIgnored(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
@@ -248,6 +286,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testApiExceptionWithEmptyTechnicalDetails(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willThrowException(new ApiException('Not found', '', 404));
@@ -260,6 +301,9 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateApiExceptionWithEmptyTechnicalDetails(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
@@ -271,5 +315,10 @@ class ItemUpdateHandlerTest extends CommandTestCase
         $response = $handler->handle(new ItemUpdateInput('SCI-71', summary: 'Title'));
 
         $this->assertFalse($response->isSuccess());
+    }
+
+    private function bindSubject(): void
+    {
+        $this->fieldsParser = new FieldsParser(new DurationParser());
     }
 }

@@ -10,7 +10,7 @@ Use PHAR unless you specifically need a bundled PHP runtime.
 curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash
 ```
 
-The PHAR path requires PHP 8.4.1+ with `xml`, `curl`, and `mbstring`. It supports `stud update`, so upgrades are managed by the tool.
+The PHAR path is the stud-cli 5.x line and requires PHP 8.5 (8.5.12 or newer) with `xml`, `curl`, and `mbstring`. PHP 8.4 stays on stud-cli 4.x. It supports `stud update`, so upgrades are managed by the tool.
 
 ## Opt-In: Portable
 

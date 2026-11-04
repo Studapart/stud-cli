@@ -4,7 +4,7 @@ This page is for contributors running `stud-cli` from source or changing release
 
 ## Requirements
 
-- PHP 8.4.1+
+- PHP 8.5 (8.5.12 or newer). This develop line will ship as stud-cli 5.x. PHP 8.4 stays on stud-cli 4.x. PHP 8.6 will be stud-cli 6.x.
 - Composer
 - Required PHP extensions: `xml`, `curl`, `mbstring`
 
@@ -57,7 +57,7 @@ Portable packaging consumes the canonical PHAR and a platform runtime. See [stud
 
 ## Foundation upgrade (4.x)
 
-stud-cli **4.x** runs on PHP ≥ 8.4.1, Symfony 8.1.x, and Castor 1.8.1. Spike inventory and migration notes: [foundation upgrade 4.x](foundation-upgrade-4x.md). Consumer migration: [3.x → 4.x](../setup/migrating-3x-to-4x.md). Packaged binaries always disable Castor AI-agent environment guessing; see [packaging and Castor agent detection](packaging-and-castor-agent-detection.md).
+The 4.x line runs on PHP 8.4. Current `develop` is stud-cli **5.x** and runs on PHP 8.5. When PHP 8.6 is released, that line will be stud-cli **6.x**. Spike inventory: [foundation upgrade 4.x](foundation-upgrade-4x.md). Consumer migration: [3.x → 4.x](../setup/migrating-3x-to-4x.md). Packaged binaries always disable Castor AI-agent environment guessing; see [packaging and Castor agent detection](packaging-and-castor-agent-detection.md).
 
 ## AI and agent workflows
 

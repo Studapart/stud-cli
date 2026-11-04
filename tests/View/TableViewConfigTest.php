@@ -18,16 +18,7 @@ class TableViewConfigTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $columns = [
-            new Column('key', 'table.key'),
-            new Column('status', 'table.status'),
-            new Column('priority', 'table.priority', null, 'priority'),
-        ];
-
-        $this->config = new PageViewConfig([
-            new Section('', [new TableBlock($columns)]),
-        ], $this->translationService, null);
+        $this->bindSubject();
     }
 
     public function testGetTypeReturnsPage(): void
@@ -142,6 +133,9 @@ class TableViewConfigTest extends CommandTestCase
 
     public function testBuildHeadersUsesTranslationService(): void
     {
+        $this->translationService = $this->createTranslationMock();
+        $this->bindSubject();
+
         $columns = [
             new Column('key', 'table.key'),
         ];
@@ -358,6 +352,9 @@ class TableViewConfigTest extends CommandTestCase
 
     public function testRenderTableWithColorHelperAppliesColorsToHeaders(): void
     {
+        $this->translationService = $this->createTranslationMock();
+        $this->bindSubject();
+
         $colorHelper = $this->createMock(ColorHelper::class);
         $columns = [
             new Column('key', 'table.key'),
@@ -397,5 +394,19 @@ class TableViewConfigTest extends CommandTestCase
 
         $logger = $this->createLogger($io);
         $config->render($issues, $logger);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $columns = [
+            new Column('key', 'table.key'),
+            new Column('status', 'table.status'),
+            new Column('priority', 'table.priority', null, 'priority'),
+        ];
+
+        $this->config = new PageViewConfig([
+            new Section('', [new TableBlock($columns)]),
+        ], $this->translationService, null);
     }
 }

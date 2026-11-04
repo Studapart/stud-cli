@@ -182,7 +182,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             $logger,
             $this->fileSystem,
             null,
-            $this->createMock(HttpClientInterface::class)
+            $this->createStub(HttpClientInterface::class)
         );
 
         // Override getConfigPath to return our test config path
@@ -196,7 +196,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             new UpdateFileService($this->translationService, $logger),
             $logger,
             null,
-            $this->createMock(HttpClientInterface::class),
+            $this->createStub(HttpClientInterface::class),
             $this->configPath,
             $this->fileSystem
         ) extends UpdateHandler {
@@ -275,7 +275,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             new UpdateFileService($this->translationService, $logger),
             $logger,
             null,
-            $this->createMock(HttpClientInterface::class),
+            $this->createStub(HttpClientInterface::class),
             $this->configPath,
             $this->fileSystem
         ) extends UpdateHandler {
@@ -361,7 +361,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             new UpdateFileService($this->translationService, $logger),
             $logger,
             null,
-            $this->createMock(HttpClientInterface::class),
+            $this->createStub(HttpClientInterface::class),
             $this->configPath,
             $this->fileSystem
         ) extends UpdateHandler {
@@ -433,7 +433,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             new UpdateFileService($this->translationService, $logger),
             $logger,
             null,
-            $this->createMock(HttpClientInterface::class),
+            $this->createStub(HttpClientInterface::class),
             $this->configPath,
             $this->fileSystem
         ) extends UpdateHandler {
@@ -500,7 +500,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
 
         // Create handler that will cause an error in loadConfigAndVersion
         // by using a filesystem that throws exceptions
-        $errorFileSystem = $this->createMock(FileSystem::class);
+        $errorFileSystem = $this->createStub(FileSystem::class);
         $errorFileSystem->method('fileExists')->willReturn(true);
         $errorFileSystem->method('parseFile')->willThrowException(new \RuntimeException('Config read error'));
 
@@ -514,7 +514,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             new UpdateFileService($this->translationService, $logger),
             $logger,
             null,
-            $this->createMock(HttpClientInterface::class),
+            $this->createStub(HttpClientInterface::class),
             $this->configPath,
             $errorFileSystem
         ) extends UpdateHandler {

@@ -4,9 +4,10 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\CommitHandler;
+use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -14,14 +15,16 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class CommitHandlerTest extends CommandTestCase
 {
     private CommitHandler $handler;
-    private PromptInterface&MockObject $prompt;
+    private PromptInterface $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
 
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $this->translationService, $this->prompt);
+        $this->prompt = $this->createStub(PromptInterface::class);
+        $this->bindSubject();
     }
 
     public function testHandleWithCleanWorkingTree(): void
@@ -58,6 +61,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithMessage(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -86,6 +92,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithMessageReturnsErrorOnGitTimeoutDuringCommit(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -95,6 +104,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(true);
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('my message')
             ->willThrowException(new \App\Exception\GitTimeoutException(
@@ -113,6 +123,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithMessageReturnsErrorOnGitExceptionDuringCommit(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -122,6 +135,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(true);
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('my message')
             ->willThrowException(new \App\Exception\GitException('timeout message', 'technical details'));
@@ -136,6 +150,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithMessageUsingNewSignature(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -148,6 +165,7 @@ class CommitHandlerTest extends CommandTestCase
             ->method('stageAllChanges');
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('my message');
 
@@ -160,6 +178,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithMessageAndAllFlag(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -168,6 +189,7 @@ class CommitHandlerTest extends CommandTestCase
             ->method('stageAllChanges');
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('my message');
 
@@ -184,6 +206,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithMessageNoStagedChanges(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -210,6 +235,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithAutoFixup(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -243,6 +271,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithAutoFixupAndAllFlag(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -255,6 +286,7 @@ class CommitHandlerTest extends CommandTestCase
             ->method('stageAllChanges');
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commitFixup')
             ->with('abcdef');
 
@@ -272,6 +304,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithAutoFixupReturnsErrorOnGitExceptionDuringCommitFixup(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -285,6 +320,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(true);
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commitFixup')
             ->with('abcdef')
             ->willThrowException(new \App\Exception\GitTimeoutException('git commit --fixup abcdef', 600.0, 'timed out'));
@@ -298,6 +334,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithAutoFixupNoStagedChanges(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -329,6 +368,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithNewBranchSkipsLogicalShaLookup(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -361,6 +403,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(true);
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('feat(api): New feature [TPW-35]');
 
@@ -377,6 +420,11 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithInteractivePrompter(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -441,6 +489,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithQuietUsesDetectedTypeScopeSummaryWithoutPrompting(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -496,6 +548,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithQuietJiraPromptReturnsErrorOnGitTimeoutDuringCommit(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -529,6 +584,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(true);
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]')
             ->willThrowException(new \App\Exception\GitTimeoutException(
@@ -546,6 +602,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithInteractivePrompterAndAllFlag(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -578,6 +638,7 @@ class CommitHandlerTest extends CommandTestCase
             ->method('stageAllChanges');
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
@@ -605,6 +666,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithInteractivePrompterNoStagedChanges(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -745,6 +810,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithVeryVerboseOutput(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -781,6 +850,7 @@ class CommitHandlerTest extends CommandTestCase
             ->method('stageAllChanges');
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
@@ -808,6 +878,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithEmptyComponents(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -844,6 +918,7 @@ class CommitHandlerTest extends CommandTestCase
             ->method('stageAllChanges');
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('feat: My awesome feature [TPW-35]');
 
@@ -871,6 +946,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithVerboseOutputForCommitMessage(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
@@ -907,6 +986,7 @@ class CommitHandlerTest extends CommandTestCase
             ->method('stageAllChanges');
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
@@ -934,6 +1014,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testgetCommitTypeFromIssueTypeWithUnknownType(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
@@ -973,6 +1057,7 @@ class CommitHandlerTest extends CommandTestCase
             ->method('stageAllChanges');
 
         $this->gitRepository
+            ->expects($this->once())
             ->method('commit')
             ->with('feat: My awesome feature [TPW-35]');
 
@@ -1010,6 +1095,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testExplicitMessageDoesNotInvokeIssueTrackerFactory(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $invoked = false;
         $factory = function () use (&$invoked): \App\Service\IssueTrackerPort {
             $invoked = true;
@@ -1032,6 +1120,9 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testFixupPathDoesNotInvokeIssueTrackerFactory(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $invoked = false;
         $factory = function () use (&$invoked): \App\Service\IssueTrackerPort {
             $invoked = true;
@@ -1054,6 +1145,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testJiraPromptPathInvokesIssueTrackerFactoryOnce(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $invoked = 0;
         $factory = function () use (&$invoked): \App\Service\IssueTrackerPort {
             ++$invoked;
@@ -1087,5 +1182,10 @@ class CommitHandlerTest extends CommandTestCase
         $this->assertSame('feat(api): New feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
         $this->assertSame(1, $invoked);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $this->translationService, $this->prompt);
     }
 }

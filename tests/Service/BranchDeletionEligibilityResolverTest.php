@@ -16,14 +16,14 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 {
     public function testResolveBaseBranchUsesConfiguredThenFallback(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('remoteBranchExists')->willReturnMap([
             ['origin', 'custom', true],
             ['origin', 'develop', false],
             ['origin', 'main', true],
             ['origin', 'master', false],
         ]);
-        $resolver = new BranchDeletionEligibilityResolver($gitRepository, $this->createMock(GitBranchService::class), null);
+        $resolver = new BranchDeletionEligibilityResolver($gitRepository, $this->createStub(GitBranchService::class), null);
 
         $this->assertSame('origin/custom', $resolver->resolveBaseBranch('origin/custom'));
         $this->assertSame('origin/main', $resolver->resolveBaseBranch(null));
@@ -31,9 +31,9 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testBuildPullRequestSnapshotHandlesProviderFailure(): void
     {
-        $provider = $this->createMock(GitHostingPort::class);
+        $provider = $this->createStub(GitHostingPort::class);
         $provider->method('getAllPullRequests')->willThrowException(new \RuntimeException('api'));
-        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $this->createMock(GitBranchService::class), $provider);
+        $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $this->createStub(GitBranchService::class), $provider);
 
         $snapshot = $resolver->buildPullRequestSnapshot();
         $this->assertFalse($snapshot['available']);
@@ -42,9 +42,9 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testBuildPullRequestSnapshotLogsRecoverableFailureWhenRecorderProvided(): void
     {
-        $provider = $this->createMock(GitHostingPort::class);
+        $provider = $this->createStub(GitHostingPort::class);
         $provider->method('getAllPullRequests')->willThrowException(new \RuntimeException('api'));
-        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $this->createMock(GitBranchService::class), $provider);
+        $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $this->createStub(GitBranchService::class), $provider);
         $recorder = new WorkflowRecorder();
 
         $snapshot = $resolver->buildPullRequestSnapshot($recorder);
@@ -55,13 +55,13 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testBuildPullRequestSnapshotFiltersForkPullRequests(): void
     {
-        $provider = $this->createMock(GitHostingPort::class);
+        $provider = $this->createStub(GitHostingPort::class);
         $provider->method('getAllPullRequests')->willReturn([
             ['head' => [], 'base' => ['repo' => ['full_name' => 'org/repo']]],
             ['head' => ['ref' => 'feat/a', 'repo' => ['full_name' => 'org/repo']], 'base' => ['repo' => ['full_name' => 'org/repo']]],
             ['head' => ['ref' => 'feat/fork', 'repo' => ['full_name' => 'fork/repo']], 'base' => ['repo' => ['full_name' => 'org/repo']]],
         ]);
-        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $this->createMock(GitBranchService::class), $provider);
+        $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $this->createStub(GitBranchService::class), $provider);
 
         $snapshot = $resolver->buildPullRequestSnapshot();
         $this->assertTrue($snapshot['available']);
@@ -71,7 +71,7 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testEvaluateReturnsNoForProtectedCurrentAndOpenPr(): void
     {
-        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $this->createMock(GitBranchService::class), null);
+        $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $this->createStub(GitBranchService::class), null);
 
         $protected = $resolver->evaluate('develop', 'main', true, 'origin/develop', [], true);
         $current = $resolver->evaluate('feat/a', 'feat/a', true, 'origin/develop', [], true);
@@ -84,7 +84,7 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testEvaluateReturnsManualForUnresolvedBaseAndProviderUnavailable(): void
     {
-        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $this->createMock(GitBranchService::class), null);
+        $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $this->createStub(GitBranchService::class), null);
         $unresolved = $resolver->evaluate('feat/a', 'main', false, null, [], true);
         $providerUnavailable = $resolver->evaluate('feat/a', 'main', false, 'origin/develop', [], false);
 
@@ -95,12 +95,12 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testEvaluateReturnsYesWhenMergedByGitOrProvider(): void
     {
-        $gitBranchService = $this->createMock(GitBranchService::class);
+        $gitBranchService = $this->createStub(GitBranchService::class);
         $gitBranchService->method('isBranchMergedInto')->willReturnMap([
             ['feat/git', 'origin/develop', true],
             ['feat/provider', 'origin/develop', false],
         ]);
-        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $gitBranchService, null);
+        $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $gitBranchService, null);
 
         $mergedByGit = $resolver->evaluate('feat/git', 'main', true, 'origin/develop', [], true);
         $mergedByProvider = $resolver->evaluate(
@@ -124,9 +124,9 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testEvaluateKeepsExistingRemoteStatusForProviderMergedBranch(): void
     {
-        $gitBranchService = $this->createMock(GitBranchService::class);
+        $gitBranchService = $this->createStub(GitBranchService::class);
         $gitBranchService->method('isBranchMergedInto')->willReturn(false);
-        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $gitBranchService, null);
+        $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $gitBranchService, null);
 
         $eligibility = $resolver->evaluate(
             'feat/provider',
@@ -145,9 +145,9 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testEvaluateReturnsManualOnClosedUnmergedPullRequest(): void
     {
-        $gitBranchService = $this->createMock(GitBranchService::class);
+        $gitBranchService = $this->createStub(GitBranchService::class);
         $gitBranchService->method('isBranchMergedInto')->willReturn(false);
-        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $gitBranchService, null);
+        $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $gitBranchService, null);
 
         $eligibility = $resolver->evaluate(
             'feat/closed',
@@ -164,9 +164,9 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testEvaluateReturnsManualWhenMergeCheckThrows(): void
     {
-        $gitBranchService = $this->createMock(GitBranchService::class);
+        $gitBranchService = $this->createStub(GitBranchService::class);
         $gitBranchService->method('isBranchMergedInto')->willThrowException(new \RuntimeException('boom'));
-        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $gitBranchService, null);
+        $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $gitBranchService, null);
 
         $eligibility = $resolver->evaluate('feat/ex', 'main', false, 'origin/develop', [], true);
 
@@ -176,9 +176,9 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testEvaluateLogsRecoverableFailureWhenMergeCheckThrowsAndRecorderProvided(): void
     {
-        $gitBranchService = $this->createMock(GitBranchService::class);
+        $gitBranchService = $this->createStub(GitBranchService::class);
         $gitBranchService->method('isBranchMergedInto')->willThrowException(new \RuntimeException('boom'));
-        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $gitBranchService, null);
+        $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $gitBranchService, null);
         $recorder = new WorkflowRecorder();
 
         $eligibility = $resolver->evaluate('feat/ex', 'main', false, 'origin/develop', [], true, $recorder);

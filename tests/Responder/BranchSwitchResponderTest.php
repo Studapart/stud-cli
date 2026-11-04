@@ -69,7 +69,7 @@ class BranchSwitchResponderTest extends CommandTestCase
 
     public function testRespondJsonReturnsSuccessData(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $responder = new BranchSwitchResponder(
             new ResponderHelper($this->translationService, null),
             $this->createLogger($io)
@@ -91,7 +91,7 @@ class BranchSwitchResponderTest extends CommandTestCase
 
     public function testRespondJsonReturnsError(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $responder = new BranchSwitchResponder(
             new ResponderHelper($this->translationService, null),
             $this->createLogger($io)

@@ -8,6 +8,7 @@ use App\DTO\MessageRef;
 use App\Exception\GitException;
 use App\Handler\FlattenHandler;
 use App\Response\CommandResponse;
+use App\Service\GitRepository;
 use App\Tests\CommandTestCase;
 
 class FlattenHandlerTest extends CommandTestCase
@@ -19,6 +20,7 @@ class FlattenHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createMock(GitRepository::class);
 
         $this->handler = new FlattenHandler($this->gitRepository, $this->baseBranch, $this->translationService);
     }
@@ -163,8 +165,8 @@ class FlattenHandlerTest extends CommandTestCase
     private function expectCleanTree(string $baseSha, bool $hasFixups): void
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
-        $this->gitRepository->method('getMergeBase')->with($this->baseBranch, 'HEAD')->willReturn($baseSha);
-        $this->gitRepository->method('hasFixupCommits')->with($baseSha)->willReturn($hasFixups);
+        $this->gitRepository->expects($this->once())->method('getMergeBase')->with($this->baseBranch, 'HEAD')->willReturn($baseSha);
+        $this->gitRepository->expects($this->once())->method('hasFixupCommits')->with($baseSha)->willReturn($hasFixups);
     }
 
     private function messageKey(mixed $message): ?string

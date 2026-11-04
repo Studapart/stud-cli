@@ -5,6 +5,7 @@ namespace App\Tests\Handler;
 use App\DTO\WorkItem;
 use App\Handler\ItemShowHandler;
 use App\Response\ItemShowResponse;
+use App\Service\IssueTrackerPort;
 use App\Tests\CommandTestCase;
 use RuntimeException;
 
@@ -15,6 +16,7 @@ class ItemShowHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
 
         $this->handler = new ItemShowHandler($this->issueTracker);
     }

@@ -305,8 +305,8 @@ class IssueTrackerFactoryTest extends TestCase
 
     public function testCreateReturnsJiraAdapter(): void
     {
-        $jira = $this->createMock(JiraApiClient::class);
-        $attachments = $this->createMock(JiraAttachmentService::class);
+        $jira = $this->createStub(JiraApiClient::class);
+        $attachments = $this->createStub(JiraAttachmentService::class);
 
         $provider = $this->factory->create(IssueTrackerProvider::Jira->value, $jira, $attachments);
 
@@ -315,7 +315,7 @@ class IssueTrackerFactoryTest extends TestCase
 
     public function testCreateReturnsLinearAdapter(): void
     {
-        $linearApiClient = $this->createMock(\App\Service\LinearApiClient::class);
+        $linearApiClient = $this->createStub(\App\Service\LinearApiClient::class);
 
         $provider = $this->factory->create(IssueTrackerProvider::Linear->value, linearApiClient: $linearApiClient);
 

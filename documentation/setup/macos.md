@@ -10,13 +10,13 @@ The installer uses `~/.local/bin/stud` and updates your shell configuration when
 
 ## Requirements for PHAR
 
-Install PHP with Homebrew:
+Install PHP 8.5 (8.5.12 or newer) with Homebrew. This install is the stud-cli 5.x line.
 
 ```bash
 brew install php
 ```
 
-Homebrew PHP includes the required `xml`, `curl`, and `mbstring` extensions.
+Homebrew PHP includes the required `xml`, `curl`, and `mbstring` extensions. `php -v` must show 8.5.12 or newer before continuing.
 
 Verify:
 

@@ -153,7 +153,7 @@ class LinearAttachmentServiceTest extends TestCase
     {
         $response = $this->createMock(\Symfony\Contracts\HttpClient\ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(502);
-        $response->method('getContent')->with(false)->willThrowException(new \RuntimeException('broken stream'));
+        $response->expects($this->once())->method('getContent')->with(false)->willThrowException(new \RuntimeException('broken stream'));
 
         $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi);

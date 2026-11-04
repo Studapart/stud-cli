@@ -15,26 +15,22 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemShowResponderTest extends CommandTestCase
 {
-    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+    private SymfonyStyle $io;
 
     private ItemShowResponder $responder;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService);
-        $this->io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new ItemShowResponder(
-            $helper,
-            ['JIRA_URL' => 'https://your-company.atlassian.net'],
-            $this->createLogger($this->io),
-            null,
-        );
+        $this->io = $this->createStub(SymfonyStyle::class);
+        $this->bindSubject();
     }
 
     public function testRespondDisplaysErrorWhenResponseIsNotSuccessful(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = ItemShowResponse::error('Issue not found');
 
         $this->io->expects($this->once())
@@ -51,6 +47,9 @@ class ItemShowResponderTest extends CommandTestCase
 
     public function testRespondDisplaysDefinitionListWhenSuccessful(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $issue = new WorkItem(
             '1000',
             'TPW-35',
@@ -122,6 +121,9 @@ class ItemShowResponderTest extends CommandTestCase
 
     public function testRespondDisplaysDescriptionSections(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $description = "Title: Test Feature\n\n---\n\nUser Story\nAs a developer";
         $issue = new WorkItem(
             '1000',
@@ -159,7 +161,7 @@ class ItemShowResponderTest extends CommandTestCase
     public function testRespondHandlesDescriptionSectionWithEmptyContent(): void
     {
         $descriptionFormatter = $this->createMock(DescriptionFormatter::class);
-        $descriptionFormatter->method('parseSections')
+        $descriptionFormatter->expects($this->once())->method('parseSections')
             ->with('Desc')
             ->willReturn([
                 ['title' => 'SectionWithNoContent', 'contentLines' => []],
@@ -202,6 +204,9 @@ class ItemShowResponderTest extends CommandTestCase
 
     public function testRespondHandlesEmptyDescription(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $issue = new WorkItem(
             '1000',
             'TPW-35',
@@ -229,6 +234,9 @@ class ItemShowResponderTest extends CommandTestCase
 
     public function testRespondDisplaysLabelsCorrectly(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $issue = new WorkItem(
             '1000',
             'TPW-35',
@@ -263,7 +271,7 @@ class ItemShowResponderTest extends CommandTestCase
     {
         $descriptionFormatter = $this->createMock(DescriptionFormatter::class);
         $helper = new ResponderHelper($this->translationService);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
@@ -305,6 +313,9 @@ class ItemShowResponderTest extends CommandTestCase
 
     public function testRespondHandlesNullIssueGracefully(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = new \ReflectionClass(ItemShowResponse::class);
         $responseInstance = $response->newInstanceWithoutConstructor();
         $successProperty = $response->getProperty('success');
@@ -327,6 +338,9 @@ class ItemShowResponderTest extends CommandTestCase
 
     public function testRespondDisplaysContentWithListsAndText(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $description = "Section\nRegular text before\n[ ] Checkbox item";
         $issue = new WorkItem(
             '1000',
@@ -507,7 +521,7 @@ class ItemShowResponderTest extends CommandTestCase
 
         $io->expects($this->atLeastOnce())
             ->method('section');
-        $io->expects($this->any())
+        $io
             ->method('text');
 
         $responder->respond($io, $response, 'TPW-35');
@@ -688,5 +702,17 @@ class ItemShowResponderTest extends CommandTestCase
 
         $this->assertNotNull($result);
         $this->assertAgentJsonErrorString($result->toPayload(), 'Not found');
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new ItemShowResponder(
+            $helper,
+            ['JIRA_URL' => 'https://your-company.atlassian.net'],
+            $this->createLogger($this->io),
+            null,
+        );
     }
 }

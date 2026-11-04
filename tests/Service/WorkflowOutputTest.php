@@ -16,7 +16,7 @@ final class WorkflowOutputTest extends TestCase
 {
     public function testRecordsEntriesDiagnosticsAndBuildsResponse(): void
     {
-        $output = new WorkflowOutput($this->createMock(PromptInterface::class));
+        $output = new WorkflowOutput($this->createStub(PromptInterface::class));
 
         $output->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('error.key'));
         $output->addErrorWithDetails(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('error.details'), 'details');
@@ -56,7 +56,7 @@ final class WorkflowOutputTest extends TestCase
 
     public function testSetPullNumberCarriesIntoResponse(): void
     {
-        $output = new WorkflowOutput($this->createMock(PromptInterface::class));
+        $output = new WorkflowOutput($this->createStub(PromptInterface::class));
         $output->setPullNumber(7);
 
         $response = $output->toResponse(0);
@@ -67,7 +67,7 @@ final class WorkflowOutputTest extends TestCase
 
     public function testDelegatesPrompts(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturn('answer');
         $prompt->method('askHidden')->willReturn('secret');
         $prompt->method('confirm')->willReturn(true);

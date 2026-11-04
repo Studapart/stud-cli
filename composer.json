@@ -30,13 +30,13 @@
         }
     ],
     "require": {
-        "php": ">=8.4.1",
+        "php": ">=8.5.12",
         "ext-xml": "*",
         "symfony/http-client": "^8.1",
         "symfony/process": "^8.1",
         "symfony/console": "^8.1",
         "symfony/string": "^8.1",
-        "jolicode/castor": "1.8.1",
+        "jolicode/castor": "1.9.1",
         "symfony/yaml": "^8.1",
         "symfony/translation": "^8.1",
         "stevebauman/hypertext": "^1.1",
@@ -63,14 +63,16 @@
             "symfony/flex": true
         },
         "platform": {
-            "php": "8.4.1"
+            "php": "8.5.12"
         }
     },
     "require-dev": {
-        "phpunit/phpunit": "^11.0",
+        "phpunit/phpunit": "^13.0",
         "phpspec/prophecy-phpunit": "^2.4",
         "friendsofphp/php-cs-fixer": "^3.0",
         "phpstan/phpstan": "^2.0",
+        "phpmd/phpmd": "^3.0",
+        "pdepend/pdepend": "^3.0",
         "league/flysystem-memory": "^3.31"
     },
     "scripts": {

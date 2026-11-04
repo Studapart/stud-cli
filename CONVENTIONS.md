@@ -123,7 +123,7 @@ CLI responders must continue to render with the configured locale. Agent JSON re
 
 ### Code Quality and Complexity Standards
 
-To maintain code quality and prevent technical debt, all code in `stud-cli` must adhere to the following measurable thresholds. These metrics are enforced through static analysis tools (PHPStan) and manual code review during the development process.
+To maintain code quality and prevent technical debt, all code in `stud-cli` must adhere to the following measurable thresholds. PHPMD and the CRAP check fail the build. Nesting depth and LCOM4 stay on code review.
 
 **See also:** [ADR-011: Code Quality Metrics and Enforcement](documentation/adr-011-code-quality-metrics-and-enforcement.md) for detailed explanation of each metric, enforcement strategies, and refactoring guidance.
 
@@ -133,15 +133,15 @@ The following table defines all quality thresholds that must be met:
 
 | Focus Area | Metric | Threshold | Enforcement |
 |------------|--------|-----------|-------------|
-| **COMPLEXITY** | Cyclomatic Complexity (CC) | Maximum 10 per method | PHPStan, Code Review |
-| | CRAP Index | Maximum 10 per class/method | PHPStan, Code Review |
-| | NPath Complexity | Maximum 200 | Static Analysis |
+| **COMPLEXITY** | Cyclomatic Complexity (CC) | Maximum 10 per method | PHPMD |
+| | CRAP Index | Maximum 10 per class/method | Clover check |
+| | NPath Complexity | Maximum 200 | PHPMD |
 | | Nesting Depth | Maximum 3 | Code Review |
-| **COHESION** | LCOM4 (Lack of Cohesion) | Maximum 2 | Static Analysis |
-| **SIZE** | Class Size (Lines) | Maximum 400 lines of code | Code Review |
-| | Method Size (Lines) | Maximum 40 lines of code | Code Review |
-| **SIGNATURES** | Class Properties | Maximum 10 properties | Code Review |
-| | Method Arguments | Maximum 4 arguments | Code Review |
+| **COHESION** | LCOM4 (Lack of Cohesion) | Maximum 2 | Code Review |
+| **SIZE** | Class Size (Lines) | Maximum 400 lines of code | PHPMD |
+| | Method Size (Lines) | Maximum 40 lines of code | PHPMD |
+| **SIGNATURES** | Class Properties | Maximum 10 properties | PHPMD |
+| | Method Arguments | Maximum 4 arguments | PHPMD |
 
 #### Complexity Metrics
 
@@ -306,7 +306,7 @@ public function processData($data) {
 **Rule**: Maximum **10 properties** per class.
 
 **Enforcement**:
-- Code review can identify classes with too many properties.
+- PHPMD fails the build when a class has more than 10 properties.
 - Classes with many properties may indicate violation of Single Responsibility Principle and should be refactored.
 
 ##### Method Arguments
@@ -316,7 +316,7 @@ public function processData($data) {
 **Exemption**: DTO, Response, and Value Object constructors using promoted `readonly` properties are exempt from the 4-argument limit. These serve as pure data containers with no behavioral complexity; splitting them into sub-objects would add ceremony without reducing cognitive load.
 
 **Enforcement**:
-- Code review and static analysis tools can identify methods with too many arguments.
+- PHPMD fails the build when a method has more than 4 arguments. A new promoted readonly DTO, Response, or Value Object constructor that needs the exemption carries `@SuppressWarnings(PHPMD.ExcessiveParameterList)`.
 - Methods with many arguments should be refactored using:
   - Parameter objects (DTOs)
   - Builder pattern
@@ -454,14 +454,22 @@ public function testHandler() {
     // This test may make real API calls or modify the file system!
 }
 
-// ✅ GOOD: Using mocks
+// ✅ GOOD: Using test doubles
 public function testHandler() {
-    $gitRepository = $this->createMock(GitRepository::class);
-    $jiraService = $this->createMock(JiraApiClient::class);
+    $gitRepository = $this->createStub(GitRepository::class);
+    $jiraService = $this->createStub(JiraApiClient::class);
     $handler = new UpdateHandler($gitRepository, $jiraService);
     // This test is isolated and predictable
 }
 ```
+
+**Stubs and mocks (PHPUnit 13):**
+- Use `createStub()` when the test only controls return values. Use `createMock()` only when the test calls `expects()` on that double.
+- Do not use `expects($this->any())`. Use a stub.
+- `with()` requires `expects()` with a real count. Drop `with()` when the argument is not part of the behavior under test.
+- `CommandTestCase` shared doubles are stubs. A test class that verifies calls on one replaces it with `createMock()` (or `createTranslationMock()`) right after `parent::setUp()`.
+- Do not create a mock in `setUp()`. Shared fixtures are stubs. A test that calls `expects()` builds its own mock, then `bindSubject()` so the object under test receives that mock. Do not use `#[AllowMockObjectsWithoutExpectations]`.
+- PHPUnit fails on PHPUnit notices, PHPUnit deprecations, and warnings.
 
 **What to mock:**
 - Handler classes (e.g., `UpdateHandler`, `CommitHandler`)

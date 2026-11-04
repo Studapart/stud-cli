@@ -9,22 +9,18 @@ use App\Responder\ConfluenceShowResponder;
 use App\Response\ConfluenceShowResponse;
 use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ConfluenceShowResponderTest extends CommandTestCase
 {
-    private SymfonyStyle&MockObject $io;
+    private SymfonyStyle $io;
     private ConfluenceShowResponder $responder;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService);
-        $this->io = $this->createMock(SymfonyStyle::class);
-        $logger = $this->createLogger($this->io);
-        $this->responder = new ConfluenceShowResponder($helper, $logger);
+        $this->io = $this->createStub(SymfonyStyle::class);
+        $this->bindSubject();
     }
 
     public function testRespondJsonSuccessReturnsAgentJsonResponseWithData(): void
@@ -56,6 +52,9 @@ class ConfluenceShowResponderTest extends CommandTestCase
 
     public function testRespondCliSuccessUsesPageViewConfig(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = ConfluenceShowResponse::success(
             '12345',
             'My Page',
@@ -76,6 +75,9 @@ class ConfluenceShowResponderTest extends CommandTestCase
 
     public function testRespondCliSuccessWithoutBodyDoesNotCallText(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = ConfluenceShowResponse::success(
             '12345',
             'My Page',
@@ -92,6 +94,9 @@ class ConfluenceShowResponderTest extends CommandTestCase
 
     public function testRespondCliErrorOutputsError(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = ConfluenceShowResponse::error('Something failed');
         $this->io->expects(self::once())->method('section')->with(self::anything());
         $this->io->expects(self::once())->method('error')->with('Something failed');
@@ -100,5 +105,13 @@ class ConfluenceShowResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, OutputFormat::Cli);
 
         self::assertNull($result);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService);
+        $logger = $this->createLogger($this->io);
+        $this->responder = new ConfluenceShowResponder($helper, $logger);
     }
 }

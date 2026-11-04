@@ -38,7 +38,7 @@ class GlobalMigrationIdResolverTest extends TestCase
     public function testResolveLatestIdReturnsNullWhenListDirectoryFails(): void
     {
         /** @var FileSystem&MockObject $fileSystem */
-        $fileSystem = $this->createMock(FileSystem::class);
+        $fileSystem = $this->createStub(FileSystem::class);
         $fileSystem->method('isDir')->willReturn(true);
         $fileSystem->method('listDirectory')->willThrowException(new \RuntimeException('unreadable'));
 

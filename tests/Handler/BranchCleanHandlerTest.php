@@ -15,9 +15,10 @@ use App\Service\BranchCleanupExecutor;
 use App\Service\BranchCleanupPlanner;
 use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GithubGitHostingAdapter;
+use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -25,18 +26,18 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class BranchCleanHandlerTest extends CommandTestCase
 {
     private BranchCleanHandler $handler;
-    private GithubGitHostingAdapter&MockObject $githubProvider;
-    private PromptInterface&MockObject $prompt;
+    private GithubGitHostingAdapter&Stub $githubProvider;
+    private PromptInterface&Stub $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->githubProvider = $this->createStub(GithubGitHostingAdapter::class);
+        $this->prompt = $this->createStub(PromptInterface::class);
         $this->prompt->method('confirm')->willReturn(true);
         $this->prompt->method('ask')->willReturn('develop');
-
-        $this->handler = $this->createBranchCleanHandler();
+        $this->bindSubject();
     }
 
     private function createBranchCleanHandler(
@@ -59,6 +60,9 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHandleQuietDeletesOnlyYesBranches(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/merged', 'feat/manual']);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
@@ -85,6 +89,9 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHandleSkipsOpenPullRequestBranch(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/open-pr']);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/open-pr']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
@@ -108,6 +115,9 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveCanConfirmManualBranch(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->prompt->method('confirm')->willReturn(true);
         $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/manual']);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
@@ -131,6 +141,9 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHandleProviderMergedBranchUsesForceDeleteDirectly(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/fallback']);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
@@ -160,6 +173,9 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHandleQuietKeepsExistingRemoteForProviderMergedBranch(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->never())->method('confirm');
         $handler = $this->createBranchCleanHandler('origin/develop', $prompt);
@@ -193,6 +209,9 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHandleDoesNotRecheckRemoteStateDuringDeletion(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/merged']);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
@@ -213,6 +232,9 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHandleWithRemoteBranchDeleteConfirmed(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->prompt->method('confirm')->willReturnOnConsecutiveCalls(true, true);
         $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/remote']);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/remote']);
@@ -298,6 +320,9 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHandleCurrentBranchSkippedTriggersNotifyPath(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/current', 'feat/merged']);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/current');
@@ -377,7 +402,10 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testResolveBaseBranchInteractiveValidationAndSuccessPath(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturnCallback(function ($question, string $default, callable $validator): string {
             try {
                 $validator('');
@@ -457,5 +485,11 @@ class BranchCleanHandlerTest extends CommandTestCase
         $set = $this->callPrivateMethod($this->handler, 'fetchRemoteBranchesSet');
 
         $this->assertIsArray($set);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $this->handler = $this->createBranchCleanHandler();
     }
 }

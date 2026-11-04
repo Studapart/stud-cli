@@ -25,13 +25,15 @@ class ConfigShowResponderTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->logger = $this->createMock(Logger::class);
-        $helper = new ResponderHelper($this->translationService);
-        $this->responder = new ConfigShowResponder($helper, $this->logger);
+        $this->logger = $this->createStub(Logger::class);
+        $this->bindSubject();
     }
 
     public function testRespondRendersNoticeAndInfoDiagnosticsWithRawStringMessages(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::success(
             ['LANGUAGE' => 'en'],
             null,
@@ -40,7 +42,7 @@ class ConfigShowResponderTest extends CommandTestCase
                 ResponseMessage::info('Using cached provider data'),
             ],
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('note')
@@ -56,12 +58,15 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondRendersDiagnosticsAtDebugVerbosity(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::success(
             ['LANGUAGE' => 'en'],
             null,
             [ResponseMessage::warning(MessageRef::key('config.show.global_config_unreadable'), 'Parse error')],
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('warning');
         $this->logger->expects($this->once())
@@ -80,7 +85,7 @@ class ConfigShowResponderTest extends CommandTestCase
             null,
             [ResponseMessage::warning(MessageRef::key('config.show.global_config_unreadable'), 'Parse error')],
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $agentResponse = $this->responder->respond($io, $response, false, OutputFormat::Json);
 
@@ -90,8 +95,11 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondOutputsErrorWhenResponseIsNotSuccess(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::error('config.show.no_config_found');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('error')
@@ -104,8 +112,11 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondRendersGlobalSectionAndDefinitionListOnSuccess(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::success(['LANGUAGE' => 'en', 'JIRA_URL' => 'https://jira.example.com'], null);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
@@ -119,11 +130,14 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondRendersProjectSectionWhenProjectConfigPresent(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::success(
             ['LANGUAGE' => 'en'],
             ['projectKey' => 'PROJ']
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->exactly(2))
             ->method('section')
@@ -137,8 +151,11 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondDoesNotRenderProjectSectionWhenProjectConfigEmpty(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::success(['LANGUAGE' => 'en'], null);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
@@ -152,11 +169,14 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondWithColorHelperRegistersStylesAndFormatsOutput(): void
     {
-        $colorHelper = $this->createMock(ColorHelper::class);
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $colorHelper = $this->createStub(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $responder = new ConfigShowResponder($helper, $this->logger);
         $response = ConfigShowResponse::success(['LANGUAGE' => 'en'], null);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('registerStyles')
@@ -173,11 +193,14 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondFormatsBooleanAndArrayValues(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::success([
             'JIRA_TRANSITION_ENABLED' => true,
             'nested' => ['a' => 1],
         ], null);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
@@ -195,8 +218,11 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondRendersSectionOnlyWhenGlobalConfigEmpty(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::success([], null);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
@@ -209,8 +235,11 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondFormatsNonScalarValueAsEmptyString(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::success(['key' => new \stdClass()], null);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
@@ -228,8 +257,11 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondSingleKeyQuietOutputsOnlyRawValue(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('rawValue')
@@ -240,8 +272,11 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondSingleKeyNotQuietRendersOneSectionOneRow(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::successSingleKey('baseBranch', 'main', 'project');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
@@ -257,8 +292,11 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondErrorWithParametersPassesThemToTranslator(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigShowResponse::error('config.show.key_not_allowed', ['%key%' => 'JIRA_API_TOKEN']);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('error')
@@ -271,11 +309,14 @@ class ConfigShowResponderTest extends CommandTestCase
 
     public function testRespondSingleKeyNotQuietWithColorHelperFormatsSectionAndRow(): void
     {
-        $colorHelper = $this->createMock(ColorHelper::class);
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $colorHelper = $this->createStub(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $responder = new ConfigShowResponder($helper, $this->logger);
         $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('registerStyles')
@@ -293,7 +334,7 @@ class ConfigShowResponderTest extends CommandTestCase
     public function testRespondJsonReturnsGlobalConfig(): void
     {
         $response = ConfigShowResponse::success(['LANGUAGE' => 'en'], null);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, false, OutputFormat::Json);
 
@@ -305,7 +346,7 @@ class ConfigShowResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorOnFailure(): void
     {
         $response = ConfigShowResponse::error('config.show.no_config_found');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, false, OutputFormat::Json);
 
@@ -316,12 +357,18 @@ class ConfigShowResponderTest extends CommandTestCase
     public function testRespondJsonReturnsSingleKey(): void
     {
         $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, false, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
         $this->assertSame('LANGUAGE', $result->data['singleKey']);
+    }
+
+    private function bindSubject(): void
+    {
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new ConfigShowResponder($helper, $this->logger);
     }
 }

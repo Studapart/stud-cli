@@ -22,7 +22,7 @@ final class CommandOutputBufferTest extends TestCase
         $logger->expects($this->once())->method('errorWithDetails');
         $logger->expects($this->once())->method('warning');
         $logger->expects($this->once())->method('note');
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $buffer = new CommandOutputBuffer($logger, $prompt);
 
         $buffer->errorWithDetails(CommandOutputBuffer::VERBOSITY_NORMAL, 'Failed', 'details');
@@ -78,7 +78,7 @@ final class CommandOutputBufferTest extends TestCase
             $logger->expects($this->once())->method($method);
         }
 
-        $buffer = new CommandOutputBuffer($logger, $this->createMock(PromptInterface::class));
+        $buffer = new CommandOutputBuffer($logger, $this->createStub(PromptInterface::class));
         $buffer->success(CommandOutputBuffer::VERBOSITY_NORMAL, 'Done');
         $buffer->text(CommandOutputBuffer::VERBOSITY_NORMAL, 'Text');
         $buffer->rawValue('raw');
@@ -129,7 +129,7 @@ final class CommandOutputBufferTest extends TestCase
             $logger->expects($this->once())->method($method);
         }
 
-        $buffer = new CommandOutputBuffer($logger, $this->createMock(PromptInterface::class));
+        $buffer = new CommandOutputBuffer($logger, $this->createStub(PromptInterface::class));
         $buffer->addError(CommandOutputBuffer::VERBOSITY_NORMAL, 'Error');
         $buffer->addErrorWithDetails(CommandOutputBuffer::VERBOSITY_NORMAL, 'Error', 'details');
         $buffer->addWarning(CommandOutputBuffer::VERBOSITY_NORMAL, 'Warning');
@@ -156,7 +156,7 @@ final class CommandOutputBufferTest extends TestCase
 
     public function testStringifiesArrayDiagnostics(): void
     {
-        $buffer = new CommandOutputBuffer(null, $this->createMock(PromptInterface::class));
+        $buffer = new CommandOutputBuffer(null, $this->createStub(PromptInterface::class));
 
         $buffer->error(CommandOutputBuffer::VERBOSITY_NORMAL, ['Line 1', 'Line 2']);
 
@@ -170,7 +170,7 @@ final class CommandOutputBufferTest extends TestCase
             ->method('text')
             ->with(CommandOutputBuffer::VERBOSITY_NORMAL, ['Key']);
         $renderer = new MessageRenderer(new TranslationService('en', __DIR__ . '/../../src/resources/translations'));
-        $buffer = new CommandOutputBuffer($logger, $this->createMock(PromptInterface::class), $renderer);
+        $buffer = new CommandOutputBuffer($logger, $this->createStub(PromptInterface::class), $renderer);
 
         $buffer->text(CommandOutputBuffer::VERBOSITY_NORMAL, [MessageRef::key('table.key')]);
     }

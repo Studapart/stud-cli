@@ -138,9 +138,6 @@ class IssueFieldResolver
             StudIssueKeys::DESCRIPTION => $fields[StudIssueKeys::DESCRIPTION] = $fieldValues['descriptionAdf'] ?? [],
             'issue type', 'issuetype' => $fields[StudIssueKeys::ISSUE_TYPE] = [StudIssueKeys::ID => $fieldValues['issueTypeId']],
             StudIssueKeys::PARENT => $fields[StudIssueKeys::PARENT] = [StudIssueKeys::KEY => $fieldValues['parentKey'] ?? ''],
-            // @codeCoverageIgnoreStart
-            default => null,
-            // @codeCoverageIgnoreEnd
         };
 
         return true;
