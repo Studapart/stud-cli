@@ -12,25 +12,29 @@ use App\DTO\PullRequestFeedbackState;
 use App\Handler\PrCommentsHandler;
 use App\Response\PrCommentsResponse;
 use App\Service\GitHostingPort;
+use App\Service\GitRepository;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 
 class PrCommentsHandlerTest extends CommandTestCase
 {
-    /** @var GitHostingPort&MockObject */
+    /** @var GitHostingPort */
     private $gitProvider;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createStub(GitRepository::class);
 
-        $this->gitProvider = $this->createMock(GitHostingPort::class);
+        $this->gitProvider = $this->createStub(GitHostingPort::class);
     }
 
     public function testHandleReturnsSuccessWithComments(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-55');
-        $this->gitRepository->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
+        $this->gitRepository->expects($this->once())->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
 
         $issueComment = new PullRequestComment('alice', new \DateTimeImmutable(), 'Issue comment body', null, null);
         $reviewComment = new PullRequestComment('bob', new \DateTimeImmutable(), 'Review body', 'src/File.php', 10);
@@ -70,8 +74,11 @@ class PrCommentsHandlerTest extends CommandTestCase
 
     public function testHandleReturnsThreadedConversationsWhenRequested(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-94');
-        $this->gitRepository->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
+        $this->gitRepository->expects($this->once())->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
         $conversation = new PullRequestFeedbackConversation(
             new PullRequestFeedbackIds('github', 'pr_comment', id: '1'),
             'pr_comment',
@@ -114,8 +121,11 @@ class PrCommentsHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenNoPrFound(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-55');
-        $this->gitRepository->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
+        $this->gitRepository->expects($this->once())->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
 
         $this->gitProvider->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -133,8 +143,11 @@ class PrCommentsHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenFetchThrows(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-55');
-        $this->gitRepository->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
+        $this->gitRepository->expects($this->once())->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
 
         $this->gitProvider->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -157,8 +170,11 @@ class PrCommentsHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenPrNumberInvalid(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-55');
-        $this->gitRepository->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
+        $this->gitRepository->expects($this->once())->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
 
         $this->gitProvider->expects($this->once())
             ->method('findPullRequestByBranch')

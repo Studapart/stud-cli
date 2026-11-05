@@ -6,23 +6,22 @@ namespace App\Tests\Service;
 
 use App\Exception\ApiException;
 use App\Service\JiraFieldMetadataService;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class JiraFieldMetadataServiceTest extends TestCase
 {
-    private HttpClientInterface&MockObject $httpClient;
+    private HttpClientInterface $httpClient;
 
     protected function setUp(): void
     {
-        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->httpClient = $this->createStub(HttpClientInterface::class);
     }
 
     public function testGetCreateMetaFieldsUsesFieldIdInsteadOfListIndex(): void
     {
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn([
             'fields' => [
@@ -51,7 +50,7 @@ class JiraFieldMetadataServiceTest extends TestCase
 
     public function testGetCreateMetaFieldsKeepsLegacyStringKeys(): void
     {
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn([
             'fields' => [
@@ -67,9 +66,11 @@ class JiraFieldMetadataServiceTest extends TestCase
 
     public function testGetCreateMetaFieldsThrowsWithTruncatedBody(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(400);
-        $response->method('getContent')->with(false)->willReturn(str_repeat('x', 600));
+        $response->expects($this->once())->method('getContent')->with(false)->willReturn(str_repeat('x', 600));
 
         $this->httpClient->expects($this->once())
             ->method('request')
@@ -87,9 +88,11 @@ class JiraFieldMetadataServiceTest extends TestCase
 
     public function testGetEditMetaFieldsThrowsWhenBodyUnreadable(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(500);
-        $response->method('getContent')->with(false)->willThrowException(new \RuntimeException('read failed'));
+        $response->expects($this->once())->method('getContent')->with(false)->willThrowException(new \RuntimeException('read failed'));
 
         $this->httpClient->expects($this->once())
             ->method('request')

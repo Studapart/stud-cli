@@ -21,7 +21,7 @@ class ResponderHelperTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(
             fn (string $key, array $params = []): string => $key . ($params !== [] ? ' ' . json_encode($params) : '')
         );
@@ -97,7 +97,7 @@ class ResponderHelperTest extends TestCase
     public function testVerboseCommentWithColorHelper(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $colorHelper->method('format')
+        $colorHelper->expects($this->once())->method('format')
             ->with('comment', 'test.verbose')
             ->willReturn('[COMMENT]test.verbose');
 
@@ -157,7 +157,7 @@ class ResponderHelperTest extends TestCase
     public function testFormatCommentWithColorHelper(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $colorHelper->method('format')
+        $colorHelper->expects($this->once())->method('format')
             ->with('comment', 'hello')
             ->willReturn('<comment>hello</>');
 

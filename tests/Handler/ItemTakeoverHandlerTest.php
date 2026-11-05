@@ -6,10 +6,12 @@ use App\DTO\WorkItem;
 use App\Handler\ItemStartHandler;
 use App\Handler\ItemTakeoverHandler;
 use App\Response\WorkflowResponse;
+use App\Service\GitBranchService;
+use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 use App\Service\Prompt\SymfonyPromptService;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -18,24 +20,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 {
     private ItemTakeoverHandler $handler;
     private ItemStartHandler $itemStartHandler;
-    private PromptInterface&MockObject $prompt;
+    private PromptInterface $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->gitBranchService = $this->createStub(GitBranchService::class);
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
 
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->itemStartHandler = $this->createMock(ItemStartHandler::class);
-        $this->handler = new ItemTakeoverHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
-            $this->itemStartHandler,
-            'origin/develop',
-            $this->translationService,
-            [],
-            $this->prompt
-        );
+        $this->prompt = $this->createStub(PromptInterface::class);
+        $this->itemStartHandler = $this->createStub(ItemStartHandler::class);
+        $this->bindSubject();
     }
 
     private function assertWorkflowExitCode(WorkflowResponse $response, int $expectedExitCode): void
@@ -194,6 +190,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithNoBranchesAndStartFresh(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->itemStartHandler = $this->createMock(ItemStartHandler::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -214,6 +214,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -315,6 +316,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithSingleRemoteBranch(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -336,6 +341,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -385,6 +391,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithSingleLocalBranch(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -405,6 +415,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -454,6 +465,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleAlreadyOnBranch(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -474,6 +489,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -523,6 +539,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithWrongBaseBranch(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -543,6 +563,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -594,6 +615,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithBranchBehindRemote(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -614,6 +640,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -667,6 +694,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithDivergedBranch(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -687,6 +719,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -741,6 +774,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithNoBranchesAndUserDeclinesStartFresh(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->itemStartHandler = $this->createMock(ItemStartHandler::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -761,6 +798,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -792,6 +830,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithMultipleBranches(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -812,6 +854,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -851,7 +894,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         // 1. feat/PROJ-123-branch2 (remote)
         // 2. fix/PROJ-123-branch3 (remote)
         // 3. feat/PROJ-123-branch1 (local)
-        $mockIo = $this->createMock(SymfonyStyle::class);
+        $mockIo = $this->createStub(SymfonyStyle::class);
         $mockIo->method('section');
         $mockIo->method('text')
             ->willReturnCallback(function ($message) {
@@ -876,6 +919,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithMultipleBranchesQuietSelectsFirstWithoutPrompting(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -896,6 +944,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -941,6 +990,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithMultipleBranchesUserCancels(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -961,6 +1014,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -990,6 +1044,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithSingleRemoteBranchUserDeclines(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -1010,6 +1068,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -1040,6 +1099,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithBranchAheadOfRemote(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -1060,6 +1124,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -1112,6 +1177,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithBranchBehindBase(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -1132,6 +1201,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -1181,6 +1251,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithBranchSyncWithBase(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'PROJ-123',
@@ -1201,6 +1275,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->issueTracker
+            ->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -1246,5 +1321,19 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->handler = new ItemTakeoverHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->issueTracker,
+            $this->itemStartHandler,
+            'origin/develop',
+            $this->translationService,
+            [],
+            $this->prompt
+        );
     }
 }

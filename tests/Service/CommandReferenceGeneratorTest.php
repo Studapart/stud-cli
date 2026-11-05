@@ -21,7 +21,7 @@ class CommandReferenceGeneratorTest extends TestCase
     {
         parent::setUp();
 
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturnCallback(
             fn (string $key): string => 'translated:' . $key
         );
@@ -296,7 +296,7 @@ class CommandReferenceGeneratorTest extends TestCase
 
     private function translator(): TranslationService
     {
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturnArgument(0);
 
         return $translator;

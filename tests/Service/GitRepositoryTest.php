@@ -409,10 +409,6 @@ class GitRepositoryTest extends CommandTestCase
     {
         $this->givenProcesses($this->stubTimedOutProcess());
 
-
-        $this->translationService->expects($this->never())
-            ->method('trans');
-
         $this->expectException(\App\Exception\GitTimeoutException::class);
 
         try {
@@ -945,7 +941,7 @@ class GitRepositoryTest extends CommandTestCase
         $configPath = $configDir . '/stud.config';
 
         // Create a mock FileSystem that throws an exception when parseFile is called
-        $mockFileSystem = $this->createMock(FileSystem::class);
+        $mockFileSystem = $this->createStub(FileSystem::class);
         $mockFileSystem->method('fileExists')->willReturn(true);
         $mockFileSystem->method('parseFile')->willThrowException(new \Exception('Parse error'));
 

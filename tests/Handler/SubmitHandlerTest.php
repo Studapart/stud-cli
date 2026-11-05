@@ -8,6 +8,8 @@ use App\DTO\WorkItem;
 use App\Handler\SubmitHandler;
 use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GithubGitHostingAdapter;
+use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
@@ -29,26 +31,22 @@ class SubmitHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
 
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
-        TestKernel::$gitRepository = $this->gitRepository;
-        TestKernel::$issueTracker = $this->issueTracker;
-        TestKernel::$translationService = $this->translationService;
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->handler = new SubmitHandler(
-            $this->gitRepository,
-            $this->issueTracker,
-            $this->githubProvider,
-            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
-            'origin/develop',
-            $this->translationService,
-            $this->prompt
-        );
+        $this->githubProvider = $this->createStub(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
+        $this->prompt = $this->createStub(PromptInterface::class);
+        $this->bindSubject();
     }
 
     public function testHandleSuccess(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -102,6 +100,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testAlreadyPublishedSkipsSecondPushAndKeepsRewritten(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -147,6 +148,10 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleUsesWorkItemUrlForLinearPrBody(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('chore/SCIL-195-x');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -190,6 +195,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandlePassesAssignToAuthorIntentWhenRequested(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -229,6 +237,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleReportsAssignmentFailureAfterPullRequestCreation(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -271,6 +282,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleDerivesPrTitleFromFirstLineOfMultilineCommit(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $multilineMessage = "feat(my-scope): My feature [TPW-35]\n\n"
             . "Additional body paragraph describing the change.\n"
             . "It may span several lines and should not leak into the PR title.";
@@ -343,6 +357,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleResolvesJiraKeyFromCommitBodyWhenBranchHasNone(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $multilineMessage = "feat(my-scope): My feature\n\n"
             . "Body paragraph referencing ticket [TPW-77].";
 
@@ -393,6 +410,10 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleSuccessWithDraft(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -444,6 +465,10 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithDirtyWorkingDirectoryLogsNoteAndSucceeds(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn(" M file1.php");
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -533,6 +558,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithNoJiraKeyInCommitMessage(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         // Test that branch name is used first when commit message doesn't have Jira key
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
@@ -604,6 +632,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithJiraKeyInBranchNameTakesPriority(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         // Test that branch name Jira key takes priority even if commit message has different key
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
@@ -656,6 +687,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleUnescapesCheckboxMarkdownInPrBody(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -704,6 +738,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithJiraApiClientExceptionForPrBody(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $process = $this->createStub(Process::class);
@@ -740,6 +777,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithResolutionHintOnPrBodyFetchFailure(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('chore/SCIL-195-x');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('SCIL-195');
@@ -779,6 +819,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithEmptyJiraDescription(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $process = $this->createStub(Process::class);
@@ -829,6 +872,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithPullRequestCreationApiExceptionNon422(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -879,6 +925,10 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithJiraFetchApiExceptionVerbose(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -890,7 +940,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
 
-        $this->issueTracker->method('getIssue')
+        $this->issueTracker->expects($this->once())->method('getIssue')
             ->with('TPW-35', true)
             ->willThrowException(new \App\Exception\ApiException('Failed to fetch Jira issue.', 'HTTP 500: Internal Server Error', 500));
 
@@ -916,8 +966,8 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithNoGitProviderConfigured(): void
     {
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->issueTracker,
@@ -1092,6 +1142,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithNullRemoteOwnerFallsBackToBranchName(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn(null);
@@ -1141,6 +1194,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsAllValid(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
             ['name' => 'enhancement'],
@@ -1210,6 +1266,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsCaseInsensitive(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'Bug'], // Note: capital B
         ];
@@ -1232,6 +1291,10 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleSuccessWithLabels(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -1256,7 +1319,7 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->issueTracker->method('getIssue')->willReturn($workItem);
 
-        $this->htmlConverter->method('toMarkdown')
+        $this->htmlConverter->expects($this->once())->method('toMarkdown')
             ->with('My rendered description')
             ->willReturn('My rendered description');
 
@@ -1305,6 +1368,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithLabelsFetchError(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -1354,6 +1420,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithLabelsFetchErrorApiException(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -1403,6 +1472,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsCreateMissingLabel(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1433,6 +1505,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsIgnoreMissingLabel(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1459,6 +1534,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsRetryMissingLabel(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1485,6 +1563,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsQuietIgnoresUnknownLabels(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1507,6 +1588,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsCreateLabelFails(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1534,6 +1618,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsCreateLabelFailsApiException(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1561,6 +1648,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsIgnoreWithVerbose(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1571,7 +1661,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->willReturn($remoteLabels);
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
 
 
@@ -1587,6 +1677,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithLabelsAddLabelsError(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -1647,8 +1740,8 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithLabelsNoProvider(): void
     {
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->issueTracker,
@@ -1699,6 +1792,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRAndLabels(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -1783,6 +1879,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRAndDraft(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -1848,6 +1947,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRAndLabelsAndDraft(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -1936,6 +2038,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRAlreadyDraft(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -2000,6 +2105,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRFindFails(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -2062,6 +2170,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRAddLabelsFails(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -2144,6 +2255,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRUpdateDraftFails(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -2209,8 +2323,8 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRNoProvider(): void
     {
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->issueTracker,
@@ -2265,6 +2379,10 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithHtmlConverterDOMDocumentException(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -2336,6 +2454,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleExistingPrAssignsAuthorWhenRequested(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $existingPr = [
             'number' => 123,
             'draft' => false,
@@ -2359,6 +2480,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleExistingPrReportsAuthorAssignmentFailure(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $existingPr = [
             'number' => 123,
             'draft' => false,
@@ -2380,6 +2504,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleAssignsExistingPullRequestAuthorWhenCreateReportsAlreadyExists(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -2431,6 +2558,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleAppliesPullRequestLabelDefaultWhenOpeningNewPullRequest(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willReturn([['name' => 'bug']]);
@@ -2451,6 +2581,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleOpensPullRequestWithoutLabelsWhenDefaultLabelCatalogCannotBeRead(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willThrowException(
@@ -2480,6 +2613,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleDoesNotCreatePullRequestWhenDefaultLabelRetryAborts(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willReturn([]);
@@ -2493,6 +2629,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleDoesNotApplyPullRequestLabelDefaultToExistingPullRequest(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willReturn([['name' => 'bug']]);
@@ -2514,6 +2653,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleOpensPullRequestWithoutLabelsWhenProjectConfigIsUnreadable(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willThrowException(new \RuntimeException('Not in a git repository.'));
         $this->githubProvider->expects($this->once())
@@ -2530,6 +2672,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleUsesExplicitLabelsInsteadOfPullRequestDefault(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willReturn([['name' => 'enhancement'], ['name' => 'bug']]);
@@ -2548,6 +2693,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleUsesExplicitLabelsOnExistingPullRequestInsteadOfDefault(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willReturn([['name' => 'enhancement'], ['name' => 'bug']]);
@@ -2571,6 +2719,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleTreatsEmptyLabelStringAsOptOutWhenPullRequestDefaultIsSet(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->expects($this->once())
@@ -2609,5 +2760,21 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description',
         ));
+    }
+
+    private function bindSubject(): void
+    {
+        TestKernel::$gitRepository = $this->gitRepository;
+        TestKernel::$issueTracker = $this->issueTracker;
+        TestKernel::$translationService = $this->translationService;
+        $this->handler = new SubmitHandler(
+            $this->gitRepository,
+            $this->issueTracker,
+            $this->githubProvider,
+            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
+            'origin/develop',
+            $this->translationService,
+            $this->prompt
+        );
     }
 }

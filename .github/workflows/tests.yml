@@ -21,9 +21,12 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: '8.5'
           extensions: pcov, xml
           coverage: pcov
+
+      - name: Require the patched PHP line
+        run: php scripts/check-php-floor.php
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
@@ -34,10 +37,17 @@ jobs:
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse
 
-      - name: Run tests and extract coverage summary
+      - name: Run PHPMD
+        run: vendor/bin/phpmd analyze --no-progress src castor.php
+
+      - name: Run tests, coverage, and the CRAP gate
         id: coverage
         run: |
-          COVERAGE=$(php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-text | awk '/^[[:space:]]*Summary:/,/^[[:space:]]*Lines:/')
+          set -o pipefail
+          mkdir -p .cursor/tmp
+          php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" -dzend.assertions=1 ./vendor/bin/phpunit --colors=never --coverage-text --coverage-clover .cursor/tmp/phpunit-clover.xml | tee /tmp/coverage.txt
+          php scripts/check-crap.php .cursor/tmp/phpunit-clover.xml crap.baseline.txt
+          COVERAGE=$(awk '/^[[:space:]]*Summary:/,/^[[:space:]]*Lines:/' /tmp/coverage.txt)
           echo "summary<<EOF" >> $GITHUB_OUTPUT
           echo "$COVERAGE" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT

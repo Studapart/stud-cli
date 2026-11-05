@@ -5,7 +5,6 @@ namespace App\Tests\Service;
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackIds;
 use App\Service\GitLabGitHostingAdapter;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -18,22 +17,19 @@ class GitLabGitHostingAdapterTest extends TestCase
     private const PROJECT_PATH = 'test_owner%2Ftest_repo';
 
     private GitLabGitHostingAdapter $gitlabProvider;
-    private HttpClientInterface&MockObject $httpClientMock;
+    private HttpClientInterface $httpClientMock;
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->gitlabProvider = new GitLabGitHostingAdapter(
-            self::GITLAB_TOKEN,
-            self::GITLAB_OWNER,
-            self::GITLAB_REPO,
-            null, // Use default gitlab.com
-            $this->httpClientMock
-        );
+        $this->httpClientMock = $this->createStub(HttpClientInterface::class);
+        $this->bindSubject();
     }
 
     public function testCreatePullRequestSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $title = 'Test MR';
         $head = 'feature/test';
         $base = 'develop';
@@ -50,7 +46,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             'web_url' => 'https://gitlab.com/test_owner/test_repo/-/merge_requests/1',
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn($gitlabResponse);
 
@@ -84,6 +80,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreatePullRequestWithDraft(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $title = 'Test Draft MR';
         $head = 'feature/test';
         $base = 'develop';
@@ -98,7 +97,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             'state' => 'opened',
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn($gitlabResponse);
 
@@ -121,6 +120,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreatePullRequestAssignsToAuthenticatedAuthorWhenRequested(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $title = 'Assigned MR';
         $head = 'feature/test';
         $base = 'develop';
@@ -138,11 +140,11 @@ class GitLabGitHostingAdapterTest extends TestCase
             'assignees' => [['id' => 42, 'username' => 'alice']],
         ];
 
-        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse = $this->createStub(ResponseInterface::class);
         $userResponse->method('getStatusCode')->willReturn(200);
         $userResponse->method('toArray')->willReturn(['id' => 42, 'username' => 'alice']);
 
-        $createResponse = $this->createMock(ResponseInterface::class);
+        $createResponse = $this->createStub(ResponseInterface::class);
         $createResponse->method('getStatusCode')->willReturn(201);
         $createResponse->method('toArray')->willReturn($gitlabResponse);
 
@@ -170,11 +172,14 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreatePullRequestAssignmentFailsWhenGitLabDoesNotConfirmAssignee(): void
     {
-        $userResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $userResponse = $this->createStub(ResponseInterface::class);
         $userResponse->method('getStatusCode')->willReturn(200);
         $userResponse->method('toArray')->willReturn(['id' => 42]);
 
-        $createResponse = $this->createMock(ResponseInterface::class);
+        $createResponse = $this->createStub(ResponseInterface::class);
         $createResponse->method('getStatusCode')->willReturn(201);
         $createResponse->method('toArray')->willReturn([
             'iid' => 1,
@@ -194,11 +199,14 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testAssignPullRequestToAuthorAssignsAuthenticatedUser(): void
     {
-        $userResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $userResponse = $this->createStub(ResponseInterface::class);
         $userResponse->method('getStatusCode')->willReturn(200);
         $userResponse->method('toArray')->willReturn(['id' => 42, 'username' => 'alice']);
 
-        $assignResponse = $this->createMock(ResponseInterface::class);
+        $assignResponse = $this->createStub(ResponseInterface::class);
         $assignResponse->method('getStatusCode')->willReturn(200);
         $assignResponse->method('toArray')->willReturn([
             'iid' => 1,
@@ -227,6 +235,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testAssignPullRequestToAuthorRequiresMergeRequestNumber(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $this->httpClientMock->expects($this->never())->method('request');
 
         $this->expectException(\RuntimeException::class);
@@ -237,7 +248,10 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testAssignPullRequestToAuthorRequiresAuthenticatedUserId(): void
     {
-        $userResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $userResponse = $this->createStub(ResponseInterface::class);
         $userResponse->method('getStatusCode')->willReturn(200);
         $userResponse->method('toArray')->willReturn(['username' => 'alice']);
 
@@ -254,11 +268,14 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testAssignPullRequestToAuthorFailsWhenGitLabDoesNotConfirmAssignee(): void
     {
-        $userResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $userResponse = $this->createStub(ResponseInterface::class);
         $userResponse->method('getStatusCode')->willReturn(200);
         $userResponse->method('toArray')->willReturn(['id' => 42]);
 
-        $assignResponse = $this->createMock(ResponseInterface::class);
+        $assignResponse = $this->createStub(ResponseInterface::class);
         $assignResponse->method('getStatusCode')->willReturn(200);
         $assignResponse->method('toArray')->willReturn([
             'iid' => 1,
@@ -277,6 +294,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreatePullRequestFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $title = 'Test MR';
         $head = 'feature/test';
         $base = 'develop';
@@ -285,7 +305,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(422);
-        $responseMock->method('getContent')->with(false)->willReturn($errorMessage);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($errorMessage);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -300,6 +320,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testFindPullRequestByBranchSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $head = 'test_owner:feature/test';
         $branchName = 'feature/test';
         $gitlabResponse = [
@@ -314,7 +337,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($gitlabResponse);
 
@@ -335,11 +358,14 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testFindPullRequestByBranchNotFound(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $head = 'test_owner:feature/test';
         $branchName = 'feature/test';
         $gitlabResponse = [];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($gitlabResponse);
 
@@ -354,6 +380,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testFindPullRequestByBranchName(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $branchName = 'feature/test';
         $gitlabResponse = [
             [
@@ -365,7 +394,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($gitlabResponse);
 
@@ -381,10 +410,13 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testAddLabelsToPullRequestSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $issueNumber = 123; // This is the iid in GitLab
         $labels = ['bug', 'enhancement'];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
 
         $this->httpClientMock->expects($this->once())
@@ -405,13 +437,16 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testAddLabelsToPullRequestFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $issueNumber = 123;
         $labels = ['bug'];
         $errorMessage = 'Not Found';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn($errorMessage);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($errorMessage);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -425,11 +460,14 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreateCommentSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $issueNumber = 123; // This is the iid in GitLab
         $body = 'This is a test comment.';
         $expectedResponse = ['id' => 456, 'body' => $body];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn($expectedResponse);
 
@@ -453,8 +491,11 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testReplyToPullRequestFeedbackPostsDiscussionNote(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $body = 'Thanks';
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn(['id' => 456, 'body' => $body]);
 
@@ -478,7 +519,10 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testResolvePullRequestFeedbackUpdatesDiscussion(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn(['id' => 'discussion-id', 'resolved' => true]);
 
@@ -512,6 +556,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testUpdatePullRequestToDraft(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $pullNumber = 123; // This is the iid in GitLab
         $draft = true;
         $gitlabResponse = [
@@ -520,7 +567,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             'state' => 'opened',
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($gitlabResponse);
 
@@ -544,12 +591,15 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetLabelsSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $expectedResponse = [
             ['name' => 'bug', 'color' => 'd73a4a'],
             ['name' => 'enhancement', 'color' => 'a2eeef'],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($expectedResponse);
 
@@ -568,12 +618,15 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreateLabelSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $name = 'new-label';
         $color = '#ff0000';
         $description = 'A new label';
         $expectedResponse = ['name' => $name, 'color' => 'ff0000', 'description' => $description];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn($expectedResponse);
 
@@ -599,6 +652,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetAllPullRequestsWithStateAll(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $openedMrs = [
             ['iid' => 1, 'title' => 'Open MR', 'source_branch' => 'feature/branch1', 'state' => 'opened'],
         ];
@@ -609,17 +665,17 @@ class GitLabGitHostingAdapterTest extends TestCase
             ['iid' => 3, 'title' => 'Merged MR', 'source_branch' => 'feature/branch3', 'state' => 'merged'],
         ];
 
-        $openedResponseMock = $this->createMock(ResponseInterface::class);
+        $openedResponseMock = $this->createStub(ResponseInterface::class);
         $openedResponseMock->method('getStatusCode')->willReturn(200);
         $openedResponseMock->method('toArray')->willReturn($openedMrs);
         $openedResponseMock->method('getHeaders')->willReturn(['x-total-pages' => ['1']]);
 
-        $closedResponseMock = $this->createMock(ResponseInterface::class);
+        $closedResponseMock = $this->createStub(ResponseInterface::class);
         $closedResponseMock->method('getStatusCode')->willReturn(200);
         $closedResponseMock->method('toArray')->willReturn($closedMrs);
         $closedResponseMock->method('getHeaders')->willReturn(['x-total-pages' => ['1']]);
 
-        $mergedResponseMock = $this->createMock(ResponseInterface::class);
+        $mergedResponseMock = $this->createStub(ResponseInterface::class);
         $mergedResponseMock->method('getStatusCode')->willReturn(200);
         $mergedResponseMock->method('toArray')->willReturn($mergedMrs);
         $mergedResponseMock->method('getHeaders')->willReturn(['x-total-pages' => ['1']]);
@@ -650,6 +706,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetAllPullRequestsWithPagination(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $page1Response = [
             ['iid' => 1, 'title' => 'MR 1', 'source_branch' => 'feature/branch1', 'state' => 'opened'],
         ];
@@ -657,12 +716,12 @@ class GitLabGitHostingAdapterTest extends TestCase
             ['iid' => 2, 'title' => 'MR 2', 'source_branch' => 'feature/branch2', 'state' => 'opened'],
         ];
 
-        $page1ResponseMock = $this->createMock(ResponseInterface::class);
+        $page1ResponseMock = $this->createStub(ResponseInterface::class);
         $page1ResponseMock->method('getStatusCode')->willReturn(200);
         $page1ResponseMock->method('toArray')->willReturn($page1Response);
         $page1ResponseMock->method('getHeaders')->willReturn(['x-total-pages' => ['2']]);
 
-        $page2ResponseMock = $this->createMock(ResponseInterface::class);
+        $page2ResponseMock = $this->createStub(ResponseInterface::class);
         $page2ResponseMock->method('getStatusCode')->willReturn(200);
         $page2ResponseMock->method('toArray')->willReturn($page2Response);
         $page2ResponseMock->method('getHeaders')->willReturn(['x-total-pages' => ['2']]);
@@ -753,6 +812,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testFindPullRequestByBranchWithStateClosed(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $head = 'test_owner:feature/test';
         $branchName = 'feature/test';
         $gitlabResponse = [
@@ -765,7 +827,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($gitlabResponse);
 
@@ -785,6 +847,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testFindPullRequestByBranchWithStateAllReturnsOpenFirst(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $head = 'test_owner:feature/test';
         $branchName = 'feature/test';
         $openResponse = [
@@ -796,7 +861,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $openResponseMock = $this->createMock(ResponseInterface::class);
+        $openResponseMock = $this->createStub(ResponseInterface::class);
         $openResponseMock->method('getStatusCode')->willReturn(200);
         $openResponseMock->method('toArray')->willReturn($openResponse);
 
@@ -812,6 +877,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testFindPullRequestByBranchWithStateAllReturnsClosedWhenOpenNotFound(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $head = 'test_owner:feature/test';
         $branchName = 'feature/test';
         $openResponse = [];
@@ -824,11 +892,11 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $openResponseMock = $this->createMock(ResponseInterface::class);
+        $openResponseMock = $this->createStub(ResponseInterface::class);
         $openResponseMock->method('getStatusCode')->willReturn(200);
         $openResponseMock->method('toArray')->willReturn($openResponse);
 
-        $closedResponseMock = $this->createMock(ResponseInterface::class);
+        $closedResponseMock = $this->createStub(ResponseInterface::class);
         $closedResponseMock->method('getStatusCode')->willReturn(200);
         $closedResponseMock->method('toArray')->willReturn($closedResponse);
 
@@ -853,12 +921,15 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testFindPullRequestByBranchFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $head = 'test_owner:feature/test';
         $errorMessage = 'Not Found';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn($errorMessage);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($errorMessage);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -872,6 +943,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testUpdatePullRequestFromDraft(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $pullNumber = 123;
         $draft = false;
         $gitlabResponse = [
@@ -880,7 +954,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             'state' => 'opened',
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($gitlabResponse);
 
@@ -895,13 +969,16 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testUpdatePullRequestFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $pullNumber = 123;
         $draft = true;
         $errorMessage = 'Not Found';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn($errorMessage);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($errorMessage);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -915,13 +992,16 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreateCommentFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $issueNumber = 123;
         $body = 'This is a test comment.';
         $errorMessage = 'Not Found';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn($errorMessage);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($errorMessage);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -935,6 +1015,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestCommentsSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $issueNumber = 123;
         $apiResponse = [
             [
@@ -944,7 +1027,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($apiResponse);
 
@@ -967,6 +1050,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestReviewCommentsSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $pullNumber = 123;
         $apiResponse = [
             [
@@ -985,7 +1071,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($apiResponse);
 
@@ -1008,10 +1094,13 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestReviewCommentsFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $pullNumber = 123;
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not Found');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -1035,6 +1124,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestFeedbackConversationsPreservesDiscussions(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $apiResponse = [[
             'id' => 'discussion-1',
             'individual_note' => false,
@@ -1053,7 +1145,7 @@ class GitLabGitHostingAdapterTest extends TestCase
                 'type' => 'DiffNote',
             ]],
         ]];
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($apiResponse);
         $responseMock->method('getHeaders')->willReturn([]);
@@ -1076,7 +1168,10 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestFeedbackConversationsPaginatesAndSorts(): void
     {
-        $firstResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $firstResponse = $this->createStub(ResponseInterface::class);
         $firstResponse->method('getStatusCode')->willReturn(200);
         $firstResponse->method('toArray')->willReturn([[
             'id' => 'later',
@@ -1089,7 +1184,7 @@ class GitLabGitHostingAdapterTest extends TestCase
         ]]);
         $firstResponse->method('getHeaders')->willReturn(['x-next-page' => ['2']]);
 
-        $secondResponse = $this->createMock(ResponseInterface::class);
+        $secondResponse = $this->createStub(ResponseInterface::class);
         $secondResponse->method('getStatusCode')->willReturn(200);
         $secondResponse->method('toArray')->willReturn([[
             'id' => 'earlier',
@@ -1114,7 +1209,10 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestFeedbackConversationsPaginatesWithTotalPagesHeader(): void
     {
-        $firstResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $firstResponse = $this->createStub(ResponseInterface::class);
         $firstResponse->method('getStatusCode')->willReturn(200);
         $firstResponse->method('toArray')->willReturn([[
             'id' => 'first',
@@ -1127,7 +1225,7 @@ class GitLabGitHostingAdapterTest extends TestCase
         ]]);
         $firstResponse->method('getHeaders')->willReturn(['x-total-pages' => ['2']]);
 
-        $secondResponse = $this->createMock(ResponseInterface::class);
+        $secondResponse = $this->createStub(ResponseInterface::class);
         $secondResponse->method('getStatusCode')->willReturn(200);
         $secondResponse->method('toArray')->willReturn([[
             'id' => 'second',
@@ -1151,10 +1249,13 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestCommentsFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $issueNumber = 123;
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not Found');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -1168,6 +1269,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestReviewCommentsSkipsDiscussionWithoutPosition(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $pullNumber = 123;
         $apiResponse = [
             [
@@ -1184,7 +1288,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($apiResponse);
 
@@ -1202,6 +1306,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestReviewCommentsSkipsDiscussionWhenPositionIsNotArray(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $pullNumber = 123;
         $apiResponse = [
             [
@@ -1216,7 +1323,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($apiResponse);
 
@@ -1232,6 +1339,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestReviewCommentsStopsAtCapWhenDiscussionHasManyNotes(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $pullNumber = 123;
         $notes = [];
         for ($i = 0; $i < 51; $i++) {
@@ -1249,7 +1359,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($apiResponse);
 
@@ -1264,6 +1374,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetPullRequestReviewCommentsStopsAtCapBeforeNextDiscussion(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $pullNumber = 123;
         $notes = [];
         for ($i = 0; $i < 50; $i++) {
@@ -1286,7 +1399,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($apiResponse);
 
@@ -1301,11 +1414,14 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetLabelsFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $errorMessage = 'Not Found';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn($errorMessage);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($errorMessage);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -1319,11 +1435,14 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreateLabelWithoutDescription(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $name = 'new-label';
         $color = 'ff0000';
         $expectedResponse = ['name' => $name, 'color' => $color];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn($expectedResponse);
 
@@ -1345,13 +1464,16 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreateLabelFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $name = 'new-label';
         $color = 'ff0000';
         $errorMessage = 'Validation Failed';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(422);
-        $responseMock->method('getContent')->with(false)->willReturn($errorMessage);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($errorMessage);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -1365,11 +1487,14 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetAllPullRequestsWithStateOpen(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $openedMrs = [
             ['iid' => 1, 'title' => 'Open MR', 'source_branch' => 'feature/branch1', 'state' => 'opened'],
         ];
 
-        $openedResponseMock = $this->createMock(ResponseInterface::class);
+        $openedResponseMock = $this->createStub(ResponseInterface::class);
         $openedResponseMock->method('getStatusCode')->willReturn(200);
         $openedResponseMock->method('toArray')->willReturn($openedMrs);
         $openedResponseMock->method('getHeaders')->willReturn(['x-total-pages' => ['1']]);
@@ -1386,11 +1511,14 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetAllPullRequestsWithStateClosed(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $closedMrs = [
             ['iid' => 2, 'title' => 'Closed MR', 'source_branch' => 'feature/branch2', 'state' => 'closed'],
         ];
 
-        $closedResponseMock = $this->createMock(ResponseInterface::class);
+        $closedResponseMock = $this->createStub(ResponseInterface::class);
         $closedResponseMock->method('getStatusCode')->willReturn(200);
         $closedResponseMock->method('toArray')->willReturn($closedMrs);
         $closedResponseMock->method('getHeaders')->willReturn(['x-total-pages' => ['1']]);
@@ -1407,11 +1535,14 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetAllPullRequestsFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $errorMessage = 'Not Found';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn($errorMessage);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($errorMessage);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -1425,7 +1556,10 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testGetAllPullRequestsWithEmptyResult(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([]);
         $responseMock->method('getHeaders')->willReturn(['x-total-pages' => ['1']]);
@@ -1441,7 +1575,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testHasNextPageWithXTotalPagesHeader(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getHeaders')->willReturn(['x-total-pages' => ['2']]);
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
@@ -1455,7 +1589,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testHasNextPageWithXNextPageHeader(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getHeaders')->willReturn(['x-next-page' => ['2']]);
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
@@ -1469,7 +1603,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testHasNextPageReturnsFalseWhenNoNextPage(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getHeaders')->willReturn(['x-total-pages' => ['1']]);
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
@@ -1483,7 +1617,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testHasNextPageReturnsFalseWhenNoHeaders(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getHeaders')->willReturn([]);
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
@@ -1530,7 +1664,7 @@ class GitLabGitHostingAdapterTest extends TestCase
     {
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('Error message');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Error message');
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
@@ -1551,7 +1685,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn($longResponse);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($longResponse);
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
@@ -1566,7 +1700,7 @@ class GitLabGitHostingAdapterTest extends TestCase
     {
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willThrowException(new \Exception('Connection timeout'));
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willThrowException(new \Exception('Connection timeout'));
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
@@ -1581,7 +1715,7 @@ class GitLabGitHostingAdapterTest extends TestCase
     {
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('');
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
@@ -1596,7 +1730,7 @@ class GitLabGitHostingAdapterTest extends TestCase
     {
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not Found');
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
@@ -1611,6 +1745,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreatePullRequestWithNestedGroupPath(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $nestedGroupProvider = new GitLabGitHostingAdapter(
             self::GITLAB_TOKEN,
             'group/subgroup',
@@ -1635,7 +1772,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             'web_url' => 'https://gitlab.com/group/subgroup/test_repo/-/merge_requests/1',
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn($gitlabResponse);
 
@@ -1665,6 +1802,9 @@ class GitLabGitHostingAdapterTest extends TestCase
 
     public function testCreatePullRequestWithDeeplyNestedGroupPath(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $deeplyNestedProvider = new GitLabGitHostingAdapter(
             self::GITLAB_TOKEN,
             'group/subgroup/subsubgroup',
@@ -1688,7 +1828,7 @@ class GitLabGitHostingAdapterTest extends TestCase
             'state' => 'opened',
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn($gitlabResponse);
 
@@ -1731,5 +1871,16 @@ class GitLabGitHostingAdapterTest extends TestCase
         // Verify calling getClient again returns the same instance
         $client2 = $method->invoke($provider);
         $this->assertSame($client, $client2);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->gitlabProvider = new GitLabGitHostingAdapter(
+            self::GITLAB_TOKEN,
+            self::GITLAB_OWNER,
+            self::GITLAB_REPO,
+            null, // Use default gitlab.com
+            $this->httpClientMock
+        );
     }
 }

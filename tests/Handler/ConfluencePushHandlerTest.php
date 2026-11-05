@@ -10,19 +10,18 @@ use App\Handler\ConfluencePushHandler;
 use App\Service\MarkdownToAdfConverter;
 use App\Service\WikiPort;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 
 class ConfluencePushHandlerTest extends CommandTestCase
 {
-    private WikiPort&MockObject $wiki;
-    private MarkdownToAdfConverter&MockObject $converter;
+    private WikiPort $wiki;
+    private MarkdownToAdfConverter $converter;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->wiki = $this->createMock(WikiPort::class);
-        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+        $this->wiki = $this->createStub(WikiPort::class);
+        $this->converter = $this->createStub(MarkdownToAdfConverter::class);
     }
 
     private function createHandler(): ConfluencePushHandler
@@ -36,6 +35,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testHandleCreateFlowSuccess(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('resolveSpaceId')
             ->with('DEV')
@@ -72,6 +74,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testHandleUpdateFlowSuccess(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
@@ -111,6 +116,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testHandleUpdateKeepsExistingTitleWhenNotProvided(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
@@ -140,6 +148,8 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenContentEmpty(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+
         $this->wiki->expects(self::never())->method('createPage');
         $this->wiki->expects(self::never())->method('getPage');
 
@@ -173,6 +183,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testHandleCreateReturnsErrorWhenSpaceNotFound(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('resolveSpaceId')
             ->with('MISSING')
@@ -189,6 +202,8 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testHandleUpdateReturnsErrorWhenPageNotFound(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+
         $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('99999')
@@ -204,6 +219,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testHandleCreateReturnsErrorOnApiException(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
         $this->wiki->expects(self::once())
@@ -220,6 +238,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testHandleUpdateReturnsErrorWhenUpdatePageThrows(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
@@ -244,6 +265,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testBuildPageUrlWithEmptyWebuiReturnsBaseUrl(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
         $this->wiki->expects(self::once())
@@ -264,6 +288,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testBuildPageUrlWithAbsoluteUrlReturnsAsIs(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
         $fullUrl = 'https://other.atlassian.net/wiki/spaces/DEV/pages/999';
@@ -285,6 +312,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateWithParentAsFolderUsesFolderSpaceId(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = '5315756039';
         $this->wiki->expects(self::once())
             ->method('getPage')
@@ -315,6 +345,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateWithParentNotFoundReturnsError(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = '99999';
         $this->wiki->expects(self::once())
             ->method('getPage')
@@ -336,6 +369,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateWithContactAppendsMentionToAdf(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $accountId = 'abc-123';
         $displayName = 'Jane Doe';
         $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
@@ -378,6 +414,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateDuplicateTitleUnderParentUpdatesExistingPage(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'parent1';
         $title = 'Existing Title';
         $parentPage = ['id' => $parentId, 'title' => 'Parent', 'spaceId' => '1'];
@@ -430,6 +469,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testHandleUpdateWithContactAppendsMentionToAdf(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
@@ -471,6 +513,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateWithParentPageReturnsErrorWhenGetPageFailsWithNon404(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = '99999';
         $this->wiki->expects(self::once())
             ->method('getPage')
@@ -489,6 +534,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateDuplicateTitleUnderParentUsesFolderChildrenWhenPageChildrenThrow(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'folder1';
         $title = 'Same Title';
         $this->wiki->expects(self::exactly(2))
@@ -538,6 +586,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenBothChildCallsThrow(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'p1';
         $title = 'Same';
         $this->wiki->expects(self::once())->method('getPage')->with($parentId)
@@ -560,6 +611,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenNoMatchingChild(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'parent1';
         $title = 'Unique Title';
         $this->wiki->expects(self::once())
@@ -582,6 +636,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenGetPageOfChildThrows(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'p1';
         $title = 'Same';
         $this->wiki->expects(self::exactly(2))
@@ -612,6 +669,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenUpdatePageThrows(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'p1';
         $title = 'Same';
         $this->wiki->expects(self::exactly(2))
@@ -649,6 +709,9 @@ class ConfluencePushHandlerTest extends CommandTestCase
 
     public function testCreateWithContactAppendsMentionWhenAdfHasNoContentKey(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->with('x')->willReturn(['type' => 'doc', 'version' => 1]);
         $this->wiki->expects(self::once())

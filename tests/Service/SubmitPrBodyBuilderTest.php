@@ -18,7 +18,7 @@ class SubmitPrBodyBuilderTest extends TestCase
     {
         $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $htmlConverter->expects($this->never())->method('toMarkdown');
-        $recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $recorder = $this->createStub(WorkflowEntryRecorder::class);
 
         $builder = new SubmitPrBodyBuilder(['JIRA_URL' => 'https://jira.example'], $htmlConverter);
         $issue = new WorkItem(
@@ -43,8 +43,8 @@ class SubmitPrBodyBuilderTest extends TestCase
 
     public function testBuildFallsBackToIssueKeyWhenNoUrlConfigured(): void
     {
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
-        $recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
+        $recorder = $this->createStub(WorkflowEntryRecorder::class);
         $builder = new SubmitPrBodyBuilder([], $htmlConverter);
 
         $body = $builder->build('TPW-1', null, $recorder);
@@ -54,7 +54,7 @@ class SubmitPrBodyBuilderTest extends TestCase
 
     public function testBuildUsesJiraBrowseUrlWhenWorkItemHasNoUrl(): void
     {
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $htmlConverter->method('toMarkdown')->willReturn('md');
         $recorder = new WorkflowRecorder();
         $builder = new SubmitPrBodyBuilder(['JIRA_URL' => 'https://jira.example/'], $htmlConverter);
@@ -81,7 +81,7 @@ class SubmitPrBodyBuilderTest extends TestCase
 
     public function testBuildLogsXmlExtensionHintOnDomDocumentFailure(): void
     {
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $htmlConverter->method('toMarkdown')->willThrowException(new \RuntimeException('Class \'DOMDocument\' not found'));
         $recorder = new WorkflowRecorder();
         $builder = new SubmitPrBodyBuilder(['JIRA_URL' => 'https://jira.example'], $htmlConverter);
@@ -109,7 +109,7 @@ class SubmitPrBodyBuilderTest extends TestCase
     {
         $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $htmlConverter->expects($this->never())->method('toMarkdown');
-        $recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $recorder = $this->createStub(WorkflowEntryRecorder::class);
         $builder = new SubmitPrBodyBuilder([], $htmlConverter);
         $issue = new WorkItem(
             id: '1',
@@ -132,8 +132,8 @@ class SubmitPrBodyBuilderTest extends TestCase
 
     public function testBuildReturnsResolvesWhenDescriptionIsPlaceholder(): void
     {
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
-        $recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
+        $recorder = $this->createStub(WorkflowEntryRecorder::class);
         $builder = new SubmitPrBodyBuilder(['JIRA_URL' => 'https://jira.example'], $htmlConverter);
         $issue = new WorkItem(
             id: '1',

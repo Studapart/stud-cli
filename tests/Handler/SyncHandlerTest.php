@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\Handler\SyncHandler;
+use App\Service\GitBranchService;
+use App\Service\GitRepository;
 use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -19,8 +21,10 @@ class SyncHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitBranchService = $this->createStub(GitBranchService::class);
+        $this->gitRepository = $this->createStub(GitRepository::class);
 
-        $this->logger = $this->createMock(Logger::class);
+        $this->logger = $this->createStub(Logger::class);
         $this->logger->method('addSection');
         $this->logger->method('addText');
         $this->logger->method('addNote');
@@ -30,6 +34,9 @@ class SyncHandlerTest extends CommandTestCase
 
     public function testHandleRebaseSuccess(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+
         $this->gitRepository->method('getCurrentBranchName')
             ->willReturn('feat/SCI-42-my-feature');
 
@@ -39,11 +46,11 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitBranchService->method('resolveLatestBaseBranch')
+        $this->gitBranchService->expects($this->once())->method('resolveLatestBaseBranch')
             ->with($this->baseBranch)
             ->willReturn('origin/develop');
 
-        $this->gitRepository->method('isAncestor')
+        $this->gitRepository->expects($this->once())->method('isAncestor')
             ->with('origin/develop', 'HEAD')
             ->willReturn(false);
 
@@ -63,6 +70,8 @@ class SyncHandlerTest extends CommandTestCase
 
     public function testHandleAlreadyUpToDate(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+
         $this->gitRepository->method('getCurrentBranchName')
             ->willReturn('feat/SCI-42-my-feature');
 
@@ -72,14 +81,14 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitBranchService->method('resolveLatestBaseBranch')
             ->willReturn('origin/develop');
 
-        $this->gitRepository->method('isAncestor')
+        $this->gitRepository->expects($this->once())->method('isAncestor')
             ->with('origin/develop', 'HEAD')
             ->willReturn(true);
 
         $this->gitRepository->expects($this->never())
             ->method('tryRebase');
 
-        $logger = $this->createMock(Logger::class);
+        $logger = $this->createStub(Logger::class);
         $logger->method('addSection');
         $logger->method('addText');
         $logger->method('addNote');
@@ -92,6 +101,8 @@ class SyncHandlerTest extends CommandTestCase
 
     public function testHandleConflictsAbortsRebase(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+
         $this->gitRepository->method('getCurrentBranchName')
             ->willReturn('feat/SCI-42-my-feature');
 
@@ -101,18 +112,18 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitBranchService->method('resolveLatestBaseBranch')
             ->willReturn('origin/develop');
 
-        $this->gitRepository->method('isAncestor')
+        $this->gitRepository->expects($this->once())->method('isAncestor')
             ->with('origin/develop', 'HEAD')
             ->willReturn(false);
 
-        $this->gitRepository->method('tryRebase')
+        $this->gitRepository->expects($this->once())->method('tryRebase')
             ->with('origin/develop')
             ->willReturn(false);
 
         $this->gitRepository->expects($this->once())
             ->method('rebaseAbort');
 
-        $logger = $this->createMock(Logger::class);
+        $logger = $this->createStub(Logger::class);
         $logger->method('addSection');
         $logger->method('addText');
         $logger->method('addError');
@@ -125,6 +136,8 @@ class SyncHandlerTest extends CommandTestCase
 
     public function testHandleDirtyWorkingDirectory(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+
         $this->gitRepository->method('getCurrentBranchName')
             ->willReturn('feat/SCI-42-my-feature');
 
@@ -144,6 +157,8 @@ class SyncHandlerTest extends CommandTestCase
 
     public function testHandleOnBaseBranch(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+
         $this->gitRepository->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -162,6 +177,8 @@ class SyncHandlerTest extends CommandTestCase
 
     public function testHandleOnBaseBranchWithoutOriginPrefix(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+
         $this->gitRepository->method('getCurrentBranchName')
             ->willReturn('main');
 

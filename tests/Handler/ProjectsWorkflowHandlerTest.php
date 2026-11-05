@@ -206,7 +206,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
             $resolveResult = ['ok' => true, 'provider' => IssueTrackerProvider::Jira->value, 'port' => $port];
         }
 
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForDiscovery')->willReturn($resolveResult);
 
         return new ProjectsWorkflowHandler(

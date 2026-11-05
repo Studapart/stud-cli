@@ -47,9 +47,9 @@ class SetupStudScriptTest extends TestCase
         self::assertStringContainsString('-r', file_get_contents($this->workspace . '/php.log') ?: '');
     }
 
-    public function testPharModeRejectsPhpBelow841(): void
+    public function testPharModeRejectsUnpatchedPhp(): void
     {
-        foreach (['8.2.0', '8.3.21', '8.4.0'] as $version) {
+        foreach (['8.2.0', '8.3.21', '8.4.0', '8.4.27', '8.5.11'] as $version) {
             $this->removeDirectory($this->workspace);
             mkdir($this->fakeBin, 0777, true);
             mkdir($this->home, 0777, true);
@@ -59,8 +59,17 @@ class SetupStudScriptTest extends TestCase
             $process = $this->runSetup(['--skip-init']);
 
             self::assertNotSame(0, $process->getExitCode(), 'Expected failure for PHP ' . $version);
-            self::assertStringContainsString('PHP 8.4.1 or higher is required.', $process->getOutput() . $process->getErrorOutput());
+            self::assertStringContainsString('PHP 8.5.12 or newer is required.', $process->getOutput() . $process->getErrorOutput());
         }
+    }
+
+    public function testPharModeAcceptsPhp8512(): void
+    {
+        $this->writePhpFakeVersion('8.5.12');
+
+        $process = $this->runSetup(['--skip-init']);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
     }
 
     public function testDefaultPharModeWithoutTtySkipsImmediateInit(): void
@@ -296,7 +305,7 @@ SH);
 #!/usr/bin/env sh
 printf '%s\n' "\$*" >> "{$this->workspace}/php.log"
 case "\${1:-}" in
-    -r) printf '8.4.1' ;;
+    -r) printf '8.5.12' ;;
     -m) printf 'xml\ncurl\nmbstring\n' ;;
 esac
 SH);

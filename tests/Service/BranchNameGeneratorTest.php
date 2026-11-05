@@ -7,18 +7,17 @@ namespace App\Tests\Service;
 use App\Enum\JiraSupportedTypes;
 use App\Service\BranchNameGenerator;
 use App\Service\IssueTrackerPort;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class BranchNameGeneratorTest extends TestCase
 {
-    private IssueTrackerPort&MockObject $issueTracker;
+    private IssueTrackerPort $issueTracker;
     private BranchNameGenerator $generator;
 
     protected function setUp(): void
     {
-        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
-        $this->generator = new BranchNameGenerator($this->issueTracker);
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
+        $this->bindSubject();
     }
 
     public function testPrefixForIssueTypeMapsKnownTypes(): void
@@ -52,6 +51,9 @@ class BranchNameGeneratorTest extends TestCase
 
     public function testGenerateBranchNameFromKey(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $issue = new \App\DTO\WorkItem(
             '1',
             'SCI-1',
@@ -65,5 +67,10 @@ class BranchNameGeneratorTest extends TestCase
         $this->issueTracker->expects($this->once())->method('getIssue')->with('SCI-1')->willReturn($issue);
 
         $this->assertSame('fix/SCI-1-fix-login', $this->generator->generateBranchNameFromKey('SCI-1'));
+    }
+
+    private function bindSubject(): void
+    {
+        $this->generator = new BranchNameGenerator($this->issueTracker);
     }
 }

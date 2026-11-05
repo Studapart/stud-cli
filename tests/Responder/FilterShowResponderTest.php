@@ -13,23 +13,22 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class FilterShowResponderTest extends CommandTestCase
 {
-    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+    private SymfonyStyle $io;
 
     private FilterShowResponder $responder;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService, null);
-        $this->io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new FilterShowResponder($helper, [
-            'JIRA_URL' => 'https://jira.example.com',
-        ], $this->createLogger($this->io));
+        $this->io = $this->createStub(SymfonyStyle::class);
+        $this->bindSubject();
     }
 
     public function testRespondReturnsZeroOnEmptyIssues(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = FilterShowResponse::success([], 'My Filter');
 
         $this->io->expects($this->once())
@@ -46,6 +45,9 @@ class FilterShowResponderTest extends CommandTestCase
 
     public function testRespondRendersTableOnSuccess(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = FilterShowResponse::success([$issue], 'My Filter');
 
@@ -167,5 +169,14 @@ class FilterShowResponderTest extends CommandTestCase
         $this->assertNotNull($result);
         $this->assertFalse($result->success);
         $this->assertSame('API error', $result->error);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService, null);
+        $this->responder = new FilterShowResponder($helper, [
+            'JIRA_URL' => 'https://jira.example.com',
+        ], $this->createLogger($this->io));
     }
 }

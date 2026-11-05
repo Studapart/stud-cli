@@ -23,10 +23,10 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
 {
     public function testNotInGitRepositoryShowsHint(): void
     {
-        $git = $this->createMock(GitRepository::class);
+        $git = $this->createStub(GitRepository::class);
         $git->method('getProjectConfigPath')->willThrowException(new \RuntimeException('not git'));
 
-        $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class));
+        $service = $this->createService($git, $this->createStub(ConfigProjectInitHandler::class));
 
         $io = $this->createIo(true);
         $result = $service->augmentAfterGlobalSave(WorkflowResponse::fromExitCode(0), true, $io);
@@ -36,14 +36,14 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
 
     public function testAdequateConfigDoesNothing(): void
     {
-        $git = $this->createMock(GitRepository::class);
+        $git = $this->createStub(GitRepository::class);
         $git->method('getProjectConfigPath')->willReturn('/repo/.git/stud.config');
         $git->method('readProjectConfig')->willReturn(['baseBranch' => 'develop']);
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->never())->method('confirm');
 
-        $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class), $prompt);
+        $service = $this->createService($git, $this->createStub(ConfigProjectInitHandler::class), $prompt);
 
         $io = $this->createIo(true);
         $result = $service->augmentAfterGlobalSave(WorkflowResponse::fromExitCode(0), true, $io);
@@ -53,14 +53,14 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
 
     public function testInadequateNonInteractiveShowsHint(): void
     {
-        $git = $this->createMock(GitRepository::class);
+        $git = $this->createStub(GitRepository::class);
         $git->method('getProjectConfigPath')->willReturn('/repo/.git/stud.config');
         $git->method('readProjectConfig')->willReturn([]);
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->never())->method('confirm');
 
-        $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class), $prompt);
+        $service = $this->createService($git, $this->createStub(ConfigProjectInitHandler::class), $prompt);
 
         $io = $this->createIo(false);
         $result = $service->augmentAfterGlobalSave(WorkflowResponse::fromExitCode(0), false, $io);
@@ -70,7 +70,7 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
 
     public function testInadequateInteractiveDeclineShowsHint(): void
     {
-        $git = $this->createMock(GitRepository::class);
+        $git = $this->createStub(GitRepository::class);
         $git->method('getProjectConfigPath')->willReturn('/repo/.git/stud.config');
         $git->method('readProjectConfig')->willReturn([]);
 
@@ -90,7 +90,7 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
 
     public function testInadequateInteractiveAcceptRunsProjectInit(): void
     {
-        $git = $this->createMock(GitRepository::class);
+        $git = $this->createStub(GitRepository::class);
         $git->method('getProjectConfigPath')->willReturn('/repo/.git/stud.config');
         $git->method('readProjectConfig')->willReturn([]);
 
@@ -143,8 +143,8 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
     ): InitProjectConfigFollowUpService {
         $translationsPath = __DIR__ . '/../../src/resources/translations';
         $translator = new TranslationService('en', $translationsPath);
-        $prompt ??= $this->createMock(PromptInterface::class);
-        $responder ??= $this->createMock(ConfigProjectInitResponder::class);
+        $prompt ??= $this->createStub(PromptInterface::class);
+        $responder ??= $this->createStub(ConfigProjectInitResponder::class);
 
         return new InitProjectConfigFollowUpService(
             $git,

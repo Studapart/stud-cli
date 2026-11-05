@@ -26,19 +26,10 @@ class InitHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        // Save original SHELL to restore in tearDown
-        $this->originalShell = getenv('SHELL') ?: null;
-
-        // InitHandlerTest checks output text, so use real TranslationService
-        // This is acceptable since InitHandler is the class under test
-        $translationsPath = __DIR__ . '/../../src/resources/translations';
-        $this->translationService = new \App\Service\TranslationService('en', $translationsPath);
-
-        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->fileSystem = $this->createStub(FileSystem::class);
         // Logger will be created per test with real $io for interactive methods
-        $this->prompt = $this->createMock(\App\Service\Prompt\PromptInterface::class);
-        $this->promptCollector = $this->createPromptCollector();
-        $this->handler = $this->createInitHandler($this->prompt, $this->promptCollector);
+        $this->prompt = $this->createStub(\App\Service\Prompt\PromptInterface::class);
+        $this->bindSubject();
     }
 
     private function createPromptCollector(?\App\Service\Prompt\PromptInterface $prompt = null): InitPromptCollector
@@ -90,7 +81,7 @@ class InitHandlerTest extends CommandTestCase
     {
         // Mock listDirectory for migration discovery
         // Use the actual migration filename
-        $this->fileSystem->expects($this->any())
+        $this->fileSystem
             ->method('listDirectory')
             ->willReturnCallback(function (string $path) {
                 if ($this->isMigrationsDirectory($path)) {
@@ -101,9 +92,8 @@ class InitHandlerTest extends CommandTestCase
             });
 
         // Mock read for migration file - return the actual class content so it can be instantiated
-        $this->fileSystem->expects($this->any())
+        $this->fileSystem
             ->method('read')
-            ->with($this->stringContains('Migration202501150000001_GitTokenFormat.php'))
             ->willReturnCallback(function ($path) {
                 // Return the actual migration file content so class_exists() and instantiation work
                 $realPath = __DIR__ . '/../../src/Migrations/GlobalMigrations/Migration202501150000001_GitTokenFormat.php';
@@ -129,6 +119,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandle(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->with('/tmp/config.yml')
@@ -176,6 +169,10 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingConfig(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->prompt = $this->createMock(\App\Service\Prompt\PromptInterface::class);
+        $this->bindSubject();
+
         $existingConfig = [
             'JIRA_URL' => 'https://jira.example.com',
             'JIRA_EMAIL' => 'existing@example.com',
@@ -260,6 +257,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandlePreservesLegacyGitTokenWhenPromptsEmpty(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $existingConfig = [
             'LANGUAGE' => 'en',
             'JIRA_URL' => 'https://jira.example.com',
@@ -328,6 +328,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleWithNewConfigAndDirectoryCreation(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->with('/tmp/config.yml')
@@ -386,6 +389,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleWithEmptyTokensPreservesExisting(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $existingConfig = [
             'JIRA_URL' => 'https://jira.example.com',
             'JIRA_EMAIL' => 'existing@example.com',
@@ -463,6 +469,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleJiraUrlTrimming(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->with('/tmp/config.yml')
@@ -525,6 +534,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleWithBothTokens(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->with('/tmp/config.yml')
@@ -587,6 +599,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleWithEmptyComponents(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->with('/tmp/config.yml')
@@ -649,6 +664,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleWithBashShellAndCompletionYes(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         // Set SHELL environment variable for bash
         $originalShell = getenv('SHELL');
         putenv('SHELL=/usr/bin/bash');
@@ -710,6 +728,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleWithZshShellAndCompletionYes(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         // Set SHELL environment variable for zsh
         $originalShell = getenv('SHELL');
         putenv('SHELL=/usr/bin/zsh');
@@ -771,6 +792,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleWithUnsupportedShell(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         // Set SHELL environment variable to unsupported shell
         $originalShell = getenv('SHELL');
         putenv('SHELL=/usr/bin/fish');
@@ -864,6 +888,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleWithCompletionNoAndVerbose(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         // Set SHELL environment variable for bash
         $originalShell = getenv('SHELL');
         putenv('SHELL=/usr/bin/bash');
@@ -1088,9 +1115,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testGetLatestMigrationIdReturnsLexicographicallyLatest(): void
     {
-        $older = $this->createMock(\App\Migrations\MigrationInterface::class);
+        $older = $this->createStub(\App\Migrations\MigrationInterface::class);
         $older->method('getId')->willReturn('202501010000001');
-        $newer = $this->createMock(\App\Migrations\MigrationInterface::class);
+        $newer = $this->createStub(\App\Migrations\MigrationInterface::class);
         $newer->method('getId')->willReturn('202501150000001');
 
         $reflection = new \ReflectionClass($this->handler);
@@ -1104,6 +1131,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleThrowsExceptionWhenMkdirFails(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $configPath = '/nonexistent/path/config.yml';
         $configDir = '/nonexistent/path';
 
@@ -1174,6 +1204,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleFiltersOutEmptyStringsFromConfig(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         // Test that array_filter removes empty strings but preserves null values
         // This covers line 115-117 in InitHandler where array_filter is called
         $this->fileSystem->expects($this->once())
@@ -1259,6 +1292,9 @@ class InitHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenRequiredPromptIsExhausted(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $collector = new class (
             $this->prompt,
             new GitTokenPromptResolver(),
@@ -1281,5 +1317,19 @@ class InitHandlerTest extends CommandTestCase
 
         $this->assertSame(1, $response->exitCode);
         $this->assertFalse($response->isSuccess());
+    }
+
+    private function bindSubject(): void
+    {
+
+        // Save original SHELL to restore in tearDown
+        $this->originalShell = getenv('SHELL') ?: null;
+
+        // InitHandlerTest checks output text, so use real TranslationService
+        // This is acceptable since InitHandler is the class under test
+        $translationsPath = __DIR__ . '/../../src/resources/translations';
+        $this->translationService = new \App\Service\TranslationService('en', $translationsPath);
+        $this->promptCollector = $this->createPromptCollector();
+        $this->handler = $this->createInitHandler($this->prompt, $this->promptCollector);
     }
 }

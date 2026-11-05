@@ -7,6 +7,9 @@ use App\DTO\WorkItem;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\ItemStartHandler;
 use App\Response\WorkflowResponse;
+use App\Service\GitBranchService;
+use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\NonInteractivePromptService;
 use App\Service\Prompt\PromptInterface;
 use App\Service\Prompt\SymfonyPromptService;
@@ -25,18 +28,12 @@ class ItemStartHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        // Note: Castor container is not initialized in tests, so slug() will use the fallback
-        // which replicates Castor's behavior (snake_case -> slug -> lowercase)
-
-        TestKernel::$gitRepository = $this->gitRepository;
-        TestKernel::$gitBranchService = $this->gitBranchService;
-        TestKernel::$issueTracker = $this->issueTracker;
-        TestKernel::$translationService = $this->translationService;
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->gitBranchService = $this->createStub(GitBranchService::class);
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
         $this->gitBranchService->method('resolveLatestBaseBranch')->willReturn('origin/develop');
         $this->prompt = $this->createStub(PromptInterface::class);
-        // Default config with transition disabled for existing tests
-        $this->handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, [], $this->prompt);
+        $this->bindSubject();
     }
 
     private function assertWorkflowExitCode(WorkflowResponse $response, int $expectedExitCode): void
@@ -47,6 +44,10 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandle(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -144,6 +145,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionEnabledAndCachedTransition(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -203,6 +207,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionEnabledAndCachedTransitionNonVerbose(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -263,6 +270,10 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionEnabledAndInteractiveSelection(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -334,6 +345,10 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionEnabledAndUserDeclinesToSave(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -886,6 +901,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionEnabledAndVerboseSaveMessage(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -963,6 +981,10 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionEnabledAndCachedTransitionForDifferentProject(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -1045,6 +1067,10 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionEnabledAndConfigMissingProjectKey(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -1126,6 +1152,10 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionEnabledAndNonInProgressTransition(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         // This tests that all transitions are shown, not just 'in_progress' ones
         // Previously, transitions with statusCategory 'done' would be filtered out
         $workItem = new WorkItem(
@@ -1256,6 +1286,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleSwitchesToExistingLocalBranch(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->gitBranchService->method('resolveLatestBaseBranch')->willReturn('origin/develop');
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -1291,6 +1326,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleSwitchesToExistingRemoteBranch(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->gitBranchService->method('resolveLatestBaseBranch')->willReturn('origin/develop');
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -1326,6 +1366,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleCreatesBranchWhenNoneExists(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->gitBranchService->method('resolveLatestBaseBranch')->willReturn('origin/develop');
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -1364,6 +1409,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleSwitchesToFirstLocalBranchWhenGeneratedBranchNotExists(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->gitBranchService->method('resolveLatestBaseBranch')->willReturn('origin/develop');
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -1399,6 +1449,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleSwitchesToFirstRemoteBranchWhenGeneratedBranchNotExists(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->gitBranchService->method('resolveLatestBaseBranch')->willReturn('origin/develop');
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -1446,8 +1501,8 @@ class ItemStartHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $gitRepository = $this->createMock(\App\Service\GitRepository::class);
-        $gitBranchService = $this->createStub(\App\Service\GitBranchService::class);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitBranchService = $this->createStub(GitBranchService::class);
         $gitBranchService->method('resolveLatestBaseBranch')
             ->willReturn('develop');
 
@@ -1485,8 +1540,8 @@ class ItemStartHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $gitRepository = $this->createMock(\App\Service\GitRepository::class);
-        $gitBranchService = $this->createStub(\App\Service\GitBranchService::class);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitBranchService = $this->createStub(GitBranchService::class);
         $gitBranchService->method('resolveLatestBaseBranch')
             ->willReturn('origin/develop');
 
@@ -1512,6 +1567,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleUsesLinearTypeLabelPrefixForBug(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: 'issue-1',
             key: 'SCI-123',
@@ -1552,6 +1610,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleUsesLinearTeamKeyFromIssueWhenProjectKeyMissing(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: 'issue-1',
             key: 'SCI-456',
@@ -1594,6 +1655,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWarnsWhenLinearIssueHasNoTypeLabel(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: 'issue-1',
             key: 'SCI-789',
@@ -1635,6 +1699,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleLinearUsesCachedStartStateAndAssigns(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: 'issue-1',
             key: 'SCI-35',
@@ -1692,6 +1759,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleAutoUsesLinearStartStateWhenIssueMatchesLinearTeamKey(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: 'issue-1',
             key: 'SCIL-196',
@@ -1750,6 +1820,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleAutoKeepsJiraTransitionWhenIssueMatchesJiraProjectKey(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: 'issue-1',
             key: 'SCI-42',
@@ -1808,6 +1881,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testUsesLinearStartWorkflowForPinnedJiraAndEmptyLinearTeam(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->never())->method('getProjectKeyFromIssueKey');
 
         $this->assertFalse($this->callPrivateMethod(
@@ -1834,6 +1910,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleLinearAgentModeSkipsTransitionWithoutCachedState(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: 'issue-1',
             key: 'SCI-36',
@@ -1881,6 +1960,10 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleLinearPromptsAndSavesStartState(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: 'issue-1',
             key: 'SCI-37',
@@ -2039,6 +2122,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testExecuteStateChangeWithLoggingHandlesGenericException(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
         $handler = new ItemStartHandler(
             $this->gitRepository,
@@ -2064,5 +2150,19 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $response = $property->getValue($handler)->toResponse(0);
         $this->assertMessageRef($response->getWarnings()[0]->message, 'item.start.transition_exec_error');
+    }
+
+    private function bindSubject(): void
+    {
+
+        // Note: Castor container is not initialized in tests, so slug() will use the fallback
+        // which replicates Castor's behavior (snake_case -> slug -> lowercase)
+
+        TestKernel::$gitRepository = $this->gitRepository;
+        TestKernel::$gitBranchService = $this->gitBranchService;
+        TestKernel::$issueTracker = $this->issueTracker;
+        TestKernel::$translationService = $this->translationService;
+        // Default config with transition disabled for existing tests
+        $this->handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, [], $this->prompt);
     }
 }

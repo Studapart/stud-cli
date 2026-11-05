@@ -27,7 +27,7 @@ final class CommandResponderTest extends TestCase
 
     public function testRespondCompactJsonReturnsCompactPayload(): void
     {
-        $result = (new CommandResponder($this->createMock(Logger::class)))
+        $result = (new CommandResponder($this->createStub(Logger::class)))
             ->respond(CommandResponse::success(), OutputFormat::Json, compact: true);
 
         $this->assertNotNull($result);

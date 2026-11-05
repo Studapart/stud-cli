@@ -6,6 +6,7 @@ namespace App\Tests\Handler;
 
 use App\Exception\GitException;
 use App\Handler\PleaseHandler;
+use App\Service\GitRepository;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Process\Process;
@@ -17,19 +18,20 @@ class PleaseHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        TestKernel::$gitRepository = $this->gitRepository;
-        TestKernel::$translationService = $this->translationService;
-        $this->handler = new PleaseHandler($this->gitRepository, $this->translationService);
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->bindSubject();
     }
 
     public function testHandleWithUpstream(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getUpstreamBranch')
             ->willReturn('origin/my-branch');
 
-        $processMock = $this->createMock(Process::class);
+        $processMock = $this->createStub(Process::class);
         $this->gitRepository->expects($this->once())
             ->method('forcePushWithLease')
             ->willReturn($processMock);
@@ -56,6 +58,9 @@ class PleaseHandlerTest extends CommandTestCase
 
     public function testHandleWithoutUpstreamSetsUpstreamAndPushes(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getUpstreamBranch')
             ->willReturn(null);
@@ -67,7 +72,7 @@ class PleaseHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('feat/foo');
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->expects($this->once())
             ->method('pushToOrigin')
@@ -85,7 +90,7 @@ class PleaseHandlerTest extends CommandTestCase
         $this->gitRepository->method('getUpstreamBranch')->willReturn(null);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushToOrigin')->willReturn($process);
 
@@ -100,12 +105,20 @@ class PleaseHandlerTest extends CommandTestCase
         $this->gitRepository->method('getUpstreamBranch')->willReturn(null);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
         $this->gitRepository->method('pushToOrigin')->willReturn($process);
 
         $result = $this->handler->handle(false);
 
         $this->assertFalse($result->isSuccess());
+    }
+
+    private function bindSubject(): void
+    {
+
+        TestKernel::$gitRepository = $this->gitRepository;
+        TestKernel::$translationService = $this->translationService;
+        $this->handler = new PleaseHandler($this->gitRepository, $this->translationService);
     }
 }

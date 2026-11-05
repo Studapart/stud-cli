@@ -28,7 +28,7 @@ class ConfluencePushResponderTest extends CommandTestCase
                 return str_contains($message, 'My Page') && str_contains($message, '12345');
             }));
         $responder = new ConfluencePushResponder($this->translationService, $logger);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $responder->respond($io, $response, OutputFormat::Cli);
 
@@ -50,7 +50,7 @@ class ConfluencePushResponderTest extends CommandTestCase
                 return str_contains($message, 'Updated Page') && str_contains($message, '67890');
             }));
         $responder = new ConfluencePushResponder($this->translationService, $logger);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $responder->respond($io, $response, OutputFormat::Cli);
     }
@@ -62,7 +62,7 @@ class ConfluencePushResponderTest extends CommandTestCase
         $logger->expects(self::once())->method('error')->with(self::anything(), 'Space not found');
         $logger->expects(self::never())->method('success');
         $responder = new ConfluencePushResponder($this->translationService, $logger);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $responder->respond($io, $response, OutputFormat::Cli);
 
@@ -81,7 +81,7 @@ class ConfluencePushResponderTest extends CommandTestCase
         $logger->expects(self::never())->method('success');
         $logger->expects(self::never())->method('error');
         $responder = new ConfluencePushResponder($this->translationService, $logger);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $agentResponse = $responder->respond($io, $response, OutputFormat::Json);
 
@@ -96,8 +96,8 @@ class ConfluencePushResponderTest extends CommandTestCase
     public function testRespondJsonErrorReturnsAgentJsonResponseWithError(): void
     {
         $response = ConfluencePushResponse::error('No content provided');
-        $responder = new ConfluencePushResponder($this->translationService, $this->createMock(Logger::class));
-        $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ConfluencePushResponder($this->translationService, $this->createStub(Logger::class));
+        $io = $this->createStub(SymfonyStyle::class);
 
         $agentResponse = $responder->respond($io, $response, OutputFormat::Json);
 

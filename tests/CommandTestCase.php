@@ -11,12 +11,13 @@ use App\Service\JiraApiClient;
 use App\Service\Logger;
 use App\Service\MessageRenderer;
 use App\Service\TranslationService;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Process\Process;
 
 abstract class CommandTestCase extends TestCase
 {
@@ -30,45 +31,57 @@ abstract class CommandTestCase extends TestCase
     {
         parent::setUp();
 
-        $this->gitRepository = $this->createMock(GitRepository::class);
-        $this->gitBranchService = $this->createMock(GitBranchService::class);
-        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
-        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        // Shared doubles are stubs. A test class that verifies calls on one of them
+        // replaces it with createMock() right after parent::setUp().
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->gitBranchService = $this->createStub(GitBranchService::class);
+        $this->jiraApiClient = $this->createStub(JiraApiClient::class);
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
 
-        // Mock TranslationService to avoid file system dependencies in unit tests
-        // Note: TranslationServiceTest uses real instances for integration testing
-        $this->translationService = $this->createMock(TranslationService::class);
+        // TranslationServiceTest uses real instances for integration testing
+        $this->translationService = $this->createStub(TranslationService::class);
+        $this->configureTranslationDefaults($this->translationService);
+    }
 
-        // Set up default mock behavior: return the key as the value for simple testing
-        $this->translationService->method('trans')
+    protected function createTranslationMock(): TranslationService&MockObject
+    {
+        $translationService = $this->createMock(TranslationService::class);
+        $this->configureTranslationDefaults($translationService);
+
+        return $translationService;
+    }
+
+    private function configureTranslationDefaults(TranslationService&Stub $translationService): void
+    {
+        // Return the key as the value for simple testing
+        $translationService->method('trans')
             ->willReturnCallback(function ($id, $parameters = []) {
-                // Return a simple representation for testing
                 return $id . (empty($parameters) ? '' : ' ' . json_encode($parameters));
             });
 
-        $this->translationService->method('getLocale')
+        $translationService->method('getLocale')
             ->willReturn('en');
 
-        $this->translationService->method('render')
-            ->willReturnCallback(function ($message) {
-                if ($message instanceof \App\DTO\MessageRef) {
-                    return $this->translationService->trans($message->key, $message->parameters);
+        $translationService->method('render')
+            ->willReturnCallback(function ($message) use ($translationService) {
+                if ($message instanceof MessageRef) {
+                    return $translationService->trans($message->key, $message->parameters);
                 }
 
                 return $message === null ? null : (string) $message;
             });
 
-        $this->translationService->method('renderText')
-            ->willReturnCallback(function ($message) {
-                $rendered = $this->translationService->render($message);
+        $translationService->method('renderText')
+            ->willReturnCallback(function ($message) use ($translationService) {
+                $rendered = $translationService->render($message);
 
                 return $rendered ?? ($message === null ? '' : (string) $message);
             });
 
-        $this->translationService->method('renderForAgentText')
+        $translationService->method('renderForAgentText')
             ->willReturnCallback(fn ($message): string => $message === null ? '' : (string) $message);
 
-        $this->translationService->method('transForAgentText')
+        $translationService->method('transForAgentText')
             ->willReturnCallback(fn (string $id, array $parameters = []): string => $id . (empty($parameters) ? '' : ' ' . json_encode($parameters)));
     }
 
@@ -144,21 +157,13 @@ abstract class CommandTestCase extends TestCase
         return $this->callback(fn (mixed $message): bool => $message instanceof MessageRef && $message->key === $key);
     }
 
-    protected function createMockProcess(bool $isSuccessful): Process
-    {
-        $process = $this->createMock(Process::class);
-        $process->method('isSuccessful')->willReturn($isSuccessful);
-
-        return $process;
-    }
-
     /**
      * Create a Logger that delegates to the given SymfonyStyle (mock or real).
      * When using a mock, stub isQuiet() and isVerbose()/isVeryVerbose()/isDebug() so Logger::getCurrentVerbosity() and shouldDisplay() work.
      */
     protected function createLogger(SymfonyStyle $io, int $verbosity = OutputInterface::VERBOSITY_NORMAL): Logger
     {
-        if ($io instanceof SymfonyStyle && ! $this->isMockObject($io)) {
+        if (! $io instanceof Stub) {
             return new Logger($io, [], messageRenderer: new MessageRenderer($this->translationService));
         }
         $io->method('isQuiet')->willReturn(false);
@@ -167,11 +172,6 @@ abstract class CommandTestCase extends TestCase
         $io->method('isDebug')->willReturn($verbosity >= OutputInterface::VERBOSITY_DEBUG);
 
         return new Logger($io, [], messageRenderer: new MessageRenderer($this->translationService));
-    }
-
-    private function isMockObject(object $obj): bool
-    {
-        return str_starts_with($obj::class, 'Mock_');
     }
 
     protected function createSymfonyStyle(int $verbosity = OutputInterface::VERBOSITY_NORMAL): SymfonyStyle

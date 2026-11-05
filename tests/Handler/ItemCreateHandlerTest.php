@@ -19,25 +19,27 @@ use App\Service\IssueTrackerPort;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
 use App\Service\Jira\JiraIssueTrackerCapable;
+use App\Service\JiraApiClient;
 use App\Service\LinearApiClient;
 use App\Service\LinearIssueTrackerAdapter;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 
 class ItemCreateHandlerTest extends CommandTestCase
 {
     private IssueFieldResolver $fieldResolver;
     private FieldsParser $fieldsParser;
-    private PromptInterface&MockObject $prompt;
+    private PromptInterface $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->gitRepository = $this->createMock(GitRepository::class);
-        $this->fieldResolver = new IssueFieldResolver($this->jiraApiClient, new DurationParser());
-        $this->fieldsParser = new FieldsParser(new DurationParser());
-        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->jiraApiClient = $this->createStub(JiraApiClient::class);
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->prompt = $this->createStub(PromptInterface::class);
+        $this->bindSubject();
     }
 
     /**
@@ -58,6 +60,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleSuccessWithAllOptions(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
@@ -97,6 +104,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleUsesProjectFromConfigWhenOptionNull(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn(['JIRA_DEFAULT_PROJECT' => 'CONF']);
@@ -130,6 +142,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenNoProjectAndNonInteractive(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn([]);
@@ -145,6 +161,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenNoSummaryAndNonInteractive(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn(['JIRA_DEFAULT_PROJECT' => 'PROJ']);
@@ -164,6 +185,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenExtraRequiredFields(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $fieldsMeta = [
             'project' => ['required' => true, 'name' => 'Project'],
             'issuetype' => ['required' => true, 'name' => 'Issue Type'],
@@ -198,6 +223,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenIssueTypeNotFound(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -219,6 +248,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenGetCreateMetaIssueTypesThrows(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -240,6 +273,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenGetCreateMetaFieldsThrows(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -264,6 +301,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenCreateIssueThrowsNonApiException(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -294,6 +335,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenCreateIssueThrows(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -324,6 +369,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsLinearTypeLabelErrorWhenCreateThrowsLinearTypeLabelException(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -354,6 +403,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsStudConfigErrorWhenLinearTeamKeyMissing(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -384,6 +437,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsIssueTrackerErrorWhenCreateThrowsIssueTrackerException(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -414,6 +471,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleIncludesDescriptionWhenProvided(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -452,6 +513,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleWithParentCreatesSubTaskWithParentKey(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -488,6 +553,12 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractivePromptsForProjectAndSummary(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn([]);
@@ -529,6 +600,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractivePromptsForExtraRequiredFieldsThenCreates(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -576,6 +652,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveExtraRequiredWhenGetCreateMetaFieldsThrowsReturnsError(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $fieldsMeta = [
             'project' => ['required' => true, 'name' => 'Project'],
             'issuetype' => ['required' => true, 'name' => 'Issue Type'],
@@ -612,6 +692,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveNumericCustomFieldIdSentAsCustomfieldPrefix(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -659,6 +744,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveSkipsEmptyExtraRequiredFieldValues(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -712,6 +802,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveExtraRequiredProjectInferredFromKeyNoPrompt(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -748,6 +843,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveExtraRequiredReporterDefaultsToCurrentUserNoPrompt(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -789,6 +889,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleRequiredAssigneeDefaultsToCurrentUserWhenOptionNull(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -826,6 +930,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleRequiredAssigneeUsesFieldsOptionWhenProvided(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -863,6 +971,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleOptionalAssigneeDefaultsToCurrentUserWhenFieldPresent(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -900,6 +1012,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleOptionalAssigneeUsesFieldsOptionWhenProvided(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -937,6 +1053,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveExtraRequiredIssueTypeAndSummaryTakenFromResolvedNoPrompt(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -976,6 +1097,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveNoTypeProvidedShowsIssueTypeChoice(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -1021,6 +1147,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenProjectNotFoundAndNonInteractive(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('INVALID')
@@ -1038,6 +1168,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveProjectNotFoundPromptsForKeyThenSucceeds(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->exactly(2))
             ->method('getProject')
             ->willReturnCallback(function (string $key) {
@@ -1078,6 +1213,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveProjectNotFoundAndUserGivesEmptyKeyReturnsError(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('BAD')
@@ -1100,6 +1240,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveProjectNotFoundAndRetryKeyAlsoNotFoundReturnsError(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->exactly(2))
             ->method('getProject')
             ->willReturnCallback(function (string $key) {
@@ -1127,6 +1272,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenExtraRequiredAndGetMetaThrowsWhenBuildingFieldList(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $fieldsMeta = [
             'project' => ['required' => true, 'name' => 'Project'],
             'issuetype' => ['required' => true, 'name' => 'Issue Type'],
@@ -1168,6 +1317,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveExtraRequiredDescriptionPromptsAndFills(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -1216,6 +1370,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsProjectFillsKey(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
@@ -1229,6 +1386,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsReporterDefaultsToCurrentUser(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
@@ -1245,6 +1405,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsAssigneeDefaultsToCurrentUser(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
@@ -1261,6 +1424,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsIssueTypeWhenTypeExplicitlyProvided(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
@@ -1278,6 +1444,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsSummaryFillsFromArgument(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
@@ -1292,6 +1462,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsDescriptionWhenAdfProvided(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $descriptionAdf = ['type' => 'doc', 'version' => 1, 'content' => []];
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
@@ -1307,6 +1481,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsDescriptionPromptWhenDescriptionAdfNull(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
@@ -1337,6 +1515,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleRequiredDescriptionAndDescriptionProvidedFillsDescription(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
@@ -1374,6 +1556,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandle_labelsWhenCreatemetaHasLabels_addsToPayload(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
         $this->jiraApiClient->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
         $this->jiraApiClient->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -1403,6 +1590,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandle_labelsWhenCreatemetaDoesNotHaveLabels_skippedAndCreateSucceeds(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
         $this->jiraApiClient->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
         $this->jiraApiClient->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -1432,6 +1624,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandle_originalEstimateWhenCreatemetaHasIt_addsToPayload(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
         $this->jiraApiClient->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
         $this->jiraApiClient->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -1461,6 +1658,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandle_originalEstimateWhenCreatemetaDoesNotHaveIt_skippedAndCreateSucceeds(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
         $this->jiraApiClient->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
         $this->jiraApiClient->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -1490,6 +1692,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandle_invalidOriginalEstimate_passedThroughAsRawValue(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
         $this->jiraApiClient->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
         $this->jiraApiClient->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -1519,6 +1726,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptIssueTypeValueReturnsNullWhenChooseIssueTypeReturnsNull(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
@@ -1538,6 +1748,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testChooseIssueTypeInteractivelyReturnsNullWhenNoIssueTypes(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
@@ -1552,6 +1765,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testChooseIssueTypeInteractivelyReturnsNullWhenChoiceDoesNotMatchAnyName(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
@@ -1570,6 +1787,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptDescriptionValueReturnsNullWhenAskReturnsEmpty(): void
     {
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $this->prompt->expects($this->once())
             ->method('ask')
             ->willReturn('   ');
@@ -1583,8 +1803,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleLinearCapableSkipsJiraCreatemeta(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $linearApiClient = $this->createMock(LinearApiClient::class);
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $linearProvider = new LinearIssueTrackerAdapter($linearApiClient, gitRepository: $gitRepository);
 
         $this->jiraApiClient->expects($this->once())
@@ -1626,7 +1849,10 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleLinearCapableReturnsErrorWhenCreateMetaThrows(): void
     {
-        /** @var IssueTrackerPort&IssueTrackerLabelGroupsCapable&\PHPUnit\Framework\MockObject\MockObject $linearProvider */
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
+        /** @var IssueTrackerPort&IssueTrackerLabelGroupsCapable $linearProvider */
         $linearProvider = $this->createMockForIntersectionOfInterfaces([
             IssueTrackerPort::class,
             IssueTrackerLabelGroupsCapable::class,
@@ -1653,8 +1879,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleLinearCapableIncludesDescriptionParentAndMarkdownFormat(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $linearApiClient = $this->createMock(LinearApiClient::class);
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $linearProvider = new LinearIssueTrackerAdapter($linearApiClient, gitRepository: $gitRepository);
 
         $this->jiraApiClient->expects($this->once())->method('getProject')->willReturn(new Project('SCI', 'Stud'));
@@ -1723,7 +1952,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testResolveLabelGroupsCapableCreateMetadataUsesPlainFormatByDefault(): void
     {
-        $linearProvider = new LinearIssueTrackerAdapter($this->createMock(LinearApiClient::class));
+        $linearProvider = new LinearIssueTrackerAdapter($this->createStub(LinearApiClient::class));
 
         $handler = new ItemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
@@ -1748,6 +1977,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleAppliesWorkItemLabelDefaultWhenFieldsOmitLabels(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->stubProjectCreateMetaWithLabels();
         $this->issueTracker->expects($this->once())
             ->method('create')
@@ -1766,6 +1998,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleEmptyLabelsOptionDoesNotApplyWorkItemLabelDefault(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->stubProjectCreateMetaWithLabels();
         $this->issueTracker->expects($this->once())
             ->method('create')
@@ -1784,6 +2019,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleEmptyLabelsMapDoesNotApplyWorkItemLabelDefault(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->stubProjectCreateMetaWithLabels();
         $this->issueTracker->expects($this->once())
             ->method('create')
@@ -1802,6 +2040,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleExplicitLabelsWinOverWorkItemLabelDefault(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->stubProjectCreateMetaWithLabels();
         $this->issueTracker->expects($this->once())
             ->method('create')
@@ -1820,6 +2061,9 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleKeepsPromptedRequiredLabelsWhenWorkItemDefaultIsSet(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $meta = [
             'project' => ['required' => true, 'name' => 'Project'],
             'issuetype' => ['required' => true, 'name' => 'Issue Type'],
@@ -1906,6 +2150,12 @@ class ItemCreateHandlerTest extends CommandTestCase
             'summary' => ['required' => true, 'name' => 'Summary'],
             'labels' => ['required' => false, 'name' => 'Labels'],
         ]);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->fieldResolver = new IssueFieldResolver($this->jiraApiClient, new DurationParser());
+        $this->fieldsParser = new FieldsParser(new DurationParser());
     }
 }
 

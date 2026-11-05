@@ -13,14 +13,13 @@ use App\Service\TranslationService;
 use App\Tests\CommandTestCase;
 use App\Tests\Handler\Support\AttachmentAgentJsonAssertions;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
 
 class ItemDownloadHandlerTest extends CommandTestCase
 {
     use AttachmentAgentJsonAssertions;
     private FileSystem $fileSystem;
 
-    private IssueTrackerPort&MockObject $provider;
+    private IssueTrackerPort $provider;
 
     private TranslationService $translator;
 
@@ -30,9 +29,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->fileSystem = $this->createMock(FileSystem::class);
-        $this->provider = $this->createMock(IssueTrackerPort::class);
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->fileSystem = $this->createStub(FileSystem::class);
+        $this->provider = $this->createStub(IssueTrackerPort::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(static function (string $id, array $parameters = []): string {
             if ($parameters !== []) {
                 return $id . '|' . json_encode($parameters, JSON_THROW_ON_ERROR);
@@ -40,8 +39,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
             return $id;
         });
-
-        $this->handler = new ItemDownloadHandler($this->fileSystem, $this->provider, $this->translator);
+        $this->bindSubject();
     }
 
     public function testHandleReturnsFatalWhenKeyAndUrlMissing(): void
@@ -62,6 +60,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleReturnsFatalWhenTargetDirectoryCannotBeCreated(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())
             ->method('mkdir')
             ->willThrowException(new \RuntimeException('mkdir failed'));
@@ -74,6 +75,10 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleDownloadsAllForIssue(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir')->with('.cursor/stud-downloads', 0777, true);
         $this->provider->expects($this->once())
             ->method('listAttachments')
@@ -105,6 +110,10 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleFetchIssueAttachmentsFails(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->expects($this->once())
             ->method('listAttachments')
@@ -119,6 +128,10 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleSingleUrlModeSuccess(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->expects($this->once())
             ->method('downloadAttachment')
@@ -141,6 +154,10 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleSingleUrlModeFailureReturnsFatal(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->expects($this->never())->method('listAttachments');
         $this->provider->expects($this->once())
@@ -155,6 +172,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleUsesSuffixWhenFilenameCollides(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->method('listAttachments')->willReturn([
             new IssueAttachment('1', 'same.txt', 1, 'https://x.atlassian.net/rest/api/3/attachment/content/1'),
@@ -174,9 +194,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testAllocateFilenameFallsBackToRandomWhenManyCollisions(): void
     {
-        $fileSystem = $this->createMock(FileSystem::class);
-        $provider = $this->createMock(IssueTrackerPort::class);
-        $translator = $this->createMock(TranslationService::class);
+        $fileSystem = $this->createStub(FileSystem::class);
+        $provider = $this->createStub(IssueTrackerPort::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturnArgument(0);
         $handler = new ItemDownloadHandler($fileSystem, $provider, $translator);
         $fileSystem->method('fileExists')->willReturn(true);
@@ -190,6 +210,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleRecordsErrorWhenDownloadThrowsNonApi(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->method('listAttachments')->willReturn([
             new IssueAttachment('1', 'z', 1, 'https://x.atlassian.net/rest/api/3/attachment/content/1'),
@@ -205,6 +228,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleRecordsErrorWhenWriteFails(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->method('listAttachments')->willReturn([
             new IssueAttachment('1', 'w.txt', 1, 'https://x.atlassian.net/rest/api/3/attachment/content/1'),
@@ -220,6 +246,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testFilenameHintWhenBasenameIsDotUsesAttachment(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->method('downloadAttachment');
         $this->fileSystem->method('fileExists')->willReturn(false);
@@ -233,6 +262,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testFilenameHintWhenPathIsEmptyUsesAttachment(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->method('downloadAttachment')->willReturnCallback(function (string $url, string $path): void {
             $this->assertStringEndsWith('/attachment', $path);
@@ -246,6 +278,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testSanitizeFallsBackWhenFilenameIsEmptyString(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->method('listAttachments')->willReturn([
             new IssueAttachment('1', '', 1, 'https://x.atlassian.net/rest/api/3/attachment/content/1'),
@@ -262,6 +297,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleRecordsPerFileErrorsWhenOneDownloadFails(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->method('listAttachments')->willReturn([
             new IssueAttachment('1', 'ok.txt', 1, 'https://x.atlassian.net/rest/api/3/attachment/content/1'),
@@ -288,6 +326,10 @@ class ItemDownloadHandlerTest extends CommandTestCase
     #[DataProvider('linearAssetUrlProvider')]
     public function testHandleDownloadsLinearAssetUrls(string $label, string $assetUrl): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->expects($this->once())
             ->method('listAttachments')
@@ -324,6 +366,10 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleLinearSingleUrlAgentJsonParity(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $url = 'https://public.linear.app/assets/report.md';
         $this->fileSystem->expects($this->once())->method('mkdir');
         $this->provider->expects($this->once())
@@ -340,6 +386,9 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
     public function testHandleLinearPartialDownloadAgentJsonParity(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->bindSubject();
+
         $okUrl = 'https://public.linear.app/assets/ok.txt';
         $badUrl = 'https://public.linear.app/assets/bad.txt';
         $this->fileSystem->expects($this->once())->method('mkdir');
@@ -362,5 +411,11 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
         $payload = $this->downloadAgentPayload($response, $this->translator);
         $this->assertAgentBatchPayloadParity($payload);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $this->handler = new ItemDownloadHandler($this->fileSystem, $this->provider, $this->translator);
     }
 }

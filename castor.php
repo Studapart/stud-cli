@@ -2385,7 +2385,7 @@ function config_project_init(
     $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
     $response = $handler->handle($rawAgentInput, $skipRemote, $agent, $workflowRecorder);
     $responder = new ConfigProjectInitResponder(_get_responder_helper(), _get_logger());
-    if ($format !== OutputFormat::Json && $workflowRecorder !== null) {
+    if ($format !== OutputFormat::Json) {
         _respond_workflow_response($workflowRecorder->toResponse($response->isSuccess() ? 0 : 1), false);
     }
     $agentResponse = $responder->respond(io(), $response, $format);

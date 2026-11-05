@@ -17,21 +17,22 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ProjectsLabelsResponderTest extends CommandTestCase
 {
-    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+    private SymfonyStyle $io;
 
     private ProjectsLabelsResponder $responder;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService);
-        $this->io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new ProjectsLabelsResponder($helper, $this->createLogger($this->io));
+        $this->io = $this->createStub(SymfonyStyle::class);
+        $this->bindSubject();
     }
 
     public function testRespondRendersTableOnSuccess(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = ProjectsLabelsResponse::success([
             [
                 'id' => 'group-1',
@@ -83,6 +84,9 @@ class ProjectsLabelsResponderTest extends CommandTestCase
 
     public function testRespondReturnsNullOnError(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = ProjectsLabelsResponse::error('project.labels.error_no_provider');
 
         $this->io->expects($this->never())->method('table');
@@ -130,5 +134,12 @@ class ProjectsLabelsResponderTest extends CommandTestCase
         ]);
 
         $this->assertNull($responder->respond($this->io, $response));
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new ProjectsLabelsResponder($helper, $this->createLogger($this->io));
     }
 }

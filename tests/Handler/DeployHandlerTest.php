@@ -145,7 +145,7 @@ class DeployHandlerTest extends CommandTestCase
 
         $gitRepository->getCurrentBranchName()->willReturn('feat/some-feature');
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $logger->method('addSection');
         $logger->method('addError');
 

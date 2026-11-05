@@ -13,7 +13,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemListResponderTest extends CommandTestCase
 {
-    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+    private SymfonyStyle $io;
 
     private ItemListResponder $responder;
 
@@ -23,10 +23,8 @@ class ItemListResponderTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService, null);
-        $this->io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new ItemListResponder($helper, $this->jiraConfig, $this->createLogger($this->io));
+        $this->io = $this->createStub(SymfonyStyle::class);
+        $this->bindSubject();
     }
 
     public function testRespondReturnsZeroOnEmptyIssues(): void
@@ -47,6 +45,9 @@ class ItemListResponderTest extends CommandTestCase
 
     public function testRespondRendersTableOnSuccess(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
 
@@ -201,6 +202,9 @@ class ItemListResponderTest extends CommandTestCase
 
     public function testRespondMultiProviderRendersProviderColumn(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $issues = [
             new WorkItem('1', 'SCI-1', 'Jira issue', 'Open', 'user', 'desc', [], 'Story'),
             new WorkItem('2', 'ENG-1', 'Linear issue', 'Open', 'user', 'desc', [], 'Story'),
@@ -262,5 +266,12 @@ class ItemListResponderTest extends CommandTestCase
         $label = $method->invoke($this->responder, $response, 'missing-key');
 
         $this->assertSame('', $label);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService, null);
+        $this->responder = new ItemListResponder($helper, $this->jiraConfig, $this->createLogger($this->io));
     }
 }

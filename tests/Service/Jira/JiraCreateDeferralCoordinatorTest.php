@@ -16,17 +16,14 @@ use PHPUnit\Framework\TestCase;
 
 class JiraCreateDeferralCoordinatorTest extends TestCase
 {
-    private IssueTrackerPort&MockObject $port;
+    private IssueTrackerPort $port;
 
     private JiraCreateDeferralCoordinator $coordinator;
 
     protected function setUp(): void
     {
-        $this->port = $this->createMock(IssueTrackerPort::class);
-        $this->coordinator = new JiraCreateDeferralCoordinator(
-            new JiraCreateDeferErrorParser(),
-            new JiraIssueFieldWriter(new FieldsParser(new DurationParser())),
-        );
+        $this->port = $this->createStub(IssueTrackerPort::class);
+        $this->bindSubject();
     }
 
     public function testFirstCreateSuccessSkipsRetry(): void
@@ -83,6 +80,9 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
     public function testJiraSummaryKeyIsMappedWhenTitleIsAbsent(): void
     {
+        $this->port = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $screenError = new ApiException('Could not create issue.', 'HTTP 400: {"errors":{"summary":"cannot be set"}}', 400);
         $this->port->expects($this->once())->method('create')->willThrowException($screenError);
 
@@ -93,6 +93,9 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
     public function testRetriesCreateThenUpdatesDeferredLabels(): void
     {
+        $this->port = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $screenError = new ApiException(
             'Could not create issue.',
             'HTTP 400: {"errors":{"labels":"Field \'labels\' cannot be set. It is not on the appropriate screen."}}',
@@ -182,6 +185,9 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
     public function testRequiredCreateFieldIsNotDeferred(): void
     {
+        $this->port = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $screenError = new ApiException('Could not create issue.', 'HTTP 400: {"errors":{"labels":"cannot be set"}}', 400);
         $this->port->expects($this->once())->method('create')->willThrowException($screenError);
 
@@ -202,6 +208,9 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
     public function testImmutableSummaryErrorIsNotRetried(): void
     {
+        $this->port = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $screenError = new ApiException('Could not create issue.', 'HTTP 400: {"errors":{"summary":"cannot be set"}}', 400);
         $this->port->expects($this->once())->method('create')->willThrowException($screenError);
 
@@ -219,6 +228,9 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
     public function testUnmappedErrorDefersEveryFieldInput(): void
     {
+        $this->port = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $screenError = new ApiException(
             'Could not create issue.',
             'HTTP 400: {"errors":{"customfield_12":"cannot be set"}}',
@@ -250,6 +262,9 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
     public function testRetryRestoresAutofilledAssigneeOnUpdate(): void
     {
+        $this->port = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $screenError = new ApiException(
             'Could not create issue.',
             'HTTP 400: {"errors":{"assignee":"cannot be set"}}',
@@ -296,6 +311,9 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
     public function testRetryWarnsWhenAutofilledAssigneeIsNotEditable(): void
     {
+        $this->port = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $screenError = new ApiException(
             'Could not create issue.',
             'HTTP 400: {"errors":{"assignee":"cannot be set"}}',
@@ -331,6 +349,9 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
      */
     private function recordCreates(array &$payloads, ApiException $first, array|ApiException $second): void
     {
+        if (! $this->port instanceof MockObject) {
+            $this->port = $this->createMock(IssueTrackerPort::class);
+        }
         $this->port->expects($this->exactly(2))
             ->method('create')
             ->willReturnCallback(function (array $fields) use (&$payloads, $first, $second): array {
@@ -344,5 +365,13 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
                 return $second;
             });
+    }
+
+    private function bindSubject(): void
+    {
+        $this->coordinator = new JiraCreateDeferralCoordinator(
+            new JiraCreateDeferErrorParser(),
+            new JiraIssueFieldWriter(new FieldsParser(new DurationParser())),
+        );
     }
 }

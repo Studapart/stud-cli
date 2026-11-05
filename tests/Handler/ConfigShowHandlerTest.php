@@ -10,6 +10,7 @@ use App\Enum\ResponseMessageLevel;
 use App\Handler\ConfigShowHandler;
 use App\Response\ConfigShowResponse;
 use App\Service\FileSystem;
+use App\Service\GitRepository;
 use App\Tests\CommandTestCase;
 
 class ConfigShowHandlerTest extends CommandTestCase
@@ -19,12 +20,15 @@ class ConfigShowHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createStub(GitRepository::class);
 
-        $this->fileSystem = $this->createMock(FileSystem::class);
+        $this->fileSystem = $this->createStub(FileSystem::class);
     }
 
     public function testHandleReturnsErrorWhenGlobalConfigDoesNotExist(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->with('/path/to/config.yml')
@@ -42,6 +46,8 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessWithRedactedGlobalConfigWhenNotInRepo(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->with('/path/to/config.yml')
@@ -67,6 +73,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessWithProjectConfigWhenInRepo(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -98,6 +107,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsNullProjectConfigWhenRepoThrows(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -118,6 +130,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleTreatsEmptyProjectConfigAsNull(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -138,6 +153,8 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleAddsWarningWhenGlobalConfigCannotBeParsed(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -158,6 +175,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleAddsWarningWhenProjectConfigCannotBeParsed(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -181,6 +201,8 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyReturnsErrorWhenGlobalConfigDoesNotExist(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->with('/path/to/config.yml')
@@ -195,6 +217,8 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyInWhitelistPresentInGlobalOnlyReturnsSingleKeySectionGlobal(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -215,6 +239,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyInWhitelistPresentInProjectReturnsSingleKeySectionProject(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -238,6 +265,8 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyNotInWhitelistReturnsError(): void
     {
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -255,6 +284,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyWorkItemProviderReturnsProjectValue(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -278,6 +310,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyLinearTeamKeyReturnsProjectValue(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -301,6 +336,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyInWhitelistMissingFromEffectiveConfigReturnsError(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -322,6 +360,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testJiraUrlUsesQualifiedProjectValue(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -343,6 +384,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testWhitespaceProjectJiraUrlDoesNotOverrideGlobal(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);
@@ -364,6 +408,9 @@ class ConfigShowHandlerTest extends CommandTestCase
 
     public function testMissingJiraUrlReturnsNotFound(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fileSystem = $this->createMock(FileSystem::class);
+
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
             ->willReturn(true);

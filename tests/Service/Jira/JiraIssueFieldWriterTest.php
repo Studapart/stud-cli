@@ -24,7 +24,7 @@ class JiraIssueFieldWriterTest extends TestCase
 
     public function testEditMetaFailureWarnsWithInputKeys(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createStub(IssueTrackerPort::class);
         $port->method('getEditMetaFields')->willThrowException(new ApiException('meta', 'HTTP 500', 500));
         $writer = new JiraIssueFieldWriter(new FieldsParser(new DurationParser()));
 

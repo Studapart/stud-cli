@@ -16,7 +16,7 @@ class JiraIssueTrackerResolverTest extends TestCase
 {
     public function testUnwrapsFetchHintAndDetectsJiraAdapter(): void
     {
-        $inner = $this->createMock(IssueTrackerPort::class);
+        $inner = $this->createStub(IssueTrackerPort::class);
         $wrapped = new FetchHintIssueTrackerPort(
             $inner,
             new IssueTrackerFetchFailureHintBuilder(),

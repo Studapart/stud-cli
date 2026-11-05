@@ -11,20 +11,20 @@ use App\Handler\ConfluenceShowHandler;
 use App\Service\AdfToMarkdownConverter;
 use App\Service\TranslationService;
 use App\Service\WikiPort;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 class ConfluenceShowHandlerTest extends TestCase
 {
-    private WikiPort&MockObject $wiki;
-    private AdfToMarkdownConverter&MockObject $adfConverter;
-    private TranslationService&MockObject $translator;
+    private WikiPort $wiki;
+    private AdfToMarkdownConverter $adfConverter;
+    private TranslationService&Stub $translator;
 
     protected function setUp(): void
     {
-        $this->wiki = $this->createMock(WikiPort::class);
-        $this->adfConverter = $this->createMock(AdfToMarkdownConverter::class);
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->wiki = $this->createStub(WikiPort::class);
+        $this->adfConverter = $this->createStub(AdfToMarkdownConverter::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(
             static fn (string $id, array $params = []): string => $id . ':' . json_encode($params)
         );
@@ -41,6 +41,9 @@ class ConfluenceShowHandlerTest extends TestCase
 
     public function testHandleSuccessWithPageId(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->adfConverter = $this->createMock(AdfToMarkdownConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('getPageWithBody')
             ->with('12345')
@@ -68,6 +71,9 @@ class ConfluenceShowHandlerTest extends TestCase
 
     public function testHandleSuccessWithUrlResolvesPageId(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->adfConverter = $this->createMock(AdfToMarkdownConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('extractPageIdFromUrl')
             ->with('https://example.atlassian.net/wiki/spaces/DEV/pages/123456')
@@ -93,6 +99,9 @@ class ConfluenceShowHandlerTest extends TestCase
 
     public function testHandlePrefersPageIdWhenBothProvided(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->adfConverter = $this->createMock(AdfToMarkdownConverter::class);
+
         $this->wiki->expects(self::never())->method('extractPageIdFromUrl');
         $this->wiki->expects(self::once())
             ->method('getPageWithBody')
@@ -124,6 +133,8 @@ class ConfluenceShowHandlerTest extends TestCase
 
     public function testHandleErrorWhenPageNotFound(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+
         $this->wiki->expects(self::once())
             ->method('getPageWithBody')
             ->with('99999')
@@ -142,6 +153,8 @@ class ConfluenceShowHandlerTest extends TestCase
 
     public function testHandleErrorWhenUrlInvalid(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+
         $this->wiki->expects(self::once())
             ->method('extractPageIdFromUrl')
             ->with('not-a-url')

@@ -190,7 +190,6 @@ final class LinearAgentModeIntegrationTest extends TestCase
     public function testConfigValidateGlobalOnlyWhenNoProjectConfig(): void
     {
         $configDir = $this->tempDir . '/home/.config/stud';
-        mkdir($configDir, 0700, true);
         file_put_contents(
             $configDir . '/config.yml',
             <<<'YAML'

@@ -5,7 +5,12 @@
          colors="true"
          defaultTimeLimit="30"
          failOnDeprecation="true"
-         failOnWarning="false">
+         failOnPhpunitDeprecation="true"
+         failOnPhpunitNotice="true"
+         failOnWarning="true"
+         displayDetailsOnPhpunitDeprecations="true"
+         displayDetailsOnPhpunitNotices="true"
+         displayDetailsOnTestsThatTriggerWarnings="true">
     <testsuites>
         <testsuite name="Unit Tests">
             <directory>tests/Architecture</directory>

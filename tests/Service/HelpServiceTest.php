@@ -24,7 +24,7 @@ class HelpServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->translationService = $this->createMock(TranslationService::class);
+        $this->translationService = $this->createStub(TranslationService::class);
         $this->translationService->method('trans')
             ->willReturnCallback(function ($id, $parameters = []) {
                 return $id . (empty($parameters) ? '' : ' ' . json_encode($parameters));
@@ -59,7 +59,7 @@ class HelpServiceTest extends TestCase
 
     public function testGetCommandHelpExtractsCommandSectionFromDetailedReadme(): void
     {
-        $fileSystem = $this->createMock(FileSystem::class);
+        $fileSystem = $this->createStub(FileSystem::class);
         $fileSystem->method('read')->willReturn(<<<'MD'
 # Commands
 
@@ -676,7 +676,7 @@ MD);
     {
         // Test that getCommandHelp returns null when file read throws RuntimeException
         // This covers line 60 (catch block)
-        $fileSystem = $this->createMock(\App\Service\FileSystem::class);
+        $fileSystem = $this->createStub(\App\Service\FileSystem::class);
         $fileSystem->method('read')
             ->willThrowException(new \RuntimeException('File read failed'));
 

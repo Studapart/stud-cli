@@ -27,21 +27,22 @@ class ConfigValidateResponderTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService);
-        $this->logger = $this->createMock(Logger::class);
-        $this->responder = new ConfigValidateResponder($helper, $this->logger);
+        $this->logger = $this->createStub(Logger::class);
+        $this->bindSubject();
     }
 
     public function testRespondOutputsSectionAndDefinitionListWhenAllOk(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_OK,
             null,
             ConfigValidateResponse::STATUS_OK,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
@@ -54,6 +55,9 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsTranslatedCliNotice(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $evaluation = new ConfigReadinessEvaluation(
             ConfigReadinessEvaluator::ROLLUP_PARTIAL,
             ConfigReadinessEvaluator::ROLLUP_OK,
@@ -69,7 +73,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ],
             'github',
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('note')
@@ -80,6 +84,9 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondLegacyRowsIncludeConfiguredGitProvider(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_SKIPPED,
             null,
@@ -87,7 +94,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             null,
             gitProvider: 'gitlab',
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->exactly(2))->method('definitionList');
 
@@ -96,13 +103,16 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondLegacyRowsUseGithubWhenGitWasCheckedWithoutProvider(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_SKIPPED,
             null,
             ConfigValidateResponse::STATUS_OK,
             'git ok',
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->exactly(2))->method('definitionList');
 
@@ -123,6 +133,9 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsCliNotices(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $evaluation = new ConfigReadinessEvaluation(
             ConfigReadinessEvaluator::ROLLUP_PARTIAL,
             ConfigReadinessEvaluator::ROLLUP_OK,
@@ -138,7 +151,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ],
             'github',
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
         $this->logger->expects($this->exactly(2))->method('definitionList');
@@ -151,6 +164,9 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsCliWarnings(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_OK,
             null,
@@ -160,19 +176,22 @@ class ConfigValidateResponderTest extends CommandTestCase
                 ResponseMessage::warning(MessageRef::key('config.validate.warn_gitlab_token_missing')),
             ],
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
         $this->logger->expects($this->exactly(2))->method('definitionList');
         $this->logger->expects($this->once())
             ->method('warning')
-            ->with($this->anything(), $this->isType('string'));
+            ->with($this->anything(), $this->isString());
 
         $this->responder->respond($io, $response);
     }
 
     public function testRespondOutputsCliWarningsForPlainStringMessages(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_OK,
             null,
@@ -182,7 +201,7 @@ class ConfigValidateResponderTest extends CommandTestCase
                 ResponseMessage::warning('plain warning'),
             ],
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
         $this->logger->expects($this->exactly(2))->method('definitionList');
@@ -195,8 +214,11 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsErrorWhenResponseHasError(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::error('config.error.not_found');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('error')
@@ -211,13 +233,16 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsSectionWithFailStatus(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_FAIL,
             'Connection refused',
             ConfigValidateResponse::STATUS_OK,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
@@ -230,13 +255,16 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsSkippedStatus(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_SKIPPED,
             null,
             ConfigValidateResponse::STATUS_SKIPPED,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
@@ -249,7 +277,7 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondWithColorHelperRegistersStylesAndFormatsOutput(): void
     {
-        $colorHelper = $this->createMock(ColorHelper::class);
+        $colorHelper = $this->createStub(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $logger = $this->createMock(Logger::class);
         $responder = new ConfigValidateResponder($helper, $logger);
@@ -259,7 +287,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ConfigValidateResponse::STATUS_OK,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $logger->expects($this->once())
             ->method('registerStyles')
@@ -275,13 +303,16 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondRendersBothRowsWhenOneOkOneSkipped(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_OK,
             null,
             ConfigValidateResponse::STATUS_SKIPPED,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
@@ -300,7 +331,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ConfigValidateResponse::STATUS_OK,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, OutputFormat::Json, false);
 
@@ -333,7 +364,7 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondJsonPartialCompactIncludesRollupsOnly(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $result = $this->responder->respond($io, $this->partialSuccessResponse(), OutputFormat::Json, true);
 
         $this->assertNotNull($result);
@@ -344,7 +375,7 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondJsonPartialNonCompactIncludesFullData(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $result = $this->responder->respond($io, $this->partialSuccessResponse(), OutputFormat::Json, false);
 
         $this->assertNotNull($result);
@@ -354,7 +385,10 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondCliShowsProjectRollupWhenApplicable(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
         $this->logger->expects($this->exactly(2))->method('definitionList');
@@ -371,7 +405,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             null,
             gitProvider: 'github',
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, OutputFormat::Json, true);
 
@@ -391,7 +425,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             null,
             gitProvider: 'github',
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, OutputFormat::Json, false);
 
@@ -408,7 +442,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             null,
             gitProvider: 'github',
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, OutputFormat::Json, true);
 
@@ -428,7 +462,7 @@ class ConfigValidateResponderTest extends CommandTestCase
                 ResponseMessage::warning(MessageRef::key('config.validate.warn_gitlab_token_missing')),
             ],
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, OutputFormat::Json);
 
@@ -446,7 +480,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ConfigValidateResponse::STATUS_OK,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, OutputFormat::Json);
 
@@ -463,7 +497,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ConfigValidateResponse::STATUS_SKIPPED,
             MessageRef::key('config.validate.error_git_not_configured'),
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, OutputFormat::Json, false);
 
@@ -476,13 +510,16 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsFailStatusWithMessageRef(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_FAIL,
             MessageRef::key('config.validate.error_jira_not_configured'),
             ConfigValidateResponse::STATUS_OK,
             null,
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
         $this->logger->expects($this->exactly(2))
@@ -493,18 +530,28 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsFailStatusWithoutDetailWhenMessageNull(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_FAIL,
             null,
             ConfigValidateResponse::STATUS_OK,
             null,
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
         $this->logger->expects($this->exactly(2))
             ->method('definitionList');
 
         $this->responder->respond($io, $response);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new ConfigValidateResponder($helper, $this->logger);
     }
 }

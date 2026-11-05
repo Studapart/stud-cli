@@ -8,24 +8,30 @@ use App\Service\BranchNameGenerator;
 use App\Service\BranchNameValidator;
 use App\Service\BranchRenamePrCoordinator;
 use App\Service\CanConvertToMarkdownInterface;
+use App\Service\GitBranchService;
 use App\Service\GithubGitHostingAdapter;
+use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 
 class BranchRenameHandlerTest extends CommandTestCase
 {
     private BranchRenameHandler $handler;
-    private GithubGitHostingAdapter&MockObject $githubProvider;
-    private PromptInterface&MockObject $prompt;
+    private GithubGitHostingAdapter $githubProvider;
+    private PromptInterface&Stub $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->gitBranchService = $this->createStub(GitBranchService::class);
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
 
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->handler = $this->createBranchRenameHandler();
+        $this->githubProvider = $this->createStub(GithubGitHostingAdapter::class);
+        $this->prompt = $this->createStub(PromptInterface::class);
+        $this->bindSubject();
     }
 
     private function createBranchRenameHandler(
@@ -110,6 +116,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithExplicitName(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
@@ -141,6 +150,10 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyParameter(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -188,6 +201,10 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithJiraKeyAsFirstArgument(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         // Test case: stud rn SCI-34 (where SCI-34 is passed as first arg but should be treated as key)
         $workItem = new WorkItem(
             id: '10001',
@@ -238,6 +255,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyExtractedFromBranch(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -356,6 +376,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithRemoteOnlyBranch(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
@@ -392,6 +415,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithBothLocalAndRemote(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
@@ -418,6 +444,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('canRebaseBranch')
             ->willReturn(true);
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $this->gitBranchService->expects($this->once())
@@ -437,6 +464,11 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithPullRequestUpdate(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $pr = ['number' => 123, 'head' => ['ref' => 'old-branch']];
 
         $this->gitRepository
@@ -462,10 +494,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         // SubmitHandler calls
-        $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
+        $pushProcess = $this->createStub(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
         $this->gitRepository
             ->method('pushHeadToOrigin')
@@ -500,6 +533,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('createPullRequest')
             ->willReturn(['number' => 456, 'html_url' => 'https://github.com/test/pr/456']);
         $this->githubProvider
+            ->expects($this->once())
             ->method('createComment')
             ->with(456, 'Branch renamed from `old-branch` to `new-branch`');
 
@@ -551,6 +585,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithRemoteOnlyBranchUserDeclines(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
@@ -578,6 +615,10 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithBranchSyncAndRebase(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
@@ -604,12 +645,15 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('canRebaseBranch')
             ->willReturn(true);
         $this->gitRepository
+            ->expects($this->once())
             ->method('rebase')
             ->with('origin/old-branch');
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameRemoteBranch')
             ->with('old-branch', 'new-branch', 'origin');
         $this->githubProvider
@@ -665,6 +709,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithUserDeclinesConfirmation(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
@@ -695,6 +742,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithRemoteBranchRenameException(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
@@ -721,6 +771,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('canRebaseBranch')
             ->willReturn(true);
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $this->gitBranchService
@@ -740,6 +791,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithPrFindException(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
@@ -758,6 +812,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $this->githubProvider
@@ -774,6 +829,11 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithPrUpdateSuccess(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $pr = ['number' => 123, 'head' => ['ref' => 'old-branch']];
 
         $this->gitRepository
@@ -794,9 +854,10 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
-        $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
+        $pushProcess = $this->createStub(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
         $this->gitRepository
             ->method('pushHeadToOrigin')
@@ -845,6 +906,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithPrUpdateNoNumber(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $pr = ['head' => ['ref' => 'old-branch']]; // Missing 'number' key
 
         $this->gitRepository
@@ -865,6 +929,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $this->githubProvider
@@ -881,6 +946,10 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithPrCommentException(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $pr = ['number' => 123, 'head' => ['ref' => 'old-branch']];
 
         $this->gitRepository
@@ -901,9 +970,10 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
-        $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
+        $pushProcess = $this->createStub(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
         $this->gitRepository
             ->method('pushHeadToOrigin')
@@ -951,6 +1021,10 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithPrCreationFailed(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $pr = ['number' => 123, 'head' => ['ref' => 'old-branch']];
 
         $this->gitRepository
@@ -971,10 +1045,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         // SubmitHandler will fail because findFirstLogicalSha returns null
-        $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
+        $pushProcess = $this->createStub(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
         $this->gitRepository
             ->method('pushHeadToOrigin')
@@ -1062,7 +1137,10 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithNoGithubGitHostingAdapter(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('confirm')->willReturn(true);
         $handler = $this->createBranchRenameHandler($prompt, false);
 
@@ -1081,6 +1159,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService
+            ->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
 
@@ -1095,7 +1174,7 @@ class BranchRenameHandlerTest extends CommandTestCase
     {
         $pr = ['number' => 123];
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('confirm')->willReturn(true);
         $handler = $this->createBranchRenameHandler($prompt, false);
 
@@ -1132,5 +1211,10 @@ class BranchRenameHandlerTest extends CommandTestCase
 
         $this->callPrivateMethod($this->handler, 'commentOnNewPullRequest', ['old', 'new']);
         $this->assertTrue(true);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->handler = $this->createBranchRenameHandler();
     }
 }

@@ -7,10 +7,11 @@ use App\DTO\WorkflowRecorder;
 use App\DTO\WorkItem;
 use App\Handler\ItemTransitionHandler;
 use App\Response\WorkflowResponse;
+use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 use App\Service\Prompt\SymfonyPromptService;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -18,19 +19,16 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class ItemTransitionHandlerTest extends CommandTestCase
 {
     private ItemTransitionHandler $handler;
-    private PromptInterface&MockObject $prompt;
+    private PromptInterface $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
 
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->handler = new ItemTransitionHandler(
-            $this->gitRepository,
-            $this->issueTracker,
-            $this->translationService,
-            $this->prompt
-        );
+        $this->prompt = $this->createStub(PromptInterface::class);
+        $this->bindSubject();
     }
 
     private function assertWorkflowExitCode(WorkflowResponse $response, int $expectedExitCode): void
@@ -64,6 +62,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithProvidedKey(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -115,6 +116,10 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyDetectionFromBranchAndConfirmation(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -170,6 +175,10 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyDetectionFromBranchAndRejection(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-36',
@@ -226,6 +235,10 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyPromptWhenNotDetected(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-37',
@@ -281,6 +294,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithInvalidKeyFormat(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
@@ -302,6 +318,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithEmptyKeyPrompt(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
@@ -323,6 +342,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithIssueNotFound(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
@@ -338,6 +360,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithIssueNotFoundApiException(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
@@ -351,6 +376,10 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWhenTransitionChoiceDoesNotParseReturnsOne(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -382,6 +411,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithNoTransitions(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -417,6 +449,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionFetchError(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -452,6 +487,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionFetchErrorApiException(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -482,6 +520,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionExecutionError(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -533,6 +574,10 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithTransitionExecutionErrorApiException(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -576,6 +621,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithVerboseOutput(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -624,6 +672,10 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleAppliesLinearWorkflowStateWithUuidId(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem(
             id: 'issue-uuid-1',
             key: 'SCI-123',
@@ -680,6 +732,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testResolveKeyWithNullPromptedKey(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
@@ -702,6 +757,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testResolveKeyWithInvalidFormat(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
@@ -720,5 +778,15 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $key = $this->callPrivateMethod($handler, 'resolveKey', [null]);
 
         $this->assertNull($key);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->handler = new ItemTransitionHandler(
+            $this->gitRepository,
+            $this->issueTracker,
+            $this->translationService,
+            $this->prompt
+        );
     }
 }

@@ -15,20 +15,22 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class FilterListResponderTest extends CommandTestCase
 {
-    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+    private SymfonyStyle $io;
 
     private FilterListResponder $responder;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $helper = new ResponderHelper($this->translationService);
-        $this->io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new FilterListResponder($helper, $this->createLogger($this->io));
+        $this->io = $this->createStub(SymfonyStyle::class);
+        $this->bindSubject();
     }
 
     public function testRespondShowsNoteWhenNoFilters(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = FilterListResponse::success([]);
 
         $this->io->expects($this->once())
@@ -43,6 +45,9 @@ class FilterListResponderTest extends CommandTestCase
 
     public function testRespondRendersTableWhenFiltersPresent(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $filter = new Filter('My Filter', 'Description');
         $response = FilterListResponse::success([$filter]);
 
@@ -60,6 +65,9 @@ class FilterListResponderTest extends CommandTestCase
 
     public function testRespondWithColorHelperAppliesFormatting(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $responder = new FilterListResponder($helper, $this->createLogger($this->io));
@@ -105,5 +113,11 @@ class FilterListResponderTest extends CommandTestCase
         $this->assertNotNull($result);
         $this->assertFalse($result->success);
         $this->assertSame('API error', $result->error);
+    }
+
+    private function bindSubject(): void
+    {
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new FilterListResponder($helper, $this->createLogger($this->io));
     }
 }

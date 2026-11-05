@@ -14,36 +14,33 @@ use App\Service\MigrationExecutor;
 use App\Service\TranslationService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 class MigrationExecutorTest extends TestCase
 {
     private MigrationExecutor $executor;
-    private WorkflowEntryRecorder&MockObject $recorder;
-    private Logger&MockObject $logger;
+    private WorkflowEntryRecorder $recorder;
+    private Logger&\PHPUnit\Framework\MockObject\Stub $logger;
     private FileSystem $fileSystem;
-    private TranslationService&MockObject $translator;
+    private TranslationService&Stub $translator;
     private string $testConfigPath;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
-        $this->logger = $this->createMock(Logger::class);
-        // Use in-memory filesystem instead of mocking
-        $adapter = new InMemoryFilesystemAdapter();
-        $flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($flysystem);
-        $this->translator = $this->createMock(TranslationService::class);
-        $this->executor = new MigrationExecutor($this->recorder, $this->fileSystem, $this->translator);
-
-        $this->testConfigPath = '/test/config.yml';
+        $this->recorder = $this->createStub(WorkflowEntryRecorder::class);
+        $this->logger = $this->createStub(Logger::class);
+        $this->translator = $this->createStub(TranslationService::class);
+        $this->bindSubject();
     }
 
     public function testExecuteMigrationsUpdatesVersion(): void
     {
+        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $this->bindSubject();
+
         $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
             public function getId(): string
             {
@@ -108,6 +105,9 @@ class MigrationExecutorTest extends TestCase
 
     public function testExecuteMigrationsHandlesPrerequisiteFailure(): void
     {
+        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $this->bindSubject();
+
         $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
             public function getId(): string
             {
@@ -158,6 +158,9 @@ class MigrationExecutorTest extends TestCase
 
     public function testExecuteMigrationsHandlesNonPrerequisiteFailure(): void
     {
+        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $this->bindSubject();
+
         $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
             public function getId(): string
             {
@@ -208,6 +211,9 @@ class MigrationExecutorTest extends TestCase
 
     public function testExecuteMigrationsExecutesInOrder(): void
     {
+        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $this->bindSubject();
+
         $callOrder = [];
         $callOrderRef = &$callOrder;
 
@@ -326,7 +332,10 @@ class MigrationExecutorTest extends TestCase
 
     public function testExecuteMigrationsWithNonAbstractMigration(): void
     {
-        $migration = $this->createMock(\App\Migrations\MigrationInterface::class);
+        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $this->bindSubject();
+
+        $migration = $this->createStub(\App\Migrations\MigrationInterface::class);
         $migration->method('getId')->willReturn('202501160000001');
         $migration->method('getDescription')->willReturn('Test migration');
         $migration->method('getScope')->willReturn(\App\Migrations\MigrationScope::GLOBAL);
@@ -365,6 +374,9 @@ class MigrationExecutorTest extends TestCase
 
     public function testExecuteMigrationsPrerequisiteFailureWithTranslationFallback(): void
     {
+        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $this->bindSubject();
+
         $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
             public function getId(): string
             {
@@ -431,6 +443,9 @@ class MigrationExecutorTest extends TestCase
 
     public function testExecuteMigrationsNonPrerequisiteFailureWithTranslationFallback(): void
     {
+        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $this->bindSubject();
+
         $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
             public function getId(): string
             {
@@ -497,6 +512,9 @@ class MigrationExecutorTest extends TestCase
 
     public function testExecuteMigrationsPrerequisiteFailureWithTranslationException(): void
     {
+        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $this->bindSubject();
+
         $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
             public function getId(): string
             {
@@ -562,6 +580,9 @@ class MigrationExecutorTest extends TestCase
 
     public function testExecuteMigrationsNonPrerequisiteFailureWithTranslationException(): void
     {
+        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $this->bindSubject();
+
         $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
             public function getId(): string
             {
@@ -623,5 +644,16 @@ class MigrationExecutorTest extends TestCase
         $result = $this->executor->executeMigrations([$migration], $config, $this->testConfigPath);
 
         $this->assertSame($config, $result);
+    }
+
+    private function bindSubject(): void
+    {
+        // Use in-memory filesystem instead of mocking
+        $adapter = new InMemoryFilesystemAdapter();
+        $flysystem = new FlysystemFilesystem($adapter);
+        $this->fileSystem = new FileSystem($flysystem);
+        $this->executor = new MigrationExecutor($this->recorder, $this->fileSystem, $this->translator);
+
+        $this->testConfigPath = '/test/config.yml';
     }
 }

@@ -51,7 +51,7 @@ class ItemUpdateResponderTest extends CommandTestCase
     public function testRespondJsonReturnsUpdatedIssueData(): void
     {
         $response = ItemUpdateResponse::success('SCI-71');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $responder = new ItemUpdateResponder($this->translationService, $this->createLogger($io));
 
         $result = $responder->respond($io, $response, OutputFormat::Json);
@@ -64,7 +64,7 @@ class ItemUpdateResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorOnFailure(): void
     {
         $response = ItemUpdateResponse::error('Update failed');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $responder = new ItemUpdateResponder($this->translationService, $this->createLogger($io));
 
         $result = $responder->respond($io, $response, OutputFormat::Json);
@@ -76,7 +76,7 @@ class ItemUpdateResponderTest extends CommandTestCase
     public function testRespondJsonReturnsSkippedFields(): void
     {
         $response = ItemUpdateResponse::success('SCI-71', ['bad_field']);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $responder = new ItemUpdateResponder($this->translationService, $this->createLogger($io));
 
         $result = $responder->respond($io, $response, OutputFormat::Json);

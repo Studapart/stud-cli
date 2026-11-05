@@ -44,7 +44,7 @@ final class CommandInputResolverInvocationTest extends TestCase
 
     public function testResolveInvocationContextReadsBranchIssueKey(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getIssueKeyFromBranchName')->willReturn('SCIL-42');
 
         $resolver = new CommandInputResolver(gitRepository: $gitRepository);
@@ -95,7 +95,7 @@ final class CommandInputResolverInvocationTest extends TestCase
 
     public function testPeekAgentPayloadIgnoresInvalidAgentJson(): void
     {
-        $helper = $this->createMock(AgentModeHelper::class);
+        $helper = $this->createStub(AgentModeHelper::class);
         $helper->method('peekAgentInput')->willThrowException(new AgentModeException('bad json'));
         $resolver = new CommandInputResolver($helper);
         $input = $this->createInput(['--agent' => true], 'items:show', ['key']);
@@ -107,7 +107,7 @@ final class CommandInputResolverInvocationTest extends TestCase
 
     public function testReadBranchIssueKeyReturnsNullWhenGitRepositoryThrows(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getIssueKeyFromBranchName')->willThrowException(new \RuntimeException('git error'));
         $resolver = new CommandInputResolver(gitRepository: $gitRepository);
         $input = $this->createInput([], 'commit');

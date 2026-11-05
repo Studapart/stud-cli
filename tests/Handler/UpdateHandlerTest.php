@@ -15,7 +15,7 @@ use App\Tests\CommandTestCase;
 use App\Tests\Support\UpdateHandlerTestKit;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -25,9 +25,12 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 class UpdateHandlerTest extends CommandTestCase
 {
     private UpdateHandler $handler;
-    private \App\Service\Prompt\PromptInterface $prompt;
-    private HttpClientInterface&MockObject $httpClient;
-    private ChangelogParser&MockObject $changelogParser;
+    /**
+     * @var \PHPUnit\Framework\MockObject\Stub&\App\Service\Logger
+     */
+    private \PHPUnit\Framework\MockObject\Stub $prompt;
+    private HttpClientInterface $httpClient;
+    private ChangelogParser&Stub $changelogParser;
     private string $tempBinaryPath;
 
     /**
@@ -46,15 +49,15 @@ class UpdateHandlerTest extends CommandTestCase
      * This is needed because UpdateHandler calls runPrerequisiteMigrations(),
      * which uses MigrationRegistry that calls FileSystem methods.
      *
-     * @param FileSystem&MockObject $fileSystem The mocked FileSystem instance
+     * @param FileSystem&Stub $fileSystem The FileSystem test double
      */
-    private function setupMigrationMocks(FileSystem&MockObject $fileSystem): void
+    private function setupMigrationMocks(FileSystem&Stub $fileSystem): void
     {
         // In test environment, runPrerequisiteMigrations() should return 0 early
         // when config doesn't exist. We mock fileExists to return false for the config path
         // This causes the method to return 0 early, skipping migration discovery
         // Use willReturnCallback to handle any path, but return false for config path
-        $fileSystem->expects($this->any())
+        $fileSystem
             ->method('fileExists')
             ->willReturnCallback(function ($path) {
                 // Config path should not exist in tests - this triggers early return
@@ -70,19 +73,19 @@ class UpdateHandlerTest extends CommandTestCase
         // MigrationRegistry will call isDir() to check if migrations directory exists
         // We return false so migrations are skipped (though this shouldn't be reached
         // if fileExists returns false for config, but we set it up just in case)
-        $fileSystem->expects($this->any())
+        $fileSystem
             ->method('isDir')
             ->willReturn(false);
 
         // listDirectory() should not be called if isDir() returns false,
         // but we mock it anyway to be safe
-        $fileSystem->expects($this->any())
+        $fileSystem
             ->method('listDirectory')
             ->willReturn([]);
 
         // parseFile() should not be called if fileExists returns false,
         // but we mock it anyway to be safe
-        $fileSystem->expects($this->any())
+        $fileSystem
             ->method('parseFile')
             ->willReturn([]);
     }
@@ -98,8 +101,8 @@ class UpdateHandlerTest extends CommandTestCase
             $_SERVER['HOME'] = '/tmp';
         }
 
-        $this->httpClient = $this->createMock(HttpClientInterface::class);
-        $this->changelogParser = $this->createMock(ChangelogParser::class);
+        $this->httpClient = $this->createStub(HttpClientInterface::class);
+        $this->changelogParser = $this->createStub(ChangelogParser::class);
         // Use real temp directory for binary path since replaceBinary() uses native PHP functions
         // that need to access the real filesystem (is_writable, copy, rename, chmod)
         $this->tempBinaryPath = sys_get_temp_dir() . '/stud-test-' . uniqid() . '.phar';
@@ -109,23 +112,8 @@ class UpdateHandlerTest extends CommandTestCase
 
         // Use mocked TranslationService from CommandTestCase
 
-        $this->prompt = $this->createMock(\App\Service\Logger::class);
-
-        $fileSystem = $this->createDefaultFileSystemMock();
-
-        $this->handler = UpdateHandlerTestKit::create(
-            'studapart', // repoOwner
-            'stud-cli',  // repoName
-            '1.0.0',     // currentVersion
-            $this->tempBinaryPath,
-            $this->translationService,
-            $this->changelogParser,
-            new UpdateFileService($this->translationService, $this->prompt),
-            $this->prompt,
-            $fileSystem, // FileSystem (position 9) - now mocked
-            null,        // gitToken
-            $this->httpClient
-        );
+        $this->prompt = $this->createStub(\App\Service\Logger::class);
+        $this->bindSubject();
     }
 
 
@@ -162,9 +150,9 @@ class UpdateHandlerTest extends CommandTestCase
         return null;
     }
 
-    private function createDefaultFileSystemMock(): FileSystem&MockObject
+    private function createDefaultFileSystem(): FileSystem&Stub
     {
-        $fileSystem = $this->createMock(FileSystem::class);
+        $fileSystem = $this->createStub(FileSystem::class);
         $fileSystem->method('fileExists')->willReturn(false);
         $fileSystem->method('isDir')->willReturn(false);
         $fileSystem->method('read')->willReturn('');
@@ -225,13 +213,16 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleAlreadyOnLatestVersion(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
 
         $releaseData = [
             'tag_name' => 'v1.0.0',
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
@@ -267,14 +258,14 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -322,14 +313,14 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -360,11 +351,11 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -382,8 +373,11 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithNoReleasesFound(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
 
-        $response = $this->createMock(ResponseInterface::class);
+
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(404);
         $response->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -417,14 +411,14 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -463,14 +457,14 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -518,16 +512,16 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
-        $otherDownload = $this->createMock(ResponseInterface::class);
+        $otherDownload = $this->createStub(ResponseInterface::class);
         $otherDownload->method('getContent')->willReturn('other asset content');
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -556,11 +550,11 @@ class UpdateHandlerTest extends CommandTestCase
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -580,8 +574,8 @@ class UpdateHandlerTest extends CommandTestCase
     {
 
         // Current version has 'v' prefix, latest doesn't
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -612,14 +606,14 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -641,13 +635,16 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithVersionEqualComparison(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
 
         $releaseData = [
             'tag_name' => 'v1.0.0', // Same as current
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
@@ -680,11 +677,11 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -712,10 +709,10 @@ class UpdateHandlerTest extends CommandTestCase
             '1.0.0',
             $badBinaryPath,
             $this->translationService,
-            $this->createMock(ChangelogParser::class),
+            $this->createStub(ChangelogParser::class),
             new UpdateFileService($this->translationService, $this->prompt),
             $this->prompt,
-            $this->createDefaultFileSystemMock(),
+            $this->createDefaultFileSystem(),
             null,
             $this->httpClient
         );
@@ -732,14 +729,14 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -759,7 +756,10 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWith404NoReleases(): void
     {
-        $errorResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $errorResponse = $this->createStub(ResponseInterface::class);
         $errorResponse->method('getStatusCode')->willReturn(404);
         $errorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -779,8 +779,11 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithNon404ApiError(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
 
-        $response = $this->createMock(ResponseInterface::class);
+
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(500);
         $response->method('getContent')->willReturn('Internal Server Error');
 
@@ -799,8 +802,11 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithGitTokenProvided(): void
     {
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -822,7 +828,7 @@ class UpdateHandlerTest extends CommandTestCase
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
@@ -844,13 +850,16 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithOlderVersionThanCurrent(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
 
         $releaseData = [
             'tag_name' => 'v0.9.0', // Older than current 1.0.0
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
@@ -872,8 +881,8 @@ class UpdateHandlerTest extends CommandTestCase
     public function testGetBinaryPathUsesProvidedPath(): void
     {
         $testPath = '/test/path/to/binary.phar';
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -903,8 +912,8 @@ class UpdateHandlerTest extends CommandTestCase
         // Since we can't easily mock Phar in tests, we test that the fallback works
         // The actual Phar path would be tested in integration tests
         $testPath = '/test/phar/path.phar';
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -929,8 +938,8 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithGitTokenUsesAuthForDownload(): void
     {
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -962,14 +971,14 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -1019,14 +1028,14 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -1071,11 +1080,11 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -1121,18 +1130,18 @@ CHANGELOG;
         // Use real parser for this integration test
         $this->setupRealChangelogParser();
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
@@ -1184,18 +1193,18 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
@@ -1233,18 +1242,18 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(500);
-        $changelogErrorResponse->method('getContent')->with(false)->willReturn('Internal Server Error');
+        $changelogErrorResponse->expects($this->once())->method('getContent')->with(false)->willReturn('Internal Server Error');
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $logger->method('addSection');
         $logger->method('addLine');
         $logger->method('addText');
@@ -1303,18 +1312,18 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(500);
-        $changelogErrorResponse->method('getContent')->with(false)->willReturn('Internal Server Error');
+        $changelogErrorResponse->expects($this->once())->method('getContent')->with(false)->willReturn('Internal Server Error');
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $logger->method('addSection');
         $logger->method('addLine');
         $logger->method('addText')
@@ -1496,18 +1505,18 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
@@ -1555,18 +1564,18 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
@@ -1618,18 +1627,18 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
@@ -1667,15 +1676,15 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(500);
         $changelogErrorResponse->method('getContent')->willReturn('Internal Server Error');
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
@@ -1800,11 +1809,11 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
@@ -1860,11 +1869,11 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
@@ -1895,12 +1904,15 @@ CHANGELOG;
 
     public function testHandleWithInfoFlagAlreadyOnLatestVersion(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $releaseData = [
             'tag_name' => 'v1.0.0',
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
@@ -1932,11 +1944,11 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(500);
         $changelogErrorResponse->method('getContent')->willReturn('Internal Server Error');
 
@@ -1961,7 +1973,10 @@ CHANGELOG;
 
     public function testHandleWithGetLatestReleaseGenericExceptionWith404Message(): void
     {
-        $errorResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $errorResponse = $this->createStub(ResponseInterface::class);
         $errorResponse->method('getStatusCode')->willReturn(200);
         $errorResponse->method('toArray')
             ->willThrowException(new \Exception('GitHub API Error (Status: 404) when calling \'GET https://api.github.com/repos/studapart/stud-cli/releases/latest\'.'));
@@ -1997,7 +2012,10 @@ CHANGELOG;
 
     public function testHandleWithGetLatestReleaseGenericExceptionWithout404Message(): void
     {
-        $errorResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $errorResponse = $this->createStub(ResponseInterface::class);
         $errorResponse->method('getStatusCode')->willReturn(200);
         $errorResponse->method('toArray')
             ->willThrowException(new \Exception('Network error occurred'));
@@ -2050,21 +2068,21 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         // Create a response that throws Exception when toArray() is called
         // This will trigger the generic Exception catch block in displayChangelog
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')
             ->willThrowException(new \Exception('Failed to parse JSON response'));
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $logger->method('addSection');
         $logger->method('addLine'); // Allow all writeln calls (including logVerbose which calls writeln)
         $logger->method('addText');
@@ -2123,14 +2141,14 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -2165,14 +2183,14 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -2183,7 +2201,7 @@ CHANGELOG;
             ]));
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('section')->willReturnSelf();
         $io->method('text')->willReturnSelf();
@@ -2192,9 +2210,6 @@ CHANGELOG;
         $io->method('writeln')->willReturnSelf();
         $io->method('newLine')->willReturnSelf();
         $io->method('success')->willReturnSelf();
-        $io->method('confirm')
-            ->with($this->anything(), false)
-            ->willReturn(false); // User aborts
 
         $response = $this->handler->handle();
 
@@ -2221,14 +2236,14 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -2239,7 +2254,7 @@ CHANGELOG;
             ]));
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('section')->willReturnSelf();
         $io->method('text')->willReturnSelf();
@@ -2248,9 +2263,6 @@ CHANGELOG;
         $io->method('writeln')->willReturnSelf();
         $io->method('newLine')->willReturnSelf();
         $io->method('success')->willReturnSelf();
-        $io->method('confirm')
-            ->with($this->anything(), false)
-            ->willReturn(true); // User overrides
 
         // Handler uses $this->logger for verifyHash/replaceBinary; use a handler with logger that confirms
         $loggerWithConfirm = $this->createMock(\App\Service\Logger::class);
@@ -2266,8 +2278,8 @@ CHANGELOG;
         });
         $loggerWithConfirm->method('addWarning')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
-        $fileSystem = $this->createMock(FileSystem::class);
+        $loggerWithConfirm->expects($this->once())->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
+        $fileSystem = $this->createStub(FileSystem::class);
         $this->setupMigrationMocks($fileSystem);
         $fileSystem->method('filePutContents')->willReturnCallback(function ($path, $contents) {
             if (str_starts_with($path, '/tmp/')) {
@@ -2312,14 +2324,14 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -2330,7 +2342,7 @@ CHANGELOG;
             ]));
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('section')->willReturnSelf();
         $io->method('text')->willReturnSelf();
@@ -2339,9 +2351,6 @@ CHANGELOG;
         $io->method('writeln')->willReturnSelf();
         $io->method('newLine')->willReturnSelf();
         $io->method('success')->willReturnSelf();
-        $io->method('confirm')
-            ->with($this->anything(), false)
-            ->willReturn(false); // User aborts
 
         $response = $this->handler->handle();
 
@@ -2367,14 +2376,14 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -2385,7 +2394,7 @@ CHANGELOG;
             ]));
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('section')->willReturnCallback(function () use ($io) {
             return $io;
@@ -2427,8 +2436,8 @@ CHANGELOG;
         });
         $loggerWithConfirm->method('addWarning')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
-        $fileSystem = $this->createMock(FileSystem::class);
+        $loggerWithConfirm->expects($this->once())->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
+        $fileSystem = $this->createStub(FileSystem::class);
         $this->setupMigrationMocks($fileSystem);
         $fileSystem->method('filePutContents')->willReturnCallback(function ($path, $contents) {
             if (str_starts_with($path, '/tmp/')) {
@@ -2559,14 +2568,14 @@ CHANGELOG;
             'digest' => $wrongHash, // No "sha256:" prefix, but wrong hash
         ];
 
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('isQuiet')->willReturn(false);
         $io->method('isVeryVerbose')->willReturn(false);
         $io->method('isDebug')->willReturn(false);
 
         $prompt = $this->createMock(\App\Service\Logger::class);
-        $prompt->method('confirm')
+        $prompt->expects($this->once())->method('confirm')
             ->with($this->anything(), false)
             ->willReturn(false);
 
@@ -2613,8 +2622,8 @@ CHANGELOG;
 
     public function testCreateGithubGitHostingAdapterWithoutHttpClient(): void
     {
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -2637,8 +2646,8 @@ CHANGELOG;
 
     public function testCreateGithubGitHostingAdapterWithGitToken(): void
     {
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -2669,8 +2678,8 @@ CHANGELOG;
 
     public function testCreateGithubGitHostingAdapterWithGitTokenAndHttpClient(): void
     {
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -2736,7 +2745,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             null,
             $this->httpClient,
             $testConfigPath,
@@ -2796,7 +2805,7 @@ CHANGELOG;
         // Write invalid YAML to in-memory filesystem
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $logger->method('addSection')->willReturnCallback(function () {
         });
         $logger->method('addError')->willReturnCallback(function () {
@@ -2858,6 +2867,9 @@ CHANGELOG;
 
     public function testHandleWithPrerequisiteMigrationFailure(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $input = new ArrayInput([]);
         $output = new BufferedOutput();
         $io = new SymfonyStyle($input, $output);
@@ -2875,14 +2887,14 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('fake phar content');
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(404);
 
         $this->httpClient->expects($this->atLeast(2))
@@ -2913,7 +2925,7 @@ CHANGELOG;
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
 
         try {
-            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger = $this->createStub(\App\Service\Logger::class);
             $logger->method('addSection')->willReturnCallback(function () {
             });
             $logger->method('addText')->willReturnCallback(function () {
@@ -2990,7 +3002,7 @@ CHANGELOG;
             $this->assertTrue($inMemoryFileSystem->fileExists($tempFile));
 
             // Override downloadPhar to return our temp file path and verifyHash to return true
-            $updateFileService = $this->createMock(\App\Service\UpdateFileService::class);
+            $updateFileService = $this->createStub(\App\Service\UpdateFileService::class);
             $updateFileService->method('getBinaryPath')->willReturn($this->tempBinaryPath);
             $updateFileService->method('verifyHash')->willReturn(true);
 
@@ -3221,7 +3233,7 @@ CHANGELOG;
                 $this->translationService,
                 $this->changelogParser,
                 new UpdateFileService($this->translationService, $this->prompt),
-                $this->createMock(\App\Service\Logger::class),
+                $this->createStub(\App\Service\Logger::class),
                 $inMemoryFileSystem,
                 null,
                 $this->httpClient
@@ -3261,7 +3273,7 @@ CHANGELOG;
         // Write invalid YAML to trigger exception in parseFile
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         // In test environment, exceptions are gracefully handled without logging
         // So we don't expect error() to be called
 
@@ -3329,7 +3341,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -3344,7 +3356,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             null,
             $this->httpClient,
             $testConfigPath,
@@ -3403,7 +3415,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             null,
             $this->httpClient,
             $testConfigPath,
@@ -3465,7 +3477,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             null,
             $this->httpClient,
             $testConfigPath,
@@ -3509,7 +3521,7 @@ CHANGELOG;
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $migrationService = $this->createMock(GlobalMigrationService::class);
-        $migrationService->method('discoverPrerequisiteMigrations')
+        $migrationService->expects($this->once())->method('discoverPrerequisiteMigrations')
             ->with('0')
             ->willThrowException(new \RuntimeException('discovery failed'));
 
@@ -3566,7 +3578,7 @@ CHANGELOG;
     public function testDiscoverPrerequisiteMigrationsRethrowsOutsideTestEnvironment(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $migrationService = $this->createMock(GlobalMigrationService::class);
+        $migrationService = $this->createStub(GlobalMigrationService::class);
         $migrationService->method('discoverPrerequisiteMigrations')
             ->willThrowException(new \RuntimeException('discovery failed'));
         $detector = $this->createNonTestEnvironmentDetector();
@@ -3605,7 +3617,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -3621,7 +3633,7 @@ CHANGELOG;
     public function testGetErrorMessageWithTranslationSuccess(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator = $this->createStub(\App\Service\TranslationService::class);
 
         // Mock translator to return a translated message
         $translator->method('trans')
@@ -3659,7 +3671,7 @@ CHANGELOG;
     public function testGetErrorMessageWithTranslationReturnsKey(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator = $this->createStub(\App\Service\TranslationService::class);
 
         // Mock translator to return the key itself (simulating translation failure)
         $translator->method('trans')
@@ -3698,7 +3710,7 @@ CHANGELOG;
     public function testGetErrorMessageWithTranslationException(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator = $this->createStub(\App\Service\TranslationService::class);
 
         // Mock translator to throw exception when translating migration.error
         $translator->method('trans')
@@ -3751,14 +3763,14 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -3802,13 +3814,13 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             $fileSystem,
             null,
             $this->httpClient
         );
 
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('section')->willReturnSelf();
         $io->method('text')->willReturnSelf();
@@ -3817,9 +3829,6 @@ CHANGELOG;
         $io->method('writeln')->willReturnSelf();
         $io->method('newLine')->willReturnSelf();
         $io->method('success')->willReturnSelf();
-        $io->method('confirm')
-            ->with($this->anything(), false)
-            ->willReturn(false); // User aborts
 
         $response = $handler->handle();
 
@@ -3945,10 +3954,10 @@ CHANGELOG;
             '1.0.0',
             '/bin/stud',
             $this->translationService,
-            $this->createMock(ChangelogParser::class),
-            $this->createMock(\App\Service\UpdateFileService::class),
-            $this->createMock(\App\Service\Logger::class),
-            $this->createMock(\App\Service\FileSystem::class),
+            $this->createStub(ChangelogParser::class),
+            $this->createStub(\App\Service\UpdateFileService::class),
+            $this->createStub(\App\Service\Logger::class),
+            $this->createStub(\App\Service\FileSystem::class),
             testEnvironmentDetector: $this->createNonTestEnvironmentDetector(),
         );
 
@@ -3959,7 +3968,7 @@ CHANGELOG;
 
     public function testIsTestEnvironmentReturnsTrueWhenOnlyClassOrEnvDetectorReturnsTrue(): void
     {
-        $detector = $this->createMock(TestEnvironmentDetector::class);
+        $detector = $this->createStub(TestEnvironmentDetector::class);
         $detector->method('isTestEnvironmentByConstant')->willReturn(false);
         $detector->method('isTestEnvironmentByBacktrace')->willReturn(false);
         $detector->method('isTestEnvironmentByClassOrEnv')->willReturn(true);
@@ -3970,10 +3979,10 @@ CHANGELOG;
             '1.0.0',
             '/bin/stud',
             $this->translationService,
-            $this->createMock(ChangelogParser::class),
-            $this->createMock(\App\Service\UpdateFileService::class),
-            $this->createMock(\App\Service\Logger::class),
-            $this->createMock(\App\Service\FileSystem::class),
+            $this->createStub(ChangelogParser::class),
+            $this->createStub(\App\Service\UpdateFileService::class),
+            $this->createStub(\App\Service\Logger::class),
+            $this->createStub(\App\Service\FileSystem::class),
             testEnvironmentDetector: $detector,
         );
 
@@ -3982,13 +3991,33 @@ CHANGELOG;
         $this->assertTrue($result);
     }
 
-    private function createNonTestEnvironmentDetector(): TestEnvironmentDetector&MockObject
+    private function createNonTestEnvironmentDetector(): TestEnvironmentDetector&Stub
     {
-        $detector = $this->createMock(TestEnvironmentDetector::class);
+        $detector = $this->createStub(TestEnvironmentDetector::class);
         $detector->method('isTestEnvironmentByConstant')->willReturn(false);
         $detector->method('isTestEnvironmentByBacktrace')->willReturn(false);
         $detector->method('isTestEnvironmentByClassOrEnv')->willReturn(false);
 
         return $detector;
+    }
+
+    private function bindSubject(): void
+    {
+
+        $fileSystem = $this->createDefaultFileSystem();
+
+        $this->handler = UpdateHandlerTestKit::create(
+            'studapart', // repoOwner
+            'stud-cli',  // repoName
+            '1.0.0',     // currentVersion
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
+            $fileSystem, // FileSystem (position 9) - now mocked
+            null,        // gitToken
+            $this->httpClient
+        );
     }
 }

@@ -8,7 +8,7 @@ Path in this repository: **`.github/actions/stud-cli-setup`**.
 
 ### What it does
 
-1. Sets up **PHP 8.4+** with extensions **xml**, **curl**, and **mbstring** (`shivammathur/setup-php`).
+1. Sets up **PHP 8.5** by default with extensions **xml**, **curl**, and **mbstring**. stud-cli 5.x requires PHP 8.5 (8.5.12 or newer). stud-cli 4.x is the PHP 8.4 line.
 2. Downloads `setup-stud.sh` from **`Studapart/stud-cli`** at the Git ref you choose (`stud-install-ref`, default `develop`) and runs it with **`--force --skip-init`** so CI never blocks on interactive `stud init`.
 3. Writes **`~/.config/stud/config.yml`** (mode `600`) from action inputs. Optional Git tokens are only written when non-empty.
 4. Optionally writes **`.git/stud.config`** from the `project-stud-config` input (you must **`actions/checkout`** before this action when using project config).
@@ -50,7 +50,7 @@ Adjust the version to the tag you trust. Path-style actions are versioned with t
 | `run-config-validate` | no | Default `true`. |
 | `validate-skip-git` | no | Default **`true`** → skips Git provider connectivity check. Set `false` when you need GitHub/GitLab token validation. |
 | `project-stud-config` | no | Multiline content for `.git/stud.config`. |
-| `php-version` | no | Default `8.4`. |
+| `php-version` | no | Default `8.5`. |
 
 ### Provider-conditional validate
 

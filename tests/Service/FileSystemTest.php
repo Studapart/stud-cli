@@ -287,7 +287,7 @@ class FileSystemTest extends TestCase
         // The catch block at lines 169-170 is difficult to test because it requires
         // reflection operations to throw exceptions, which is hard to simulate.
         // The catch block is marked with @codeCoverageIgnore in FileSystem.php
-        $mockFilesystem = $this->createMock(FilesystemOperator::class);
+        $mockFilesystem = $this->createStub(FilesystemOperator::class);
         $fileSystem = new FileSystem($mockFilesystem);
 
         $result = $fileSystem->chmod('test.txt', 0755);
@@ -298,7 +298,7 @@ class FileSystemTest extends TestCase
     {
         // Test that chmod returns false when reflection throws an exception
         // This covers the catch block at line 164-165
-        $mockFilesystem = $this->createMock(FilesystemOperator::class);
+        $mockFilesystem = $this->createStub(FilesystemOperator::class);
 
         // Make the filesystem throw an exception when we try to access it
         $mockFilesystem->method('fileExists')->willThrowException(new \RuntimeException('Test exception'));

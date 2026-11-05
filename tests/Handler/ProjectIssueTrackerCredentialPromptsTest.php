@@ -46,7 +46,7 @@ class ProjectIssueTrackerCredentialPromptsTest extends TestCase
 
     public function testBlankAnswersDoNotWrite(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturnOnConsecutiveCalls(null, '   ');
         $prompt->method('askHidden')->willReturn(null);
 

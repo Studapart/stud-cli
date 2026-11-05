@@ -200,7 +200,7 @@ class JiraHtmlConverterTest extends TestCase
         \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that will throw an exception
-        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter = $this->createStub(\League\HTMLToMarkdown\HtmlConverter::class);
         $mockConverter->method('convert')
             ->willThrowException(new \Exception('Conversion failed'));
 
@@ -251,7 +251,7 @@ class JiraHtmlConverterTest extends TestCase
         \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that throws DOMDocument-related exception
-        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter = $this->createStub(\League\HTMLToMarkdown\HtmlConverter::class);
         $mockConverter->method('convert')
             ->willThrowException(new \Exception("Class 'DOMDocument' not found"));
 
@@ -277,7 +277,7 @@ class JiraHtmlConverterTest extends TestCase
         \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that throws a different exception
-        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter = $this->createStub(\League\HTMLToMarkdown\HtmlConverter::class);
         $mockConverter->method('convert')
             ->willThrowException(new \Exception('Some other error'));
 
@@ -310,7 +310,7 @@ class JiraHtmlConverterTest extends TestCase
         \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that throws DOMDocument-related exception
-        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter = $this->createStub(\League\HTMLToMarkdown\HtmlConverter::class);
         $mockConverter->method('convert')
             ->willThrowException(new \Exception("Class 'DOMDocument' not found"));
 
@@ -336,7 +336,7 @@ class JiraHtmlConverterTest extends TestCase
         \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that throws a different exception
-        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter = $this->createStub(\League\HTMLToMarkdown\HtmlConverter::class);
         $mockConverter->method('convert')
             ->willThrowException(new \Exception('Some other error'));
 
@@ -362,7 +362,7 @@ class JiraHtmlConverterTest extends TestCase
         \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that throws DOMDocument-related exception with different message format
-        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter = $this->createStub(\League\HTMLToMarkdown\HtmlConverter::class);
         $mockConverter->method('convert')
             ->willThrowException(new \Exception('DOMDocument error occurred'));
 

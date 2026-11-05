@@ -11,7 +11,7 @@ use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
 use App\Service\UpdateInstallContext;
 use App\Service\UpdateRepositoryContext;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -22,24 +22,20 @@ class PortableUpdateServiceTest extends TestCase
     private string $workspace;
     private string $portableRoot;
     private string $managedSymlink;
-    private HttpClientInterface&MockObject $httpClient;
-    private PromptInterface&MockObject $prompt;
-    private TranslationService&MockObject $translator;
+    private HttpClientInterface $httpClient;
+    private PromptInterface $prompt;
+    private TranslationService&Stub $translator;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $this->workspace = dirname(__DIR__, 2) . '/.cursor/tmp/portable-update-test-' . bin2hex(random_bytes(4));
-        $this->portableRoot = $this->workspace . '/stud-portable';
-        $this->managedSymlink = $this->workspace . '/home/.local/bin/stud';
-        mkdir(dirname($this->managedSymlink), 0777, true);
-        $this->httpClient = $this->createMock(HttpClientInterface::class);
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->httpClient = $this->createStub(HttpClientInterface::class);
+        $this->prompt = $this->createStub(PromptInterface::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(
             fn (string $key, array $parameters = []): string => strtr($key, array_map('strval', $parameters))
         );
+        $this->bindSubject();
     }
 
     protected function tearDown(): void
@@ -51,6 +47,9 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testSuccessfulQuietUpdateSwitchesSymlinkAndKeepsPreviousVersion(): void
     {
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $context = $this->createInstalledPortableContext();
         $archive = $this->createPortableArchive('1.0.1', true);
         $checksums = hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n";
@@ -92,6 +91,9 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testInteractiveCleanupRemovesNonRunningVersionsImmediatelyAndDefersRunningBundle(): void
     {
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $context = $this->createInstalledPortableContext();
         $extraOld = $this->portableRoot . '/linux-amd64/0.9.0';
         mkdir($extraOld . '/app', 0777, true);
@@ -112,6 +114,9 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testInteractiveCleanupDoesNotDestroyRunningBundleBeforeReturn(): void
     {
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $context = $this->createInstalledPortableContext();
         $runningPhar = $context->bundleRoot . '/app/stud.phar';
         $archive = $this->createPortableArchive('1.0.1', true);
@@ -128,6 +133,9 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testImmediateCleanupFailureEmitsWarningWithoutFailingUpdate(): void
     {
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $context = $this->createInstalledPortableContext();
         $extraOld = $this->portableRoot . '/linux-amd64/0.9.0';
         mkdir($extraOld . '/app', 0777, true);
@@ -173,6 +181,9 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testDeferredScheduleFailureEmitsWarningWithoutFailingUpdate(): void
     {
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $context = $this->createInstalledPortableContext();
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
@@ -202,6 +213,9 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testMissingProcessIdEmitsScheduleFailureWarning(): void
     {
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $context = $this->createInstalledPortableContext();
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
@@ -230,6 +244,9 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testSuccessfulDeferredScheduleEmitsNote(): void
     {
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $context = $this->createInstalledPortableContext();
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
@@ -404,6 +421,9 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testAssetWithoutIdIsReportedAsFailure(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $context = $this->createInstalledPortableContext();
         $release = [
             'tag_name' => 'v1.0.1',
@@ -582,9 +602,10 @@ class PortableUpdateServiceTest extends TestCase
 
     protected function mockDownloads(string $archiveContent, string $checksumsContent): void
     {
-        $archiveResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $archiveResponse = $this->createStub(ResponseInterface::class);
         $archiveResponse->method('getContent')->willReturn($archiveContent);
-        $checksumsResponse = $this->createMock(ResponseInterface::class);
+        $checksumsResponse = $this->createStub(ResponseInterface::class);
         $checksumsResponse->method('getContent')->willReturn($checksumsContent);
         $this->httpClient->expects(self::exactly(2))
             ->method('request')
@@ -635,5 +656,14 @@ class PortableUpdateServiceTest extends TestCase
         }
 
         rmdir($path);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $this->workspace = dirname(__DIR__, 2) . '/.cursor/tmp/portable-update-test-' . bin2hex(random_bytes(4));
+        $this->portableRoot = $this->workspace . '/stud-portable';
+        $this->managedSymlink = $this->workspace . '/home/.local/bin/stud';
+        mkdir(dirname($this->managedSymlink), 0777, true);
     }
 }

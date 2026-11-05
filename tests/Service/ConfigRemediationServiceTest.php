@@ -9,29 +9,31 @@ use App\Service\ConfigRemediationService;
 use App\Service\GitBranchService;
 use App\Service\Logger;
 use App\Service\TranslationService;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class ConfigRemediationServiceTest extends TestCase
 {
     private ConfigRemediationService $service;
-    private Logger&MockObject $logger;
-    private TranslationService&MockObject $translator;
-    private GitBranchService&MockObject $gitBranchService;
+    private Logger $logger;
+    private TranslationService&\PHPUnit\Framework\MockObject\Stub $translator;
+    private GitBranchService $gitBranchService;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->logger = $this->createMock(Logger::class);
-        $this->translator = $this->createMock(TranslationService::class);
-        $this->gitBranchService = $this->createMock(GitBranchService::class);
-        $this->service = new ConfigRemediationService($this->logger, $this->translator, $this->gitBranchService);
+        $this->logger = $this->createStub(Logger::class);
+        $this->translator = $this->createStub(TranslationService::class);
+        $this->gitBranchService = $this->createStub(GitBranchService::class);
+        $this->bindSubject();
     }
 
     public function testAutoDetectBaseBranch(): void
     {
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['develop', 'main', 'feature/test']);
 
@@ -42,7 +44,10 @@ class ConfigRemediationServiceTest extends TestCase
 
     public function testAutoDetectBaseBranchReturnsNullWhenNotFound(): void
     {
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['feature/test', 'bugfix/fix']);
 
@@ -69,7 +74,11 @@ class ConfigRemediationServiceTest extends TestCase
 
     public function testPromptForMissingKeysWithAutoDetection(): void
     {
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->logger = $this->createMock(Logger::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['develop']);
 
@@ -83,7 +92,11 @@ class ConfigRemediationServiceTest extends TestCase
 
     public function testPromptForMissingKeysWithoutAutoDetection(): void
     {
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->logger = $this->createMock(Logger::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn([]);
 
@@ -100,6 +113,9 @@ class ConfigRemediationServiceTest extends TestCase
 
     public function testPromptForIssueTrackerProviderUsesChoice(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $prompt = $this->createMock(\App\Service\Prompt\PromptInterface::class);
         $prompt->expects($this->once())
             ->method('choice')
@@ -114,6 +130,9 @@ class ConfigRemediationServiceTest extends TestCase
 
     public function testPromptForIssueTrackerProviderWithoutChoiceUsesAsk(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $this->logger->expects($this->once())
             ->method('ask')
             ->willReturn(IssueTrackerProvider::Linear->value);
@@ -125,6 +144,9 @@ class ConfigRemediationServiceTest extends TestCase
 
     public function testPromptForMissingKeysWithEmptyValue(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $this->logger->expects($this->once())
             ->method('ask')
             ->willReturn('');
@@ -136,12 +158,20 @@ class ConfigRemediationServiceTest extends TestCase
 
     public function testAutoDetectBaseBranchHandlesException(): void
     {
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willThrowException(new \RuntimeException('Git error'));
 
         $result = $this->service->autoDetectKey('baseBranch');
 
         $this->assertNull($result);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->service = new ConfigRemediationService($this->logger, $this->translator, $this->gitBranchService);
     }
 }

@@ -14,27 +14,29 @@ use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\JiraApiClient;
 use App\Service\JiraAttachmentService;
 use App\Service\JiraIssueTrackerAdapter;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class JiraIssueTrackerAdapterTest extends TestCase
 {
-    private JiraApiClient&MockObject $jiraApiClient;
+    private JiraApiClient $jiraApiClient;
 
-    private JiraAttachmentService&MockObject $attachmentService;
+    private JiraAttachmentService $attachmentService;
 
     private JiraIssueTrackerAdapter $provider;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
-        $this->attachmentService = $this->createMock(JiraAttachmentService::class);
-        $this->provider = new JiraIssueTrackerAdapter($this->jiraApiClient, $this->attachmentService);
+        $this->jiraApiClient = $this->createStub(JiraApiClient::class);
+        $this->attachmentService = $this->createStub(JiraAttachmentService::class);
+        $this->bindSubject();
     }
 
     public function testGetIssueDelegatesToJiraApiClient(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $workItem = new WorkItem('10001', 'SCI-1', 'Title', 'Open', 'User', 'Desc', [], 'Task');
         $this->jiraApiClient->expects($this->once())
             ->method('getIssue')
@@ -46,6 +48,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testSearchDelegatesToJiraApiClient(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $issues = [new WorkItem('10001', 'SCI-1', 'Title', 'Open', 'User', 'Desc', [], 'Task')];
         $this->jiraApiClient->expects($this->once())
             ->method('searchIssues')
@@ -57,6 +62,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testListAssignedActiveBuildsJqlWithoutProject(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $issues = [];
         $this->jiraApiClient->expects($this->once())
             ->method('searchIssues')
@@ -68,6 +76,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testListAssignedActiveBuildsJqlWithProject(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $issues = [];
         $this->jiraApiClient->expects($this->once())
             ->method('searchIssues')
@@ -79,6 +90,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testListAssignedActiveWithoutOnlyMineOmitsAssigneeClause(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $issues = [];
         $this->jiraApiClient->expects($this->once())
             ->method('searchIssues')
@@ -90,6 +104,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testCreateDelegatesToJiraApiClient(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $studFields = [
             'project' => ['key' => 'SCI'],
             'title' => 'New issue',
@@ -111,6 +128,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testUpdateDelegatesToJiraApiClient(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $studFields = ['title' => 'Updated'];
         $jiraFields = ['summary' => 'Updated'];
         $this->jiraApiClient->expects($this->once())
@@ -123,6 +143,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testGetCreateMetaFieldsDelegatesToJiraApiClient(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $meta = ['summary' => ['required' => true, 'name' => 'Summary']];
         $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
@@ -134,6 +157,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testGetEditMetaFieldsDelegatesToJiraApiClient(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $meta = ['summary' => ['required' => false, 'name' => 'Summary']];
         $this->jiraApiClient->expects($this->once())
             ->method('getEditMetaFields')
@@ -145,6 +171,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testFormatDescriptionDelegatesToJiraApiClient(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $adf = ['type' => 'doc', 'version' => 1, 'content' => []];
         $this->jiraApiClient->expects($this->once())
             ->method('descriptionToAdf')
@@ -156,6 +185,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testListProjectStateChangesMapsTransitions(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProjectTransitions')
             ->with('SCI')
@@ -174,6 +206,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testListItemStateChangesMapsTransitions(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getTransitions')
             ->with('SCI-1')
@@ -189,6 +224,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testApplyStateChangeDelegatesToJiraApiClient(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('transitionIssue')
             ->with('SCI-1', 21);
@@ -199,6 +237,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testAssignUsesCurrentUserWhenUserIsNull(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('assignIssue')
             ->with('SCI-1', 'currentUser()');
@@ -209,6 +250,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testAssignDelegatesExplicitUser(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('assignIssue')
             ->with('SCI-1', 'account-123');
@@ -219,6 +263,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testListTeamsDelegatesToGetProjects(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $projects = [new Project('SCI', 'Stud CLI')];
         $this->jiraApiClient->expects($this->once())
             ->method('getProjects')
@@ -229,6 +276,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testListFiltersOrViewsDelegatesToGetFilters(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $filters = [new Filter('My filter', 'assignee = currentUser()')];
         $this->jiraApiClient->expects($this->once())
             ->method('getFilters')
@@ -239,6 +289,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testRunFilterOrViewBuildsJqlAndSearches(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $issues = [new WorkItem('10001', 'SCI-1', 'Title', 'Open', 'User', 'Desc', [], 'Task')];
         $this->jiraApiClient->expects($this->once())
             ->method('searchIssues')
@@ -255,6 +308,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testPingDelegatesToGetProjects(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $this->jiraApiClient->expects($this->once())
             ->method('getProjects')
             ->willReturn([]);
@@ -265,6 +321,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testListAttachmentsReturnsIssueAttachments(): void
     {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
         $attachments = [
             new IssueAttachment('1', 'spec.md', 100, 'https://jira.example.com/content/1'),
         ];
@@ -289,6 +348,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testUploadAttachmentDelegatesToAttachmentService(): void
     {
+        $this->attachmentService = $this->createMock(JiraAttachmentService::class);
+        $this->bindSubject();
+
         $this->attachmentService->expects($this->once())
             ->method('uploadFileToIssue')
             ->with('SCI-1', '/tmp/spec.md');
@@ -299,6 +361,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testDownloadAttachmentWritesContentToDestination(): void
     {
+        $this->attachmentService = $this->createMock(JiraAttachmentService::class);
+        $this->bindSubject();
+
         $dest = sys_get_temp_dir() . '/jira-work-item-provider-' . uniqid('', true) . '.bin';
         $this->attachmentService->expects($this->once())
             ->method('downloadAttachmentContent')
@@ -317,6 +382,9 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testDownloadAttachmentThrowsWhenWriteFails(): void
     {
+        $this->attachmentService = $this->createMock(JiraAttachmentService::class);
+        $this->bindSubject();
+
         $this->attachmentService->expects($this->once())
             ->method('downloadAttachmentContent')
             ->willReturn('payload');
@@ -325,5 +393,10 @@ class JiraIssueTrackerAdapterTest extends TestCase
         $this->expectExceptionMessage('Could not write attachment to destination path.');
 
         $this->provider->downloadAttachment('https://jira.example.com/content/1', '/dev/null/impossible/path.bin');
+    }
+
+    private function bindSubject(): void
+    {
+        $this->provider = new JiraIssueTrackerAdapter($this->jiraApiClient, $this->attachmentService);
     }
 }
