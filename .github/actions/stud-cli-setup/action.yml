@@ -91,6 +91,8 @@ runs:
   steps:
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
+      env:
+        update: true
       with:
         php-version: ${{ inputs.php-version }}
         extensions: xml, curl, mbstring

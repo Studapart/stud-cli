@@ -26,9 +26,14 @@ jobs:
 
       - name: Setup PHP with tools
         uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
+        env:
+          update: true
         with:
           php-version: '8.5'
           tools: box
+
+      - name: Require PHP 8.5.12 or newer
+        run: php scripts/check-php-floor.php
 
       - name: Get app name and version
         id: version
@@ -67,10 +72,8 @@ jobs:
         include:
           - platform: linux-amd64
             runner: ubuntu-latest
-            runtime-url: https://dl.static-php.dev/static-php-cli/gnu-bulk/php-8.4.23-cli-linux-x86_64.tar.gz
           - platform: darwin-arm64
             runner: macos-14
-            runtime-url: https://dl.static-php.dev/static-php-cli/common/php-8.4.23-cli-macos-aarch64.tar.gz
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
@@ -86,8 +89,8 @@ jobs:
           mkdir -p dist/runtime dist/portable dist/artifacts
           RUNTIME_PATH=$(scripts/download-portable-runtime \
             --platform "${{ matrix.platform }}" \
-            --url "${{ matrix.runtime-url }}" \
             --output "dist/runtime/${{ matrix.platform }}")
+          "$RUNTIME_PATH" scripts/check-php-floor.php
           PORTABLE_NAME="stud-portable-${{ needs.build-phar.outputs.app-version }}-${{ matrix.platform }}"
           scripts/build-portable \
             --platform "${{ matrix.platform }}" \
