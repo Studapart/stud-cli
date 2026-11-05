@@ -63,7 +63,7 @@ final class WorkflowRecorderTest extends TestCase
 
     public function testAbsorbsWorkflowOutputEntriesAndMessages(): void
     {
-        $output = new WorkflowOutput($this->createMock(PromptInterface::class));
+        $output = new WorkflowOutput($this->createStub(PromptInterface::class));
         $output->addText(WorkflowOutput::VERBOSITY_NORMAL, 'progress');
         $output->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('error.key'));
         $output->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('warning.key'));
@@ -79,7 +79,7 @@ final class WorkflowRecorderTest extends TestCase
 
     public function testAbsorbMergesWorkflowOutputSnapshot(): void
     {
-        $output = $this->createMock(WorkflowOutput::class);
+        $output = $this->createStub(WorkflowOutput::class);
         $output->method('getEntries')->willReturn([
             new \App\DTO\WorkflowOutputEntry('text', WorkflowRecorder::VERBOSITY_NORMAL, 'absorbed'),
         ]);

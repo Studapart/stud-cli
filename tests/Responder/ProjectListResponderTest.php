@@ -13,21 +13,22 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ProjectListResponderTest extends CommandTestCase
 {
-    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+    private SymfonyStyle $io;
 
     private ProjectListResponder $responder;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService);
-        $this->io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new ProjectListResponder($helper, $this->createLogger($this->io));
+        $this->io = $this->createStub(SymfonyStyle::class);
+        $this->bindSubject();
     }
 
     public function testRespondReturnsZeroOnEmptyProjects(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $response = ProjectListResponse::success([]);
 
         $this->io->expects($this->once())
@@ -42,6 +43,9 @@ class ProjectListResponderTest extends CommandTestCase
 
     public function testRespondRendersTableOnSuccess(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $project = new Project('PROJ', 'My Project');
         $response = ProjectListResponse::success([$project]);
 
@@ -57,6 +61,9 @@ class ProjectListResponderTest extends CommandTestCase
 
     public function testRespondWithColorHelperRegistersStyles(): void
     {
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->bindSubject();
+
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $responder = new ProjectListResponder($helper, $this->createLogger($this->io));
@@ -105,5 +112,12 @@ class ProjectListResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, OutputFormat::Cli);
 
         $this->assertNull($result);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new ProjectListResponder($helper, $this->createLogger($this->io));
     }
 }

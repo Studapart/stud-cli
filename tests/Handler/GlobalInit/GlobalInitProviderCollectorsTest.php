@@ -57,7 +57,7 @@ class GlobalInitProviderCollectorsTest extends TestCase
             $prompt,
         );
 
-        $recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $recorder = $this->createStub(WorkflowEntryRecorder::class);
         $context = new GlobalInitPromptContext(
             [],
             ['githubToken' => 'gh-agent-token'],
@@ -87,7 +87,7 @@ class GlobalInitProviderCollectorsTest extends TestCase
             $prompt,
         );
 
-        $recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $recorder = $this->createStub(WorkflowEntryRecorder::class);
         $context = new GlobalInitPromptContext(
             ['GITHUB_TOKEN' => 'keep-github'],
             [],

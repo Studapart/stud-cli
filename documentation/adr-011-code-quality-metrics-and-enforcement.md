@@ -57,7 +57,7 @@
 We chose comprehensive metrics because:
 1. **Objective Standards:** Clear, measurable thresholds prevent subjective discussions
 2. **Technical Debt Prevention:** Catches complexity issues before they accumulate
-3. **Automated Enforcement:** PHPStan and PHP-CS-Fixer enforce standards automatically
+3. **Automated Enforcement:** PHPMD, the CRAP check, PHPStan, and PHP-CS-Fixer enforce standards automatically
 4. **Team Alignment:** Everyone follows same standards, consistent codebase
 5. **Maintainability:** Enforces patterns that support maintainable code
 6. **SOLID Support:** Metrics align with SOLID principles (SRP, OCP)
@@ -77,13 +77,13 @@ The metrics cover:
 | **Team Alignment** | *(+) Clear standards, no subjective discussions* |
 | **Refactoring Safety** | *(+) Lower complexity = safer refactoring* |
 | **Development Speed** | *(-) May require refactoring before feature completion* |
-| **Tooling Setup** | *(-) Requires PHPStan, PHP-CS-Fixer configuration* |
+| **Tooling Setup** | *(-) Requires PHPMD, PHPStan, and PHP-CS-Fixer configuration* |
 | **Learning Curve** | *(-) Developers must understand metrics* |
 
 ## 6. Implementation Plan
 
 * [x] Define Project Quality Metric Blueprint in `CONVENTIONS.md`
-* [x] Configure PHPStan for complexity detection
+* [x] Configure PHPMD for complexity and size detection
 * [x] Configure PHP-CS-Fixer for code style enforcement
 * [x] Document all metric thresholds
 * [x] Create examples of good vs. bad code
@@ -99,15 +99,15 @@ The metrics cover:
 
 | Focus Area | Metric | Threshold | Enforcement |
 |------------|--------|-----------|-------------|
-| **COMPLEXITY** | Cyclomatic Complexity (CC) | Maximum 10 per method | PHPStan, Code Review |
-| | CRAP Index | Maximum 10 per class/method | PHPStan, Code Review |
-| | NPath Complexity | Maximum 200 | Static Analysis |
+| **COMPLEXITY** | Cyclomatic Complexity (CC) | Maximum 10 per method | PHPMD |
+| | CRAP Index | Maximum 10 per class/method | Clover check |
+| | NPath Complexity | Maximum 200 | PHPMD |
 | | Nesting Depth | Maximum 3 | Code Review |
-| **COHESION** | LCOM4 (Lack of Cohesion) | Maximum 2 | Static Analysis |
-| **SIZE** | Class Size (Lines) | Maximum 400 lines of code | Code Review |
-| | Method Size (Lines) | Maximum 40 lines of code | Code Review |
-| **SIGNATURES** | Class Properties | Maximum 10 properties | Code Review |
-| | Method Arguments | Maximum 4 arguments | Code Review |
+| **COHESION** | LCOM4 (Lack of Cohesion) | Maximum 2 | Code Review |
+| **SIZE** | Class Size (Lines) | Maximum 400 lines of code | PHPMD |
+| | Method Size (Lines) | Maximum 40 lines of code | PHPMD |
+| **SIGNATURES** | Class Properties | Maximum 10 properties | PHPMD |
+| | Method Arguments | Maximum 4 arguments | PHPMD |
 
 **Enforcement Tools:**
 
@@ -119,14 +119,21 @@ The metrics cover:
 2. **PHPStan:**
    - Static analysis (Level 7+)
    - Type checking
-   - Complexity detection
    - Configuration: `phpstan.neon.dist`
+   - Does not enforce cyclomatic complexity, CRAP, NPath, or size
 
-3. **Code Review:**
-   - Manual review for metrics not caught by tools
-   - Size metrics (lines of code)
+3. **PHPMD:**
+   - Cyclomatic complexity, NPath, method length, class length, argument count, and property count
+   - Configuration: `phpmd.xml`
+   - Existing violations: `phpmd.baseline.xml`
+
+4. **CRAP:**
+   - `scripts/check-crap.php` reads the Clover report from the same PHPUnit run
+
+5. **Code Review:**
    - Nesting depth
-   - Method arguments count
+   - LCOM4
+   - Promoted readonly DTO, Response, and Value Object constructors stay exempt from the 4-argument limit
 
 **Refactoring Strategies:**
 
@@ -190,4 +197,4 @@ protected function transformData(array $data): array
 
 ### Pro-Tip for Symfony 8.1 ADRs
 
-This decision follows **Quality Gates** and **Continuous Integration** principles. While Symfony 8.1 favors **Attributes over Configuration**, code quality metrics are enforced through **Static Analysis Tools** (PHPStan) and **Code Style Tools** (PHP-CS-Fixer), which align with Symfony 8.1's emphasis on **Tooling and Automation**. The metrics support **SOLID Principles** by enforcing complexity limits that naturally lead to better design.
+This decision follows **Quality Gates** and **Continuous Integration** principles. While Symfony 8.1 favors **Attributes over Configuration**, code quality metrics are enforced through **PHPMD**, the **CRAP check**, **PHPStan**, and **PHP-CS-Fixer**, which align with Symfony 8.1's emphasis on **Tooling and Automation**. The metrics support **SOLID Principles** by enforcing complexity limits that naturally lead to better design.

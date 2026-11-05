@@ -193,32 +193,28 @@ class InitHandlerPromptResolutionTest extends TestCase
 
     public function testPromptRequiredAgentStringFallsBackToStoredWhenInputEmpty(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
-        $helper = $this->createInputHelper($prompt);
+        $helper = $this->createInputHelper($this->createStub(PromptInterface::class));
         $result = $helper->promptRequiredAgentString([], 'jiraUrl', 'https://stored.example.com', static fn (string $s): string => $s);
         $this->assertSame('https://stored.example.com', $result);
     }
 
     public function testPromptRequiredAgentStringRejectsKeyAsValueAndUsesStored(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
-        $helper = $this->createInputHelper($prompt);
+        $helper = $this->createInputHelper($this->createStub(PromptInterface::class));
         $result = $helper->promptRequiredAgentString(['jiraUrl' => 'jiraUrl'], 'jiraUrl', 'stored', static fn (string $s): string => $s);
         $this->assertSame('stored', $result);
     }
 
     public function testPromptRequiredAgentStringReturnsEmptyWhenNoStoredValue(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
-        $helper = $this->createInputHelper($prompt);
+        $helper = $this->createInputHelper($this->createStub(PromptInterface::class));
         $result = $helper->promptRequiredAgentString(['jiraUrl' => ''], 'jiraUrl', null, static fn (string $s): string => $s);
         $this->assertSame('', $result);
     }
 
     public function testPromptRequiredAgentStringReturnsEmptyWhenKeyEchoedWithNoStored(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
-        $helper = $this->createInputHelper($prompt);
+        $helper = $this->createInputHelper($this->createStub(PromptInterface::class));
         $result = $helper->promptRequiredAgentString(['jiraUrl' => 'jiraUrl'], 'jiraUrl', null, static fn (string $s): string => $s);
         $this->assertSame('', $result);
     }

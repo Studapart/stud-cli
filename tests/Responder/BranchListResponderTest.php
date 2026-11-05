@@ -24,8 +24,7 @@ class BranchListResponderTest extends CommandTestCase
     {
         parent::setUp();
         $helper = new ResponderHelper($this->translationService, null);
-        $io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new BranchListResponder($helper, $this->createLogger($io));
+        $this->responder = new BranchListResponder($helper, $this->createLogger($this->createStub(SymfonyStyle::class)));
     }
 
     public function testRespondShowsMessageWhenNoBranches(): void
@@ -109,7 +108,7 @@ class BranchListResponderTest extends CommandTestCase
     {
         $row = new BranchListRow('feat/test', 'table.key', 'help.title', 'origin/feat/test', '');
         $response = BranchListResponse::success([$row]);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $translator = new TranslationService('vi', __DIR__ . '/../../src/resources/translations');
         $responder = new BranchListResponder(new ResponderHelper($translator, null), $this->createLogger($io));
 
@@ -126,7 +125,7 @@ class BranchListResponderTest extends CommandTestCase
     public function testRespondCliReturnsNull(): void
     {
         $response = BranchListResponse::success([]);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, OutputFormat::Cli);
 

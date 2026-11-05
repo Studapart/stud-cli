@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -92,6 +93,8 @@ config:
     section_title: "Konfigurasie-validering"
     label_jira: "Jira"
     label_git_provider: "Git-verskaffer"
+    label_github: "GitHub"
+    label_gitlab: "GitLab"
     label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Misluk"
@@ -106,6 +109,15 @@ config:
     error_git_ping: "Git provider connection failed: %error%"
     error_linear_not_configured: "Linear is not configured."
     error_linear_ping: "Linear connection failed: %error%"
+    notice_jira_non_blocking: "Jira connectivity check failed (non-blocking for this project)."
+    notice_linear_non_blocking: "Linear connectivity check failed (non-blocking for this project)."
+    error_readiness_failed: "Configuration validation failed for this repository or environment."
+    label_global_rollup: "Global readiness"
+    label_project_rollup: "Project readiness"
+    rollup_ok: "OK"
+    rollup_partial: "Partial"
+    rollup_fail: "Fail"
+    rollup_not_applicable: "N/A"
   project_init:
     section_title: "Projekkonfigurasie"
     not_git_repository: "Nie binne 'n Git-repository nie. Voer hierdie opdrag uit vanuit 'n repository-checkout."
@@ -134,6 +146,10 @@ config:
     prompt_github_token: "GitHub-token vir hierdie repository (versteek)"
     prompt_gitlab_token_hint: "GitLab-token: laat leeg om oor te slaan; tik '.' om die bestaande token te hou."
     prompt_gitlab_token: "GitLab-token vir hierdie repository (versteek)"
+    prompt_jira_url: "Jira URL for this repository (optional)"
+    prompt_jira_email: "Jira email for this repository (optional)"
+    prompt_jira_api_token: "Jira API token for this repository (hidden, optional)"
+    prompt_linear_api_key: "Linear API key for this repository (hidden, optional)"
     prompt_issue_tracker_provider: "Work-item-verskaffer vir hierdie repository (wanneer globale config beide Jira en Linear ondersteun)"
     prompt_linear_team_key: "Linear span sleutel (opsioneel; verstek na Jira projeksleutel wanneer gedeel)"
     prompt_linear_start_state_id: "Linear workflow status-id vir items:start (opsioneel)"
@@ -344,11 +360,15 @@ item:
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    error_create_retry: "Could not create issue: %error% Deferred fields: %fields%."
     linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
     linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
     linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: Created issue %key% - %url%
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
+    note_deferred_fields: "Created the issue first, then applied these fields: %fields%."
+    note_update_warnings: "These fields could not be applied after create: %fields%."
+    error_required_on_create_screen: "Required field cannot be set on the create screen: %fields%."
     skipped_field_labels: "labels"
     skipped_field_original_estimate: "time original estimate"
   update:
@@ -374,6 +394,7 @@ item:
     section: Kry Jira Items
     error_fetch: 'Kon nie items kry nie: %error%'
     no_items: Geen items gevind wat by jou kriteria pas nie.
+    jql_query: "JQL Navraag: %jql%"
     error_invalid_sort: 'Ongeldige sorteerwaarde ''%value%''. Toegestane waardes: Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Linear is gekies maar LINEAR_API_KEY is nie gekonfigureer nie. Voer "stud config:init" uit of stel LINEAR_API_KEY in ~/.config/stud/config.yml.'
@@ -456,6 +477,10 @@ push:
   confirm_please: "Normale stoot het misluk. Voer nou 'stud please' (force-with-lease) uit?"
   confirm_flatten_publish: "Geskiedenis is herskryf. Publiseer dit met 'n veilige force-push?"
   note_uncommitted_left: "Jy het ongecommitte veranderinge. Die push het commits gebruik wat reeds op hierdie tak is; ongecommitte lêers is nie ingesluit nie."
+  commit_created: "Commit geskep"
+  commit_failed: "Commit het misluk"
+  please_completed: "Force push voltooi"
+  please_failed: "Force push het misluk"
 commit_undo:
   error_not_repo: Nie in 'n git repository nie.
   error_no_commit: Daar is geen commit om ongedaan te maak nie.
@@ -506,6 +531,9 @@ submit:
 
     Terugval na ''n eenvoudige skakel.'
   warning_issue_fetch: "Kon nie work item besonderhede kry vir PR liggaam nie: %error%\nVal terug op 'n eenvoudige skakel."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Skep Pull Request...
   success_created: '✅ Pull Request geskep: %url%'
   warning_no_provider: Geen Git verskaffer gekonfigureer vir hierdie projek nie.

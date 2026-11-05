@@ -9,27 +9,30 @@ use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\LinearApiClient;
 use App\Service\LinearIssueTrackerAdapter;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class LinearIssueTrackerAdapterTest extends TestCase
 {
-    private LinearApiClient&MockObject $linearApiClient;
+    private LinearApiClient $linearApiClient;
 
-    private GitRepository&MockObject $gitRepository;
+    private GitRepository $gitRepository;
 
     private LinearIssueTrackerAdapter $adapter;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->linearApiClient = $this->createMock(LinearApiClient::class);
-        $this->gitRepository = $this->createMock(GitRepository::class);
-        $this->adapter = new LinearIssueTrackerAdapter($this->linearApiClient, gitRepository: $this->gitRepository);
+        $this->linearApiClient = $this->createStub(LinearApiClient::class);
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->bindSubject();
     }
 
     public function testCreateDelegatesToLinearApiClient(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn(['linearTypeLabelGroupId' => 'group-1']);
@@ -75,6 +78,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testUpdateDelegatesToLinearApiClient(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('resolveIssueId')
             ->with('SCI-42')
@@ -132,6 +138,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testCreateWithoutGitRepositoryUsesNullTypeGroup(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $adapter = new LinearIssueTrackerAdapter($this->linearApiClient);
         $this->linearApiClient->expects($this->once())->method('resolveTeamId')->willReturn('team-uuid');
         $this->linearApiClient->expects($this->exactly(2))->method('resolveLabelIds')->willReturnOnConsecutiveCalls([], []);
@@ -151,6 +160,10 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testUpdatePassesTypeGroupFromProjectConfig(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn(['linearTypeLabelGroupId' => 'type-group']);
@@ -170,6 +183,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testListProjectStateChangesDelegatesToLinearApiClient(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('getTeamWorkflowStates')
             ->with('SCI')
@@ -185,6 +201,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testListItemStateChangesResolvesTeamAndMapsWorkflowStates(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('resolveTeamKeyFromIssue')
             ->with('SCI-123')
@@ -204,6 +223,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testApplyStateChangeDelegatesIssueUpdateWithStateId(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('resolveIssueId')
             ->with('SCI-123')
@@ -217,6 +239,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testListLabelGroupsDelegatesToLinearApiClient(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $groups = [['id' => 'g1', 'name' => 'Type', 'labels' => []]];
         $this->linearApiClient->expects($this->once())
             ->method('getTeamLabelGroups')
@@ -228,6 +253,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testGetIssueMapsWorkItemFromLinearApiClient(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('readProjectConfig')->willReturn(['linearTypeLabelGroupId' => 'type-group']);
         $this->linearApiClient->expects($this->once())
             ->method('getIssue')
@@ -251,6 +279,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testListAssignedActiveMapsIssues(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('listAssignedActiveIssues')
             ->with('ENG', true)
@@ -273,6 +304,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testListTeamsMapsProjects(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('listTeams')
             ->willReturn([['key' => 'ENG', 'name' => 'Engineering']]);
@@ -285,12 +319,18 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testPingDelegatesToLinearApiClient(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())->method('ping');
         $this->adapter->ping();
     }
 
     public function testAssignDelegatesToLinearApiClient(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('assignIssue')
             ->with('SCI-1', null);
@@ -300,6 +340,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testAssignPassesExplicitUserId(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('assignIssue')
             ->with('SCI-1', 'user-uuid-2');
@@ -309,6 +352,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testSearchMapsGraphqlNodesToWorkItems(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('searchIssues')
             ->with('login bug')
@@ -334,6 +380,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testListFiltersOrViewsMapsCustomViewsToFilterDtos(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('listCustomViews')
             ->willReturn([
@@ -362,6 +411,10 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testRunFilterOrViewMapsFilterDataResultsToWorkItems(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $filterData = [
             'labels' => ['some' => ['name' => ['eq' => 'Bug']]],
         ];
@@ -402,6 +455,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testRunFilterOrViewThrowsWhenViewNotFound(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('resolveCustomViewByName')
             ->with('Missing View')
@@ -415,6 +471,9 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testListAttachmentsReturnsMappedAttachments(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->linearApiClient->expects($this->once())
             ->method('getIssue')
             ->with('SCI-1')
@@ -470,7 +529,7 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
     public function testDownloadAttachmentThrowsWhenWriteFails(): void
     {
-        $attachmentService = $this->createMock(\App\Service\LinearAttachmentService::class);
+        $attachmentService = $this->createStub(\App\Service\LinearAttachmentService::class);
         $attachmentService->method('downloadAttachmentContent')->willReturn('payload');
 
         $adapter = new LinearIssueTrackerAdapter(
@@ -503,5 +562,10 @@ class LinearIssueTrackerAdapterTest extends TestCase
         } finally {
             unlink($tmp);
         }
+    }
+
+    private function bindSubject(): void
+    {
+        $this->adapter = new LinearIssueTrackerAdapter($this->linearApiClient, gitRepository: $this->gitRepository);
     }
 }

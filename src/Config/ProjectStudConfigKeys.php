@@ -53,6 +53,10 @@ final class ProjectStudConfigKeys
             self::LINEAR_TYPE_BRANCH_PREFIXES,
             self::WORK_ITEM_LABELS,
             self::PULL_REQUEST_LABELS,
+            GlobalStudConfigKeys::JIRA_URL,
+            GlobalStudConfigKeys::JIRA_EMAIL,
+            GlobalStudConfigKeys::JIRA_API_TOKEN,
+            GlobalStudConfigKeys::LINEAR_API_KEY,
             self::MIGRATION_VERSION,
         ];
     }

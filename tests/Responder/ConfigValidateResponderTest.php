@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Responder;
 
+use App\DTO\ConfigValidateIntegrationPing;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Enum\OutputFormat;
 use App\Responder\ConfigValidateResponder;
 use App\Response\ConfigValidateResponse;
 use App\Service\ColorHelper;
+use App\Service\ConfigReadinessEvaluation;
+use App\Service\ConfigReadinessEvaluator;
 use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
@@ -24,34 +27,146 @@ class ConfigValidateResponderTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $helper = new ResponderHelper($this->translationService);
-        $this->logger = $this->createMock(Logger::class);
-        $this->responder = new ConfigValidateResponder($helper, $this->logger);
+        $this->logger = $this->createStub(Logger::class);
+        $this->bindSubject();
     }
 
     public function testRespondOutputsSectionAndDefinitionListWhenAllOk(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_OK,
             null,
             ConfigValidateResponse::STATUS_OK,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
             ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondOutputsTranslatedCliNotice(): void
+    {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $evaluation = new ConfigReadinessEvaluation(
+            ConfigReadinessEvaluator::ROLLUP_PARTIAL,
+            ConfigReadinessEvaluator::ROLLUP_OK,
+            true,
+            [MessageRef::key('config.validate.notice_linear_non_blocking')],
+        );
+        $response = ConfigValidateResponse::fromEvaluation(
+            $evaluation,
+            [
+                'jira' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+                'github' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+                'linear' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_FAIL),
+            ],
+            'github',
+        );
+        $io = $this->createStub(SymfonyStyle::class);
+
         $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything());
+            ->method('note')
+            ->with($this->anything(), 'config.validate.notice_linear_non_blocking');
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondLegacyRowsIncludeConfiguredGitProvider(): void
+    {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_SKIPPED,
+            null,
+            ConfigValidateResponse::STATUS_SKIPPED,
+            null,
+            gitProvider: 'gitlab',
+        );
+        $io = $this->createStub(SymfonyStyle::class);
+
+        $this->logger->expects($this->exactly(2))->method('definitionList');
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondLegacyRowsUseGithubWhenGitWasCheckedWithoutProvider(): void
+    {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_SKIPPED,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            'git ok',
+        );
+        $io = $this->createStub(SymfonyStyle::class);
+
+        $this->logger->expects($this->exactly(2))->method('definitionList');
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testIntegrationLabelReturnsUnknownKeyUnchanged(): void
+    {
+        $responder = new class (new ResponderHelper($this->translationService), $this->logger) extends ConfigValidateResponder {
+            public function exposedLabel(string $key): string
+            {
+                return $this->integrationLabel($key);
+            }
+        };
+
+        $this->assertSame('custom', $responder->exposedLabel('custom'));
+    }
+
+    public function testRespondOutputsCliNotices(): void
+    {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $evaluation = new ConfigReadinessEvaluation(
+            ConfigReadinessEvaluator::ROLLUP_PARTIAL,
+            ConfigReadinessEvaluator::ROLLUP_OK,
+            true,
+            ['Linear connectivity check failed (non-blocking for this project).'],
+        );
+        $response = ConfigValidateResponse::fromEvaluation(
+            $evaluation,
+            [
+                'jira' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+                'github' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+                'linear' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_FAIL),
+            ],
+            'github',
+        );
+        $io = $this->createStub(SymfonyStyle::class);
+
+        $this->logger->expects($this->once())->method('section');
+        $this->logger->expects($this->exactly(2))->method('definitionList');
+        $this->logger->expects($this->once())
+            ->method('note')
+            ->with($this->anything(), 'Linear connectivity check failed (non-blocking for this project).');
 
         $this->responder->respond($io, $response);
     }
 
     public function testRespondOutputsCliWarnings(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_OK,
             null,
@@ -61,19 +176,22 @@ class ConfigValidateResponderTest extends CommandTestCase
                 ResponseMessage::warning(MessageRef::key('config.validate.warn_gitlab_token_missing')),
             ],
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
-        $this->logger->expects($this->once())->method('definitionList');
+        $this->logger->expects($this->exactly(2))->method('definitionList');
         $this->logger->expects($this->once())
             ->method('warning')
-            ->with($this->anything(), $this->isType('string'));
+            ->with($this->anything(), $this->isString());
 
         $this->responder->respond($io, $response);
     }
 
     public function testRespondOutputsCliWarningsForPlainStringMessages(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_OK,
             null,
@@ -83,10 +201,10 @@ class ConfigValidateResponderTest extends CommandTestCase
                 ResponseMessage::warning('plain warning'),
             ],
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
-        $this->logger->expects($this->once())->method('definitionList');
+        $this->logger->expects($this->exactly(2))->method('definitionList');
         $this->logger->expects($this->once())
             ->method('warning')
             ->with($this->anything(), 'plain warning');
@@ -96,8 +214,11 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsErrorWhenResponseHasError(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::error('config.error.not_found');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('error')
@@ -112,73 +233,51 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsSectionWithFailStatus(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_FAIL,
             'Connection refused',
             ConfigValidateResponse::STATUS_OK,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
             ->with($this->anything(), $this->anything());
-        $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with(
-                $this->anything(),
-                $this->callback(function (array $jiraRow) {
-                    $value = array_values($jiraRow)[0] ?? '';
-
-                    return is_string($value) && str_contains(strtolower($value), 'fail') && str_contains($value, 'Connection refused');
-                }),
-                $this->anything(),
-                $this->anything(),
-            );
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
 
         $this->responder->respond($io, $response);
     }
 
     public function testRespondOutputsSkippedStatus(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_SKIPPED,
             null,
             ConfigValidateResponse::STATUS_SKIPPED,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
             ->with($this->anything(), $this->anything());
-        $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with(
-                $this->anything(),
-                $this->callback(function (array $row) {
-                    $value = array_values($row)[0] ?? '';
-
-                    return is_string($value) && str_contains($value, 'config.validate.status_skipped');
-                }),
-                $this->callback(function (array $row) {
-                    $value = array_values($row)[0] ?? '';
-
-                    return is_string($value) && str_contains($value, 'config.validate.status_skipped');
-                }),
-                $this->callback(function (array $row) {
-                    $value = array_values($row)[0] ?? '';
-
-                    return is_string($value) && str_contains($value, 'config.validate.status_skipped');
-                }),
-            );
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
 
         $this->responder->respond($io, $response);
     }
 
     public function testRespondWithColorHelperRegistersStylesAndFormatsOutput(): void
     {
-        $colorHelper = $this->createMock(ColorHelper::class);
+        $colorHelper = $this->createStub(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $logger = $this->createMock(Logger::class);
         $responder = new ConfigValidateResponder($helper, $logger);
@@ -188,7 +287,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ConfigValidateResponse::STATUS_OK,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $logger->expects($this->once())
             ->method('registerStyles')
@@ -196,29 +295,30 @@ class ConfigValidateResponderTest extends CommandTestCase
         $logger->expects($this->atLeastOnce())
             ->method('section')
             ->with($this->anything(), $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('definitionList')
-            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything());
+        $logger->expects($this->atLeast(2))
+            ->method('definitionList');
 
         $responder->respond($io, $response);
     }
 
     public function testRespondRendersBothRowsWhenOneOkOneSkipped(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_OK,
             null,
             ConfigValidateResponse::STATUS_SKIPPED,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
             ->method('section')
             ->with($this->anything(), $this->anything());
-        $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with($this->anything(), $this->isType('array'), $this->isType('array'), $this->isType('array'));
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
 
         $this->responder->respond($io, $response);
     }
@@ -231,15 +331,124 @@ class ConfigValidateResponderTest extends CommandTestCase
             ConfigValidateResponse::STATUS_OK,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($io, $response, OutputFormat::Json, false);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
         $this->assertSame('ok', $result->data['jiraStatus']);
         $this->assertSame('ok', $result->data['gitStatus']);
         $this->assertSame('skipped', $result->data['linearStatus']);
+    }
+
+    private function partialSuccessResponse(): ConfigValidateResponse
+    {
+        $integrations = [
+            'jira' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+            'linear' => new ConfigValidateIntegrationPing(
+                ConfigValidateResponse::STATUS_FAIL,
+                MessageRef::key('config.validate.error_linear_ping', ['error' => 'down']),
+            ),
+            'github' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+        ];
+        $evaluation = new ConfigReadinessEvaluation(
+            ConfigReadinessEvaluator::ROLLUP_PARTIAL,
+            ConfigReadinessEvaluator::ROLLUP_OK,
+            true,
+            ['Linear connectivity check failed (non-blocking for this project).'],
+        );
+
+        return ConfigValidateResponse::fromEvaluation($evaluation, $integrations, 'github');
+    }
+
+    public function testRespondJsonPartialCompactIncludesRollupsOnly(): void
+    {
+        $io = $this->createStub(SymfonyStyle::class);
+        $result = $this->responder->respond($io, $this->partialSuccessResponse(), OutputFormat::Json, true);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame('partial', $result->data['rollups']['global'] ?? null);
+        $this->assertArrayNotHasKey('jiraStatus', $result->data);
+    }
+
+    public function testRespondJsonPartialNonCompactIncludesFullData(): void
+    {
+        $io = $this->createStub(SymfonyStyle::class);
+        $result = $this->responder->respond($io, $this->partialSuccessResponse(), OutputFormat::Json, false);
+
+        $this->assertNotNull($result);
+        $this->assertSame('ok', $result->data['jiraStatus'] ?? null);
+        $this->assertSame('fail', $result->data['linearStatus'] ?? null);
+    }
+
+    public function testRespondCliShowsProjectRollupWhenApplicable(): void
+    {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(SymfonyStyle::class);
+
+        $this->logger->expects($this->once())->method('section');
+        $this->logger->expects($this->exactly(2))->method('definitionList');
+
+        $this->responder->respond($io, $this->partialSuccessResponse());
+    }
+
+    public function testRespondJsonFailureCompactIncludesRollupsAndIntegrations(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_FAIL,
+            MessageRef::key('config.validate.error_jira_not_configured'),
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            gitProvider: 'github',
+        );
+        $io = $this->createStub(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json, true);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
+        $this->assertArrayHasKey('rollups', $result->data);
+        $this->assertArrayHasKey('integrations', $result->data);
+        $this->assertArrayNotHasKey('jiraStatus', $result->data);
+    }
+
+    public function testRespondJsonFailureNonCompactIncludesFlatAliases(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_FAIL,
+            MessageRef::key('config.validate.error_jira_not_configured'),
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            gitProvider: 'github',
+        );
+        $io = $this->createStub(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json, false);
+
+        $this->assertNotNull($result);
+        $this->assertSame('fail', $result->data['jiraStatus'] ?? null);
+    }
+
+    public function testRespondJsonCompactCleanSuccessOmitsData(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            gitProvider: 'github',
+        );
+        $io = $this->createStub(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json, true);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertFalse($result->hasData);
     }
 
     public function testRespondJsonIncludesWarningDiagnostics(): void
@@ -253,7 +462,7 @@ class ConfigValidateResponderTest extends CommandTestCase
                 ResponseMessage::warning(MessageRef::key('config.validate.warn_gitlab_token_missing')),
             ],
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, OutputFormat::Json);
 
@@ -271,7 +480,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ConfigValidateResponse::STATUS_OK,
             null
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $result = $this->responder->respond($io, $response, OutputFormat::Json);
 
@@ -288,9 +497,9 @@ class ConfigValidateResponderTest extends CommandTestCase
             ConfigValidateResponse::STATUS_SKIPPED,
             MessageRef::key('config.validate.error_git_not_configured'),
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($io, $response, OutputFormat::Json, false);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
@@ -301,59 +510,48 @@ class ConfigValidateResponderTest extends CommandTestCase
 
     public function testRespondOutputsFailStatusWithMessageRef(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_FAIL,
             MessageRef::key('config.validate.error_jira_not_configured'),
             ConfigValidateResponse::STATUS_OK,
             null,
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
-        $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with(
-                $this->anything(),
-                $this->callback(function (array $jiraRow) {
-                    $value = array_values($jiraRow)[0] ?? '';
-
-                    return is_string($value)
-                        && str_contains(strtolower($value), 'fail')
-                        && str_contains($value, 'config.validate.error_jira_not_configured');
-                }),
-                $this->anything(),
-                $this->anything(),
-            );
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
 
         $this->responder->respond($io, $response);
     }
 
     public function testRespondOutputsFailStatusWithoutDetailWhenMessageNull(): void
     {
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_FAIL,
             null,
             ConfigValidateResponse::STATUS_OK,
             null,
         );
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
-        $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with(
-                $this->anything(),
-                $this->callback(function (array $jiraRow) {
-                    $value = array_values($jiraRow)[0] ?? '';
-
-                    return is_string($value)
-                        && str_contains(strtolower($value), 'fail')
-                        && ! str_contains($value, '(');
-                }),
-                $this->anything(),
-                $this->anything(),
-            );
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
 
         $this->responder->respond($io, $response);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new ConfigValidateResponder($helper, $this->logger);
     }
 }

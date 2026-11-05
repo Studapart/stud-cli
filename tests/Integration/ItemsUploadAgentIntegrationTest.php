@@ -37,6 +37,9 @@ class ItemsUploadAgentIntegrationTest extends TestCase
         $stdout = $proc->getOutput();
         $stderr = $proc->getErrorOutput();
         $fullOutput = $stdout . $stderr;
+        $decoded = json_decode($stdout, true);
+        self::assertIsArray($decoded, 'Output must be valid JSON. Output: ' . $fullOutput);
+        self::assertArrayHasKey('success', $decoded);
 
         self::assertStringNotContainsString(
             'Cannot read input file',
@@ -68,6 +71,9 @@ class ItemsUploadAgentIntegrationTest extends TestCase
         $stdout = $proc->getOutput();
         $stderr = $proc->getErrorOutput();
         $fullOutput = $stdout . $stderr;
+        $decoded = json_decode($stdout, true);
+        self::assertIsArray($decoded, 'Output must be valid JSON. Output: ' . $fullOutput);
+        self::assertArrayHasKey('success', $decoded);
 
         self::assertStringNotContainsString('Cannot read input file', $fullOutput);
         self::assertStringNotContainsString('item.upload.error_no_key', $fullOutput);

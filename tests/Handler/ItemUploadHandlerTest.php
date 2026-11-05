@@ -13,14 +13,13 @@ use App\Service\TranslationService;
 use App\Tests\CommandTestCase;
 use App\Tests\Handler\Support\AttachmentAgentJsonAssertions;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
 
 class ItemUploadHandlerTest extends CommandTestCase
 {
     use AttachmentAgentJsonAssertions;
     private FileSystem $fileSystem;
 
-    private IssueTrackerPort&MockObject $provider;
+    private IssueTrackerPort $provider;
 
     private TranslationService $translator;
 
@@ -30,9 +29,9 @@ class ItemUploadHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->fileSystem = $this->createMock(FileSystem::class);
-        $this->provider = $this->createMock(IssueTrackerPort::class);
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->fileSystem = $this->createStub(FileSystem::class);
+        $this->provider = $this->createStub(IssueTrackerPort::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(static function (string $id, array $parameters = []): string {
             if ($parameters !== []) {
                 return $id . '|' . json_encode($parameters, JSON_THROW_ON_ERROR);
@@ -40,8 +39,7 @@ class ItemUploadHandlerTest extends CommandTestCase
 
             return $id;
         });
-
-        $this->handler = new ItemUploadHandler($this->fileSystem, $this->provider, $this->translator);
+        $this->bindSubject();
     }
 
     public function testHandleReturnsFatalWhenKeyMissing(): void
@@ -62,6 +60,9 @@ class ItemUploadHandlerTest extends CommandTestCase
 
     public function testHandleRejectsPathTraversal(): void
     {
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->provider->expects($this->never())->method('uploadAttachment');
         $response = $this->handler->handle(new ItemUploadInput('KEY-1', ['../evil']));
 
@@ -73,6 +74,9 @@ class ItemUploadHandlerTest extends CommandTestCase
 
     public function testHandleRecordsErrorWhenFileMissing(): void
     {
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->method('fileExists')->willReturn(false);
         $this->provider->expects($this->never())->method('uploadAttachment');
 
@@ -86,6 +90,9 @@ class ItemUploadHandlerTest extends CommandTestCase
 
     public function testHandleRecordsErrorWhenPathIsDirectory(): void
     {
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(true);
         $this->provider->expects($this->never())->method('uploadAttachment');
@@ -98,11 +105,14 @@ class ItemUploadHandlerTest extends CommandTestCase
 
     public function testHandleUploadsOneFile(): void
     {
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
         $this->provider->expects($this->once())
             ->method('uploadAttachment')
-            ->with('ABC-1', $this->isType('string'));
+            ->with('ABC-1', $this->isString());
 
         $response = $this->handler->handle(new ItemUploadInput('abc-1', ['notes.txt']));
 
@@ -115,6 +125,9 @@ class ItemUploadHandlerTest extends CommandTestCase
 
     public function testHandleNormalizesIssueKey(): void
     {
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
         $this->provider->expects($this->once())
@@ -128,6 +141,9 @@ class ItemUploadHandlerTest extends CommandTestCase
 
     public function testHandleRecordsPartialErrorOnThrowable(): void
     {
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
         $this->provider->expects($this->once())
@@ -144,6 +160,9 @@ class ItemUploadHandlerTest extends CommandTestCase
 
     public function testHandleRecordsPartialErrorOnApiException(): void
     {
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
         $this->provider->expects($this->once())
@@ -160,6 +179,9 @@ class ItemUploadHandlerTest extends CommandTestCase
 
     public function testHandleSkipsEmptyPathSegments(): void
     {
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
         $this->provider->expects($this->once())->method('uploadAttachment');
@@ -175,6 +197,9 @@ class ItemUploadHandlerTest extends CommandTestCase
     #[DataProvider('attachmentProviderLabelProvider')]
     public function testUploadBatchAgentJsonParityWithProvider(string $providerLabel): void
     {
+        $this->provider = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
         $this->provider->expects($this->exactly(2))
@@ -208,5 +233,11 @@ class ItemUploadHandlerTest extends CommandTestCase
     {
         yield 'jira provider' => ['jira'];
         yield 'linear provider' => ['linear'];
+    }
+
+    private function bindSubject(): void
+    {
+
+        $this->handler = new ItemUploadHandler($this->fileSystem, $this->provider, $this->translator);
     }
 }

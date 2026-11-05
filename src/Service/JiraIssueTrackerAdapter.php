@@ -8,12 +8,13 @@ use App\DTO\StateChange;
 use App\DTO\WorkItem;
 use App\Exception\ApiException;
 use App\Service\Jira\JiraAssignedActiveJqlBuilder;
+use App\Service\Jira\JiraIssueTrackerCapable;
 use App\Service\Jira\JiraStudFieldMapper;
 
 /**
  * Jira adapter for {@see IssueTrackerPort}; delegates to existing Jira services.
  */
-final class JiraIssueTrackerAdapter implements IssueTrackerPort
+final class JiraIssueTrackerAdapter implements IssueTrackerPort, JiraIssueTrackerCapable
 {
     public function __construct(
         private readonly JiraApiClient $jiraApiClient,

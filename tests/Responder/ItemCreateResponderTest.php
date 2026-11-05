@@ -75,7 +75,7 @@ class ItemCreateResponderTest extends CommandTestCase
     public function testRespondJsonReturnsCreatedIssueData(): void
     {
         $response = ItemCreateResponse::success('PROJ-1', 'https://jira.example.com/issue/PROJ-1', []);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
 
         $result = $responder->respond($io, $response, OutputFormat::Json);
@@ -88,12 +88,35 @@ class ItemCreateResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorOnFailure(): void
     {
         $response = ItemCreateResponse::error('Failed to create');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
 
         $result = $responder->respond($io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertFalse($result->success);
+    }
+
+    public function testRespondJsonIncludesDeferredFieldsAndUpdateWarnings(): void
+    {
+        $response = ItemCreateResponse::success('PROJ-1', 'self', [], ['labels'], ['Labels']);
+        $io = $this->createStub(SymfonyStyle::class);
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
+
+        $result = $responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertSame(['labels'], $result->data['deferredFields']);
+        $this->assertSame(['Labels'], $result->data['updateWarnings']);
+    }
+
+    public function testRespondNotesDeferredFields(): void
+    {
+        $response = ItemCreateResponse::success('PROJ-1', 'self', [], ['labels'], ['Labels']);
+        $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
+        $io->expects($this->once())->method('success');
+        $io->expects($this->exactly(2))->method('note');
+
+        $responder->respond($io, $response);
     }
 }

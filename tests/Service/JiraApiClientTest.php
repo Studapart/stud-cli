@@ -5,10 +5,11 @@ namespace App\Tests\Service;
 use App\DTO\Filter;
 use App\DTO\Project;
 use App\DTO\WorkItem;
+use App\Exception\ApiException;
 use App\Service\CanConvertToPlainTextInterface;
+use App\Service\Jira\JiraCreateDeferErrorParser;
 use App\Service\JiraApiClient;
 use App\Tests\Support\JiraApiClientTestKit;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -16,18 +17,21 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 class JiraApiClientTest extends TestCase
 {
     private JiraApiClient $jiraService;
-    private HttpClientInterface&MockObject $httpClientMock;
-    private CanConvertToPlainTextInterface&MockObject $htmlConverterMock;
+    private HttpClientInterface $httpClientMock;
+    private CanConvertToPlainTextInterface $htmlConverterMock;
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->htmlConverterMock = $this->createMock(CanConvertToPlainTextInterface::class);
-        $this->jiraService = JiraApiClientTestKit::create($this->httpClientMock, $this->htmlConverterMock);
+        $this->httpClientMock = $this->createStub(HttpClientInterface::class);
+        $this->htmlConverterMock = $this->createStub(CanConvertToPlainTextInterface::class);
+        $this->bindSubject();
     }
 
     public function testGetIssueSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'TEST-123';
         $mockResponseData = [
             'id' => '10001',
@@ -43,7 +47,7 @@ class JiraApiClientTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -68,6 +72,10 @@ class JiraApiClientTest extends TestCase
 
     public function testGetIssueWithRenderedFields(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->htmlConverterMock = $this->createMock(CanConvertToPlainTextInterface::class);
+        $this->bindSubject();
+
         $key = 'TEST-123';
         $mockHtmlDescription = '<p>Rendered Description</p>';
         $expectedPlainText = 'Rendered Description';
@@ -108,7 +116,7 @@ class JiraApiClientTest extends TestCase
 
         $expectedUrl = '/rest/api/3/issue/' . $key . '?expand=renderedFields&fields=summary,status,assignee,description,labels,issuetype,components,priority,attachment';
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -140,6 +148,9 @@ class JiraApiClientTest extends TestCase
 
     public function testGetIssueNotFound(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'NONEXISTENT-404';
 
         $responseMock = $this->createMock(ResponseInterface::class);
@@ -150,7 +161,7 @@ class JiraApiClientTest extends TestCase
             ->with('GET', "/rest/api/3/issue/{$key}")
             ->willReturn($responseMock);
 
-        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not Found');
 
         $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage("Could not find Jira issue with key \"{$key}\".");
@@ -160,6 +171,9 @@ class JiraApiClientTest extends TestCase
 
     public function testGetIssueNotFoundWithTruncatedResponse(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'NONEXISTENT-404';
         $longResponse = str_repeat('A', 600); // 600 characters
 
@@ -171,7 +185,7 @@ class JiraApiClientTest extends TestCase
             ->with('GET', "/rest/api/3/issue/{$key}")
             ->willReturn($responseMock);
 
-        $responseMock->method('getContent')->with(false)->willReturn($longResponse);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($longResponse);
 
         $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage("Could not find Jira issue with key \"{$key}\".");
@@ -190,6 +204,9 @@ class JiraApiClientTest extends TestCase
 
     public function testGetIssueNotFoundWithGetContentException(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'NONEXISTENT-404';
 
         $responseMock = $this->createMock(ResponseInterface::class);
@@ -200,7 +217,7 @@ class JiraApiClientTest extends TestCase
             ->with('GET', "/rest/api/3/issue/{$key}")
             ->willReturn($responseMock);
 
-        $responseMock->method('getContent')->with(false)->willThrowException(new \Exception('Connection timeout'));
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willThrowException(new \Exception('Connection timeout'));
 
         $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage("Could not find Jira issue with key \"{$key}\".");
@@ -217,6 +234,9 @@ class JiraApiClientTest extends TestCase
 
     public function testGetIssueNotFoundWithEmptyResponse(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'NONEXISTENT-404';
 
         $responseMock = $this->createMock(ResponseInterface::class);
@@ -227,7 +247,7 @@ class JiraApiClientTest extends TestCase
             ->with('GET', "/rest/api/3/issue/{$key}")
             ->willReturn($responseMock);
 
-        $responseMock->method('getContent')->with(false)->willReturn('');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('');
 
         $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage("Could not find Jira issue with key \"{$key}\".");
@@ -244,6 +264,9 @@ class JiraApiClientTest extends TestCase
 
     public function testSearchIssuesSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $jql = 'project = TEST';
         $mockResponseData = [
             'issues' => [
@@ -276,7 +299,7 @@ class JiraApiClientTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -301,12 +324,15 @@ class JiraApiClientTest extends TestCase
 
     public function testSearchIssuesEmptyResult(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $jql = 'project = NONEXISTENT';
         $mockResponseData = [
             'issues' => [],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -322,9 +348,12 @@ class JiraApiClientTest extends TestCase
 
     public function testSearchIssuesFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $jql = 'invalid jql';
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(400);
         $responseMock->method('getContent')->willReturn('Bad Request');
 
@@ -340,6 +369,9 @@ class JiraApiClientTest extends TestCase
 
     public function testGetProjectsSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $mockResponseData = [
             'values' => [
                 ['key' => 'PROJ1', 'name' => 'Project One'],
@@ -347,7 +379,7 @@ class JiraApiClientTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -367,11 +399,14 @@ class JiraApiClientTest extends TestCase
 
     public function testGetProjectsEmptyResult(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $mockResponseData = [
             'values' => [],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -387,7 +422,10 @@ class JiraApiClientTest extends TestCase
 
     public function testGetProjectsFailure(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(500);
         $responseMock->method('getContent')->willReturn('Internal Server Error');
 
@@ -403,9 +441,12 @@ class JiraApiClientTest extends TestCase
 
     public function testGetProjectSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $mockResponseData = ['key' => 'PROJ', 'name' => 'My Project'];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -423,7 +464,10 @@ class JiraApiClientTest extends TestCase
 
     public function testGetProjectNotFound(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
         $responseMock->method('getContent')->willReturn('Not Found');
 
@@ -440,6 +484,9 @@ class JiraApiClientTest extends TestCase
 
     public function testGetFiltersSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $mockResponseData = [
             'values' => [
                 ['name' => 'Filter One', 'description' => 'Description One'],
@@ -447,7 +494,7 @@ class JiraApiClientTest extends TestCase
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -469,11 +516,14 @@ class JiraApiClientTest extends TestCase
 
     public function testGetFiltersEmptyResult(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $mockResponseData = [
             'values' => [],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -489,13 +539,16 @@ class JiraApiClientTest extends TestCase
 
     public function testGetFiltersWithNullDescription(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $mockResponseData = [
             'values' => [
                 ['name' => 'Filter Without Description'],
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -514,7 +567,10 @@ class JiraApiClientTest extends TestCase
 
     public function testGetFiltersFailure(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(500);
         $responseMock->method('getContent')->willReturn('Internal Server Error');
 
@@ -530,6 +586,9 @@ class JiraApiClientTest extends TestCase
 
     public function testMapToWorkItemWithHtmlDescription(): void
     {
+        $this->htmlConverterMock = $this->createMock(CanConvertToPlainTextInterface::class);
+        $this->bindSubject();
+
         $data = [
             'id' => '10001',
             'key' => 'TEST-1',
@@ -681,6 +740,9 @@ echo 'hello';
 
     public function testGetTransitionsSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'TEST-123';
         $mockResponseData = [
             'transitions' => [
@@ -703,7 +765,7 @@ echo 'hello';
             ],
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -723,11 +785,14 @@ echo 'hello';
 
     public function testGetTransitionsFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'TEST-123';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not Found');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -742,10 +807,13 @@ echo 'hello';
 
     public function testTransitionIssueSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'TEST-123';
         $transitionId = 11;
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(204);
 
         $this->httpClientMock->expects($this->once())
@@ -766,10 +834,13 @@ echo 'hello';
 
     public function testTransitionIssueFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'TEST-123';
         $transitionId = 11;
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(400);
         $responseMock->method('getContent')->willReturn('Bad Request');
 
@@ -785,13 +856,16 @@ echo 'hello';
 
     public function testGetCurrentUserAccountId(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
         $mockResponseData = [
             'accountId' => $accountId,
             'displayName' => 'Test User',
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -807,13 +881,16 @@ echo 'hello';
 
     public function testGetCurrentUserAccountIdCaching(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
         $mockResponseData = [
             'accountId' => $accountId,
             'displayName' => 'Test User',
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -832,7 +909,10 @@ echo 'hello';
 
     public function testGetCurrentUserAccountIdFailure(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(401);
         $responseMock->method('getContent')->willReturn('Unauthorized');
 
@@ -849,12 +929,15 @@ echo 'hello';
 
     public function testGetCurrentUserAccountIdMissingAccountId(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $mockResponseData = [
             'displayName' => 'Test User',
             // Missing accountId
         ];
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockResponseData);
 
@@ -871,17 +954,20 @@ echo 'hello';
 
     public function testAssignIssueToCurrentUser(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'TEST-123';
         $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
 
-        $myselfResponseMock = $this->createMock(ResponseInterface::class);
+        $myselfResponseMock = $this->createStub(ResponseInterface::class);
         $myselfResponseMock->method('getStatusCode')->willReturn(200);
         $myselfResponseMock->method('toArray')->willReturn([
             'accountId' => $accountId,
             'displayName' => 'Test User',
         ]);
 
-        $assignResponseMock = $this->createMock(ResponseInterface::class);
+        $assignResponseMock = $this->createStub(ResponseInterface::class);
         $assignResponseMock->method('getStatusCode')->willReturn(204);
 
         $this->httpClientMock->expects($this->exactly(2))
@@ -906,10 +992,13 @@ echo 'hello';
 
     public function testAssignIssueToSpecificUser(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'TEST-123';
         $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
 
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(204);
 
         $this->httpClientMock->expects($this->once())
@@ -926,17 +1015,20 @@ echo 'hello';
 
     public function testAssignIssueFailure(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key = 'TEST-123';
         $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
 
-        $myselfResponseMock = $this->createMock(ResponseInterface::class);
+        $myselfResponseMock = $this->createStub(ResponseInterface::class);
         $myselfResponseMock->method('getStatusCode')->willReturn(200);
         $myselfResponseMock->method('toArray')->willReturn([
             'accountId' => $accountId,
             'displayName' => 'Test User',
         ]);
 
-        $assignResponseMock = $this->createMock(ResponseInterface::class);
+        $assignResponseMock = $this->createStub(ResponseInterface::class);
         $assignResponseMock->method('getStatusCode')->willReturn(403);
         $assignResponseMock->method('getContent')->willReturn('Forbidden');
 
@@ -958,21 +1050,24 @@ echo 'hello';
 
     public function testAssignIssueToCurrentUserUsesCache(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $key1 = 'TEST-123';
         $key2 = 'TEST-456';
         $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
 
-        $myselfResponseMock = $this->createMock(ResponseInterface::class);
+        $myselfResponseMock = $this->createStub(ResponseInterface::class);
         $myselfResponseMock->method('getStatusCode')->willReturn(200);
         $myselfResponseMock->method('toArray')->willReturn([
             'accountId' => $accountId,
             'displayName' => 'Test User',
         ]);
 
-        $assignResponseMock1 = $this->createMock(ResponseInterface::class);
+        $assignResponseMock1 = $this->createStub(ResponseInterface::class);
         $assignResponseMock1->method('getStatusCode')->willReturn(204);
 
-        $assignResponseMock2 = $this->createMock(ResponseInterface::class);
+        $assignResponseMock2 = $this->createStub(ResponseInterface::class);
         $assignResponseMock2->method('getStatusCode')->willReturn(204);
 
         // /myself should only be called once, even though we assign two issues
@@ -1000,6 +1095,9 @@ echo 'hello';
 
     public function testGetCreateMetaIssueTypesSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $projectKey = 'PROJ';
         $mockData = [
             'values' => [
@@ -1007,7 +1105,7 @@ echo 'hello';
                 ['id' => '10002', 'name' => 'Task'],
             ],
         ];
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockData);
         $this->httpClientMock->expects($this->once())
@@ -1026,10 +1124,13 @@ echo 'hello';
 
     public function testGetCreateMetaIssueTypesApiError(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $projectKey = 'PROJ';
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('Not found');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not found');
         $this->httpClientMock->expects($this->once())
             ->method('request')
             ->with('GET', "/rest/api/3/issue/createmeta/{$projectKey}/issuetypes")
@@ -1043,6 +1144,9 @@ echo 'hello';
 
     public function testGetCreateMetaFieldsSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $projectKey = 'PROJ';
         $issueTypeId = '10001';
         $mockData = [
@@ -1053,7 +1157,7 @@ echo 'hello';
                 'description' => ['required' => false, 'name' => 'Description'],
             ],
         ];
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockData);
         $this->httpClientMock->expects($this->once())
@@ -1070,6 +1174,9 @@ echo 'hello';
 
     public function testGetCreateMetaFieldsSkipsNonArrayMeta(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $projectKey = 'PROJ';
         $issueTypeId = '10001';
         $mockData = [
@@ -1079,7 +1186,7 @@ echo 'hello';
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
             ],
         ];
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn($mockData);
         $this->httpClientMock->expects($this->once())
@@ -1097,11 +1204,14 @@ echo 'hello';
 
     public function testGetCreateMetaFieldsApiError(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $projectKey = 'PROJ';
         $issueTypeId = '10001';
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('Not found');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not found');
         $this->httpClientMock->expects($this->once())
             ->method('request')
             ->with('GET', "/rest/api/3/issue/createmeta/{$projectKey}/issuetypes/{$issueTypeId}")
@@ -1115,13 +1225,16 @@ echo 'hello';
 
     public function testCreateIssueSuccess(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $fields = [
             'project' => ['key' => 'PROJ'],
             'issuetype' => ['id' => '10001'],
             'summary' => 'Test issue',
         ];
         $mockResponse = ['key' => 'PROJ-42', 'self' => 'https://jira.example.com/rest/api/3/issue/123'];
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn($mockResponse);
         $this->httpClientMock->expects($this->once())
@@ -1140,6 +1253,9 @@ echo 'hello';
 
     public function testCreateIssueApiError(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $fields = [
             'project' => ['key' => 'PROJ'],
             'issuetype' => ['id' => '10001'],
@@ -1147,7 +1263,7 @@ echo 'hello';
         ];
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(400);
-        $responseMock->method('getContent')->with(false)->willReturn('Bad request');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Bad request');
         $this->httpClientMock->expects($this->once())
             ->method('request')
             ->with('POST', '/rest/api/3/issue', $this->anything())
@@ -1157,6 +1273,40 @@ echo 'hello';
         $this->expectExceptionMessage('Could not create issue');
 
         $this->jiraService->createIssue($fields);
+    }
+
+    public function testCreateIssueKeepsEveryFieldErrorForDeferral(): void
+    {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $errors = [];
+        for ($i = 1; $i <= 8; ++$i) {
+            $errors['customfield_' . $i] = "Field 'customfield_{$i}' cannot be set. It is not on the appropriate screen, or unknown.";
+        }
+        $body = json_encode(['errorMessages' => [], 'errors' => $errors], JSON_THROW_ON_ERROR);
+        $this->assertGreaterThan(500, strlen($body));
+
+        $fields = [
+            'project' => ['key' => 'PROJ'],
+            'issuetype' => ['id' => '10001'],
+            'summary' => 'Test',
+        ];
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(400);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($body);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', '/rest/api/3/issue', $this->anything())
+            ->willReturn($responseMock);
+
+        try {
+            $this->jiraService->createIssue($fields);
+            $this->fail('createIssue should throw');
+        } catch (ApiException $exception) {
+            $parsed = (new JiraCreateDeferErrorParser())->parseDeferrableFieldErrors($exception);
+            $this->assertSame(array_keys($errors), array_keys($parsed ?? []));
+        }
     }
 
     public function testPlainTextToDescriptionAdf(): void
@@ -1206,7 +1356,10 @@ echo 'hello';
 
     public function testGetEditMetaFieldsSuccess(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'fields' => [
@@ -1229,7 +1382,10 @@ echo 'hello';
 
     public function testGetEditMetaFieldsThrowsOnError(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
         $responseMock->method('getContent')->willReturn('{"errorMessages":["Not found"]}');
         $this->httpClientMock->expects($this->once())
@@ -1242,7 +1398,10 @@ echo 'hello';
 
     public function testGetEditMetaFieldsSkipsNonArrayMeta(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'fields' => [
@@ -1262,7 +1421,10 @@ echo 'hello';
 
     public function testUpdateIssueSuccess(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(204);
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -1276,7 +1438,10 @@ echo 'hello';
 
     public function testUpdateIssueThrowsOnError(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(400);
         $responseMock->method('getContent')->willReturn('{"errors":{"summary":"invalid"}}');
         $this->httpClientMock->expects($this->once())
@@ -1289,7 +1454,10 @@ echo 'hello';
 
     public function testGetEditMetaFieldsEmptyFields(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn(['fields' => []]);
         $this->httpClientMock->expects($this->once())
@@ -1302,6 +1470,9 @@ echo 'hello';
 
     public function testFindUserByEmailReturnsNullForEmptyQuery(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $this->httpClientMock->expects($this->never())->method('request');
 
         $result = $this->jiraService->findUserByEmail('   ');
@@ -1311,7 +1482,10 @@ echo 'hello';
 
     public function testFindUserByEmailReturnsNullOnNon200(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(500);
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -1328,7 +1502,10 @@ echo 'hello';
 
     public function testFindUserByEmailReturnsExactMatch(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             [
@@ -1351,7 +1528,10 @@ echo 'hello';
 
     public function testFindUserByEmailReturnsSingleCandidateWhenQueryContainsAt(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             [
@@ -1374,7 +1554,10 @@ echo 'hello';
 
     public function testFindUserByEmailReturnsNullWhenNotFound(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([]);
         $this->httpClientMock->expects($this->once())
@@ -1389,7 +1572,10 @@ echo 'hello';
 
     public function testFindUserByEmailExactMatchUsesEmailWhenDisplayNameNotString(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             [
@@ -1412,7 +1598,10 @@ echo 'hello';
 
     public function testFindUserByEmailSingleCandidateWithNonStringDisplayNameUsesEmptyString(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             [
@@ -1505,7 +1694,10 @@ echo 'hello';
 
     public function testGetProjectTransitionsReturnsEmptyWhenNoIssuesFound(): void
     {
-        $emptySearch = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $emptySearch = $this->createStub(ResponseInterface::class);
         $emptySearch->method('getStatusCode')->willReturn(200);
         $emptySearch->method('toArray')->willReturn(['issues' => []]);
 
@@ -1521,7 +1713,10 @@ echo 'hello';
 
     public function testGetProjectTransitionsUsesRepresentativeIssue(): void
     {
-        $searchResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $searchResponse = $this->createStub(ResponseInterface::class);
         $searchResponse->method('getStatusCode')->willReturn(200);
         $searchResponse->method('toArray')->willReturn([
             'issues' => [
@@ -1541,7 +1736,7 @@ echo 'hello';
             ],
         ]);
 
-        $transitionResponse = $this->createMock(ResponseInterface::class);
+        $transitionResponse = $this->createStub(ResponseInterface::class);
         $transitionResponse->method('getStatusCode')->willReturn(200);
         $transitionResponse->method('toArray')->willReturn([
             'transitions' => [
@@ -1576,5 +1771,10 @@ echo 'hello';
         \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         return $method->invokeArgs($object, $parameters);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->jiraService = JiraApiClientTestKit::create($this->httpClientMock, $this->htmlConverterMock);
     }
 }

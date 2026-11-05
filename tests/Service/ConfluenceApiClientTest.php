@@ -6,7 +6,6 @@ namespace App\Tests\Service;
 
 use App\Exception\ApiException;
 use App\Service\ConfluenceApiClient;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -14,17 +13,20 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 class ConfluenceApiClientTest extends TestCase
 {
     private ConfluenceApiClient $confluenceService;
-    private HttpClientInterface&MockObject $httpClientMock;
+    private HttpClientInterface $httpClientMock;
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->confluenceService = new ConfluenceApiClient($this->httpClientMock);
+        $this->httpClientMock = $this->createStub(HttpClientInterface::class);
+        $this->bindSubject();
     }
 
     public function testGetSpacesReturnsMappedList(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'results' => [
@@ -50,9 +52,12 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetSpacesThrowsOnNon200(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(401);
-        $responseMock->method('getContent')->with(false)->willReturn('Unauthorized');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Unauthorized');
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -67,7 +72,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testResolveSpaceIdReturnsIdWhenKeyFound(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'results' => [
@@ -87,7 +95,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testResolveSpaceIdIsCaseInsensitive(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'results' => [
@@ -107,7 +118,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testResolveSpaceIdThrowsWhenNotFound(): void
     {
-        $emptyResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $emptyResponse = $this->createStub(ResponseInterface::class);
         $emptyResponse->method('getStatusCode')->willReturn(200);
         $emptyResponse->method('toArray')->willReturn(['results' => []]);
 
@@ -118,7 +132,7 @@ class ConfluenceApiClientTest extends TestCase
                 ['id' => '42', 'key' => 'DEV', 'name' => 'Development'],
             ],
         ]);
-        $spacesResponse->method('getHeaders')->with(false)->willReturn(['link' => []]);
+        $spacesResponse->expects($this->once())->method('getHeaders')->with(false)->willReturn(['link' => []]);
 
         $this->httpClientMock->expects(self::exactly(2))
             ->method('request')
@@ -138,7 +152,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testCreatePageSendsCorrectPayloadAndReturnsMapped(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn([
             'id' => '12345',
@@ -177,7 +194,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testCreatePageWithParentId(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(201);
         $responseMock->method('toArray')->willReturn([
             'id' => '67890',
@@ -208,7 +228,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageReturnsMappedWithVersion(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '12345',
@@ -232,9 +255,12 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageThrowsOn404(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('Not found');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not found');
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -249,9 +275,12 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testCreatePageThrowsOnNon201(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(400);
-        $responseMock->method('getContent')->with(false)->willReturn('Bad request');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Bad request');
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -266,9 +295,12 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testUpdatePageThrowsOnNon200(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(409);
-        $responseMock->method('getContent')->with(false)->willReturn('Conflict');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Conflict');
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -283,7 +315,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testUpdatePageSendsCorrectPayloadAndReturnsMapped(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '12345',
@@ -320,9 +355,12 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testExtractTechnicalDetailsWhenGetContentThrows(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(500);
-        $responseMock->method('getContent')->with(false)->willThrowException(new \RuntimeException('Network error'));
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willThrowException(new \RuntimeException('Network error'));
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -337,10 +375,13 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testExtractTechnicalDetailsTruncatesLongBody(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $longBody = str_repeat('x', 600);
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(500);
-        $responseMock->method('getContent')->with(false)->willReturn($longBody);
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($longBody);
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -357,7 +398,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetFolderReturnsMapped(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '5315756039',
@@ -379,9 +423,12 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetFolderThrowsOnNon200(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('Not found');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not found');
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -396,6 +443,9 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetDirectChildPagesOfFolderReturnsPages(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
@@ -405,7 +455,7 @@ class ConfluenceApiClientTest extends TestCase
                 ['id' => '102', 'title' => 'Blog', 'type' => 'blogpost'],
             ],
         ]);
-        $responseMock->method('getHeaders')->with(false)->willReturn(['link' => []]);
+        $responseMock->expects($this->once())->method('getHeaders')->with(false)->willReturn(['link' => []]);
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -423,7 +473,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testAddPageLabelsSendsCorrectPayload(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
 
         $this->httpClientMock->expects(self::once())
@@ -447,7 +500,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testCreatePageAccepts200StatusCode(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '999',
@@ -468,6 +524,9 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetDirectChildPagesReturnsPagesAndSkipsNonPageTypes(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
@@ -477,7 +536,7 @@ class ConfluenceApiClientTest extends TestCase
                 ['id' => '102', 'title' => 'Child B', 'type' => 'page'],
             ],
         ]);
-        $responseMock->method('getHeaders')->with(false)->willReturn(['link' => []]);
+        $responseMock->expects($this->once())->method('getHeaders')->with(false)->willReturn(['link' => []]);
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -495,9 +554,12 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetDirectChildPagesThrowsOnNon200(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(500);
-        $responseMock->method('getContent')->with(false)->willReturn('Server error');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Server error');
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -512,12 +574,15 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetDirectChildPagesWithEmptyNextLinkUrlReturnsFirstPageOnly(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'results' => [['id' => '1', 'title' => 'Only', 'type' => 'page']],
         ]);
-        $responseMock->method('getHeaders')->with(false)->willReturn([
+        $responseMock->expects($this->once())->method('getHeaders')->with(false)->willReturn([
             'link' => ['<>; rel="next"'],
         ]);
 
@@ -534,12 +599,15 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetDirectChildPagesWithPaginationFollowsNextLink(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $page1Response = $this->createMock(ResponseInterface::class);
         $page1Response->method('getStatusCode')->willReturn(200);
         $page1Response->method('toArray')->willReturn([
             'results' => [['id' => '1', 'title' => 'First', 'type' => 'page']],
         ]);
-        $page1Response->method('getHeaders')->with(false)->willReturn([
+        $page1Response->expects($this->once())->method('getHeaders')->with(false)->willReturn([
             'link' => ['<https://wiki.example.com/api/v2/pages/parent/direct-children?limit=50&cursor=next>; rel="next"'],
         ]);
 
@@ -548,7 +616,7 @@ class ConfluenceApiClientTest extends TestCase
         $page2Response->method('toArray')->willReturn([
             'results' => [['id' => '2', 'title' => 'Second', 'type' => 'page']],
         ]);
-        $page2Response->method('getHeaders')->with(false)->willReturn(['link' => []]);
+        $page2Response->expects($this->once())->method('getHeaders')->with(false)->willReturn(['link' => []]);
 
         $this->httpClientMock->expects(self::exactly(2))
             ->method('request')
@@ -569,12 +637,15 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetDirectChildPagesOfFolderWithPaginationFollowsNextLink(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $page1Response = $this->createMock(ResponseInterface::class);
         $page1Response->method('getStatusCode')->willReturn(200);
         $page1Response->method('toArray')->willReturn([
             'results' => [['id' => '1', 'title' => 'First', 'type' => 'page']],
         ]);
-        $page1Response->method('getHeaders')->with(false)->willReturn([
+        $page1Response->expects($this->once())->method('getHeaders')->with(false)->willReturn([
             'link' => ['<https://wiki.example.com/api/v2/folders/f1/direct-children?limit=50&cursor=next>; rel="next"'],
         ]);
 
@@ -583,7 +654,7 @@ class ConfluenceApiClientTest extends TestCase
         $page2Response->method('toArray')->willReturn([
             'results' => [['id' => '2', 'title' => 'Second', 'type' => 'page']],
         ]);
-        $page2Response->method('getHeaders')->with(false)->willReturn(['link' => []]);
+        $page2Response->expects($this->once())->method('getHeaders')->with(false)->willReturn(['link' => []]);
 
         $this->httpClientMock->expects(self::exactly(2))
             ->method('request')
@@ -604,9 +675,12 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetDirectChildPagesOfFolderThrowsOnNon200(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(403);
-        $responseMock->method('getContent')->with(false)->willReturn('Forbidden');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Forbidden');
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -636,7 +710,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testResolveSpaceIdUsesGetSpacesFallbackWhenKeyNotInGetSpacesByKeys(): void
     {
-        $emptyResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $emptyResponse = $this->createStub(ResponseInterface::class);
         $emptyResponse->method('getStatusCode')->willReturn(200);
         $emptyResponse->method('toArray')->willReturn(['results' => []]);
 
@@ -645,7 +722,7 @@ class ConfluenceApiClientTest extends TestCase
         $spacesResponse->method('toArray')->willReturn([
             'results' => [['id' => '99', 'key' => 'FALLBACK', 'name' => 'Fallback Space']],
         ]);
-        $spacesResponse->method('getHeaders')->with(false)->willReturn(['link' => []]);
+        $spacesResponse->expects($this->once())->method('getHeaders')->with(false)->willReturn(['link' => []]);
 
         $this->httpClientMock->expects(self::exactly(2))
             ->method('request')
@@ -664,9 +741,12 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testAddPageLabelsThrowsOnNon200AndNon201(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(400);
-        $responseMock->method('getContent')->with(false)->willReturn('Bad request');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Bad request');
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -681,6 +761,9 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetSpacesByKeysReturnsEmptyWhenKeysEmpty(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $this->httpClientMock->expects(self::never())->method('request');
 
         $result = $this->confluenceService->getSpacesByKeys([]);
@@ -690,7 +773,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetSpacesByKeysReturnsEmptyOnNon200(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(500);
 
         $this->httpClientMock->expects(self::once())
@@ -705,7 +791,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetSpacesByKeysReturnsMappedResultsWhen200(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'results' => [
@@ -727,7 +816,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageUsesSpaceIdFromNestedSpaceWhenSpaceIdMissing(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '123',
@@ -749,6 +841,9 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testAddPageLabelsNoOpWhenLabelNamesEmpty(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $this->httpClientMock->expects(self::never())->method('request');
 
         $this->confluenceService->addPageLabels('12345', []);
@@ -756,8 +851,11 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyReturnsPageAndDecodedBody(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $adfJson = '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hello"}]}]}';
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '12345',
@@ -790,8 +888,11 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyWhenBodyValueIsArray(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $adfArray = ['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => []]]];
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '99',
@@ -819,8 +920,11 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyUsesSpaceIdFromNestedSpaceWhenSpaceIdMissing(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $adfJson = '{"type":"doc","content":[]}';
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '42',
@@ -847,9 +951,12 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyThrowsOn404(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->with(false)->willReturn('Not found');
+        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not found');
 
         $this->httpClientMock->expects(self::once())
             ->method('request')
@@ -900,7 +1007,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyWhenBodyMissingReturnsEmptyBody(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '42',
@@ -923,7 +1033,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyWhenBodyNotArrayReturnsEmptyBody(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '42',
@@ -946,7 +1059,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyWhenAtlasDocFormatMissingReturnsEmptyBody(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '42',
@@ -969,7 +1085,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyWhenBodyValueNullReturnsEmptyBody(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '42',
@@ -992,7 +1111,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyWhenBodyValueInvalidJsonReturnsEmptyBody(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '42',
@@ -1015,7 +1137,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyWhenBodyValueJsonWithoutTypeReturnsEmptyBody(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '42',
@@ -1038,7 +1163,10 @@ class ConfluenceApiClientTest extends TestCase
 
     public function testGetPageWithBodyWhenBodyValueArrayHasTypeNoContent(): void
     {
-        $responseMock = $this->createMock(ResponseInterface::class);
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $responseMock = $this->createStub(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
         $responseMock->method('toArray')->willReturn([
             'id' => '42',
@@ -1057,5 +1185,10 @@ class ConfluenceApiClientTest extends TestCase
 
         self::assertSame('doc', $result['body']['type']);
         self::assertSame([], $result['body']['content'] ?? []);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->confluenceService = new ConfluenceApiClient($this->httpClientMock);
     }
 }

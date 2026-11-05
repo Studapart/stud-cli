@@ -8,6 +8,7 @@ use App\DTO\Project;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\ProjectListHandler;
 use App\Response\ProjectListResponse;
+use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
 use App\Tests\CommandTestCase;
 
@@ -18,21 +19,15 @@ class ProjectListHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $portSupplier = $this->createMock(IssueTrackerPortSupplier::class);
-        $portSupplier->method('resolveForProvider')
-            ->with('jira', $this->anything())
-            ->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
-
-        $this->handler = new ProjectListHandler(
-            $portSupplier,
-            ['ISSUE_TRACKER_PROVIDERS' => ['jira']],
-            ['issueTrackerProvider' => 'jira'],
-        );
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
+        $this->bindSubject();
     }
 
     public function testHandleReturnsSuccessResponseWithProjects(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $project = new Project('PROJ', 'My Project');
 
         $this->issueTracker->expects($this->once())
@@ -50,6 +45,9 @@ class ProjectListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessResponseWithEmptyProjects(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listTeams')
             ->willReturn([]);
@@ -63,7 +61,10 @@ class ProjectListHandlerTest extends CommandTestCase
 
     public function testHandleFallsBackWhenProviderListEmpty(): void
     {
-        $portSupplier = $this->createMock(\App\Service\IssueTrackerPortSupplier::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
+        $portSupplier = $this->createStub(\App\Service\IssueTrackerPortSupplier::class);
         $portSupplier->method('resolve')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
         $portSupplier->method('resolveForProvider')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
         $handler = new ProjectListHandler($portSupplier, [], []);
@@ -75,7 +76,7 @@ class ProjectListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenFallbackResolutionFails(): void
     {
-        $portSupplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $portSupplier = $this->createStub(IssueTrackerPortSupplier::class);
         $portSupplier->method('resolve')->willReturn([
             'ok' => false,
             'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured'),
@@ -89,6 +90,9 @@ class ProjectListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorOnApiException(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listTeams')
             ->willThrowException(new \Exception('Jira API error'));
@@ -104,12 +108,12 @@ class ProjectListHandlerTest extends CommandTestCase
 
     public function testHandleDualAutoContinuesWhenOneProviderFails(): void
     {
-        $linearPort = $this->createMock(\App\Service\IssueTrackerPort::class);
+        $linearPort = $this->createStub(IssueTrackerPort::class);
         $linearPort->method('listTeams')->willReturn([new Project('ENG', 'Linear team')]);
 
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturnCallback(
-            static function (string $provider) use ($linearPort): array {
+            static function (string $provider, mixed ...$ignored) use ($linearPort): array {
                 return match ($provider) {
                     IssueTrackerProvider::Jira->value => ['ok' => false, 'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured')],
                     IssueTrackerProvider::Linear->value => ['ok' => true, 'provider' => 'linear', 'port' => $linearPort],
@@ -133,6 +137,9 @@ class ProjectListHandlerTest extends CommandTestCase
 
     public function testHandleDualAutoReturnsErrorWhenSingleProviderFetchFails(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('listTeams')
             ->willThrowException(new \Exception('Jira API error'));
@@ -144,7 +151,7 @@ class ProjectListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenSingleProviderResolutionFails(): void
     {
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturn([
             'ok' => false,
             'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured'),
@@ -158,14 +165,14 @@ class ProjectListHandlerTest extends CommandTestCase
 
     public function testHandleDualAutoWarnsWhenOneProviderFetchThrows(): void
     {
-        $jiraPort = $this->issueTracker;
+        $jiraPort = $this->createMock(IssueTrackerPort::class);
         $jiraPort->expects($this->once())->method('listTeams')->willThrowException(new \Exception('jira down'));
-        $linearPort = $this->createMock(\App\Service\IssueTrackerPort::class);
+        $linearPort = $this->createStub(IssueTrackerPort::class);
         $linearPort->method('listTeams')->willReturn([new Project('ENG', 'Linear team')]);
 
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturnCallback(
-            static function (string $provider) use ($jiraPort, $linearPort): array {
+            static function (string $provider, mixed ...$ignored) use ($jiraPort, $linearPort): array {
                 return match ($provider) {
                     IssueTrackerProvider::Jira->value => ['ok' => true, 'provider' => 'jira', 'port' => $jiraPort],
                     IssueTrackerProvider::Linear->value => ['ok' => true, 'provider' => 'linear', 'port' => $linearPort],
@@ -210,5 +217,19 @@ class ProjectListHandlerTest extends CommandTestCase
             'projectKey' => 'SCI',
             'linearTeamKey' => 'ENG',
         ];
+    }
+
+    private function bindSubject(): void
+    {
+
+        $portSupplier = $this->createStub(IssueTrackerPortSupplier::class);
+        $portSupplier->method('resolveForProvider')
+            ->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
+
+        $this->handler = new ProjectListHandler(
+            $portSupplier,
+            ['ISSUE_TRACKER_PROVIDERS' => ['jira']],
+            ['issueTrackerProvider' => 'jira'],
+        );
     }
 }

@@ -16,6 +16,12 @@ final class IssueCreationState
     /** @var array<string, mixed> */
     public array $fields;
 
+    /** @var array<string, string|list<string>> */
+    public array $fieldInputsForUpdate = [];
+
+    /** @var array<string, string> */
+    public array $payloadKeyToInputKey = [];
+
     /**
      * @param array<string, array{required: bool, name: string}> $allFieldsMeta
      * @param list<string> $requiredFieldIds

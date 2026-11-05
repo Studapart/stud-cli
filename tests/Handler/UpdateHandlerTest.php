@@ -2,7 +2,10 @@
 
 namespace App\Tests\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\WorkflowOutputEntry;
 use App\Handler\UpdateHandler;
+use App\Response\WorkflowResponse;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
 use App\Service\GlobalMigrationService;
@@ -12,7 +15,7 @@ use App\Tests\CommandTestCase;
 use App\Tests\Support\UpdateHandlerTestKit;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -22,9 +25,12 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 class UpdateHandlerTest extends CommandTestCase
 {
     private UpdateHandler $handler;
-    private \App\Service\Prompt\PromptInterface $prompt;
-    private HttpClientInterface&MockObject $httpClient;
-    private ChangelogParser&MockObject $changelogParser;
+    /**
+     * @var \PHPUnit\Framework\MockObject\Stub&\App\Service\Logger
+     */
+    private \PHPUnit\Framework\MockObject\Stub $prompt;
+    private HttpClientInterface $httpClient;
+    private ChangelogParser&Stub $changelogParser;
     private string $tempBinaryPath;
 
     /**
@@ -43,15 +49,15 @@ class UpdateHandlerTest extends CommandTestCase
      * This is needed because UpdateHandler calls runPrerequisiteMigrations(),
      * which uses MigrationRegistry that calls FileSystem methods.
      *
-     * @param FileSystem&MockObject $fileSystem The mocked FileSystem instance
+     * @param FileSystem&Stub $fileSystem The FileSystem test double
      */
-    private function setupMigrationMocks(FileSystem&MockObject $fileSystem): void
+    private function setupMigrationMocks(FileSystem&Stub $fileSystem): void
     {
         // In test environment, runPrerequisiteMigrations() should return 0 early
         // when config doesn't exist. We mock fileExists to return false for the config path
         // This causes the method to return 0 early, skipping migration discovery
         // Use willReturnCallback to handle any path, but return false for config path
-        $fileSystem->expects($this->any())
+        $fileSystem
             ->method('fileExists')
             ->willReturnCallback(function ($path) {
                 // Config path should not exist in tests - this triggers early return
@@ -67,19 +73,19 @@ class UpdateHandlerTest extends CommandTestCase
         // MigrationRegistry will call isDir() to check if migrations directory exists
         // We return false so migrations are skipped (though this shouldn't be reached
         // if fileExists returns false for config, but we set it up just in case)
-        $fileSystem->expects($this->any())
+        $fileSystem
             ->method('isDir')
             ->willReturn(false);
 
         // listDirectory() should not be called if isDir() returns false,
         // but we mock it anyway to be safe
-        $fileSystem->expects($this->any())
+        $fileSystem
             ->method('listDirectory')
             ->willReturn([]);
 
         // parseFile() should not be called if fileExists returns false,
         // but we mock it anyway to be safe
-        $fileSystem->expects($this->any())
+        $fileSystem
             ->method('parseFile')
             ->willReturn([]);
     }
@@ -95,8 +101,8 @@ class UpdateHandlerTest extends CommandTestCase
             $_SERVER['HOME'] = '/tmp';
         }
 
-        $this->httpClient = $this->createMock(HttpClientInterface::class);
-        $this->changelogParser = $this->createMock(ChangelogParser::class);
+        $this->httpClient = $this->createStub(HttpClientInterface::class);
+        $this->changelogParser = $this->createStub(ChangelogParser::class);
         // Use real temp directory for binary path since replaceBinary() uses native PHP functions
         // that need to access the real filesystem (is_writable, copy, rename, chmod)
         $this->tempBinaryPath = sys_get_temp_dir() . '/stud-test-' . uniqid() . '.phar';
@@ -106,30 +112,57 @@ class UpdateHandlerTest extends CommandTestCase
 
         // Use mocked TranslationService from CommandTestCase
 
-        $this->prompt = $this->createMock(\App\Service\Logger::class);
+        $this->prompt = $this->createStub(\App\Service\Logger::class);
+        $this->bindSubject();
+    }
 
-        // Create mocked FileSystem for unit testing
-        // This allows us to control behavior of filesystem operations
-        $fileSystem = $this->createMock(FileSystem::class);
 
-        // Set up default expectations for common operations
-        // Tests can override these expectations as needed
-        // Use willReturnCallback for methods that might be called with different arguments
+    private const REPO_API_PATH = '/repos/studapart/stud-cli';
+
+    /**
+     * @param array<string, \Symfony\Contracts\HttpClient\ResponseInterface|\Throwable> $routes
+     */
+    private function githubRoutes(array $routes): \Closure
+    {
+        return function (string $method, string $url, array $options = []) use ($routes): \Symfony\Contracts\HttpClient\ResponseInterface {
+            foreach ($routes as $path => $result) {
+                if (str_contains($url, $path)) {
+                    if ($result instanceof \Throwable) {
+                        throw $result;
+                    }
+
+                    return $result;
+                }
+            }
+
+            $this->fail('Unexpected API call: ' . $url);
+        };
+    }
+
+    private function findRecordedEntry(WorkflowResponse $response, string $type, string $key): ?WorkflowOutputEntry
+    {
+        foreach ($response->entries as $entry) {
+            if ($entry->type === $type && $entry->message instanceof MessageRef && $entry->message->key === $key) {
+                return $entry;
+            }
+        }
+
+        return null;
+    }
+
+    private function createDefaultFileSystem(): FileSystem&Stub
+    {
+        $fileSystem = $this->createStub(FileSystem::class);
         $fileSystem->method('fileExists')->willReturn(false);
         $fileSystem->method('isDir')->willReturn(false);
         $fileSystem->method('read')->willReturn('');
         $fileSystem->method('write')->willReturnCallback(function () {
-            // write() returns void
         });
         $fileSystem->method('delete')->willReturnCallback(function () {
-            // delete() returns void - allow deletion of temp files
         });
         $fileSystem->method('mkdir')->willReturnCallback(function () {
-            // mkdir() returns void
         });
         $fileSystem->method('filePutContents')->willReturnCallback(function ($path, $contents) {
-            // filePutContents() returns void - allow writing temp files
-            // For /tmp/ paths, write to real filesystem so hash_file() can read them
             if (str_starts_with($path, '/tmp/')) {
                 @file_put_contents($path, $contents);
             }
@@ -138,23 +171,9 @@ class UpdateHandlerTest extends CommandTestCase
         $fileSystem->method('dirname')->willReturnCallback(function ($path) {
             return dirname($path);
         });
-
-        // Set up migration discovery mocks to prevent migration execution
         $this->setupMigrationMocks($fileSystem);
 
-        $this->handler = UpdateHandlerTestKit::create(
-            'studapart', // repoOwner
-            'stud-cli',  // repoName
-            '1.0.0',     // currentVersion
-            $this->tempBinaryPath,
-            $this->translationService,
-            $this->changelogParser,
-            new UpdateFileService($this->translationService, $this->prompt),
-            $this->prompt,
-            $fileSystem, // FileSystem (position 9) - now mocked
-            null,        // gitToken
-            $this->httpClient
-        );
+        return $fileSystem;
     }
 
     protected function tearDown(): void
@@ -194,28 +213,31 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleAlreadyOnLatestVersion(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
 
         $releaseData = [
             'tag_name' => 'v1.0.0',
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
         $this->httpClient->expects($this->once())
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($response);
+            ->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/latest' => $response,
+            ]));
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $entry = $this->findRecordedEntry($response, 'success', 'update.success_latest');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.success_latest', ['version' => '1.0.0']);
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -236,36 +258,23 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                // Verify it's using the API asset endpoint, not browser_download_url
-                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
@@ -304,39 +313,27 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                // Verify it's using the API asset endpoint, not browser_download_url
-                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'update.error_not_writable');
         $this->assertSame(1, $response->exitCode);
     }
 
@@ -354,56 +351,46 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(2))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($response, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $response;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $response,
+            ]));
 
-                return $response;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'update.error_no_phar', ['assets' => 'readme.md']);
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithNoReleasesFound(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
 
-        $response = $this->createMock(ResponseInterface::class);
+
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(404);
         $response->method('getContent')->willReturn('{"message":"Not Found"}');
 
         $this->httpClient->expects($this->once())
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($response);
+            ->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/latest' => $response,
+            ]));
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $this->assertNotNull($this->findRecordedEntry($response, 'warning', 'update.warning_no_releases'));
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -424,31 +411,22 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                // Verify it's using the API asset endpoint, not browser_download_url
-                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
-
-                return $downloadResponse;
-            });
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -458,6 +436,7 @@ class UpdateHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle();
 
+        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -478,36 +457,23 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                // Verify it's using the API asset endpoint, not browser_download_url
-                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
@@ -546,37 +512,26 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
+        $otherDownload = $this->createStub(ResponseInterface::class);
+        $otherDownload->method('getContent')->willReturn('other asset content');
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                // Verify it's using the API asset endpoint with the correct asset ID
-                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
-                $this->assertStringContainsString('12345678', $url);
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+            self::REPO_API_PATH . '/releases/assets/12345678' => $downloadResponse,
+            self::REPO_API_PATH . '/releases/assets/22222222' => $otherDownload,
+            self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+        ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
@@ -595,34 +550,23 @@ class UpdateHandlerTest extends CommandTestCase
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(2))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($response, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $response;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $response,
+            ]));
 
-                return $response;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'update.error_no_phar', ['assets' => '']);
         $this->assertSame(1, $response->exitCode);
     }
 
@@ -630,8 +574,8 @@ class UpdateHandlerTest extends CommandTestCase
     {
 
         // Current version has 'v' prefix, latest doesn't
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -662,39 +606,27 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                // Verify it's using the API asset endpoint, not browser_download_url
-                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $handler->handle();
 
+        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
         $this->assertSame(0, $response->exitCode);
 
         // Clean up backup file
@@ -703,27 +635,31 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithVersionEqualComparison(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
 
         $releaseData = [
             'tag_name' => 'v1.0.0', // Same as current
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
         $this->httpClient->expects($this->once())
             ->method('request')
-            ->willReturn($response);
+            ->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/latest' => $response,
+            ]));
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $entry = $this->findRecordedEntry($response, 'success', 'update.success_latest');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.success_latest', ['version' => '1.0.0']);
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -741,64 +677,42 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/assets/' => new \Exception('Network error'),
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                // Simulate download failure
-                throw new \Exception('Network error');
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'update.error_download', ['error' => 'Network error']);
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithBinaryReplacementFailure(): void
     {
 
-        // Use in-memory filesystem path for testing
-        // Note: File permissions can't be tested with in-memory filesystem,
-        // but we can test the logic path by using a path that doesn't exist
+        $pharContent = 'phar binary content';
         $badBinaryPath = '/test/stud-test-readonly.phar';
-
-        // Create in-memory filesystem for this test
-        $adapter = new InMemoryFilesystemAdapter();
-        $flysystem = new FlysystemFilesystem($adapter);
-        $inMemoryFileSystem = new FileSystem($flysystem);
-
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $badBinaryPath,
             $this->translationService,
-            $changelogParser,
+            $this->createStub(ChangelogParser::class),
             new UpdateFileService($this->translationService, $this->prompt),
             $this->prompt,
-            $inMemoryFileSystem,
+            $this->createDefaultFileSystem(),
             null,
             $this->httpClient
         );
@@ -809,96 +723,90 @@ class UpdateHandlerTest extends CommandTestCase
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
+                    'digest' => 'sha256:' . hash('sha256', $pharContent),
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
                 ],
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
+        $downloadResponse = $this->createStub(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                // Verify it's using the API asset endpoint, not browser_download_url
-                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $handler->handle();
 
         // Should fail because file operations fail (tested via in-memory filesystem)
+        $this->assertMessageRef($response->getErrorMessage(), 'update.error_not_writable');
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWith404NoReleases(): void
     {
-        $errorResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $errorResponse = $this->createStub(ResponseInterface::class);
         $errorResponse->method('getStatusCode')->willReturn(404);
         $errorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
         $this->httpClient->expects($this->once())
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($errorResponse);
+            ->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/latest' => $errorResponse,
+            ]));
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
         // 404 means no releases found - this is a success case
+        $this->assertNotNull($this->findRecordedEntry($response, 'warning', 'update.warning_no_releases'));
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithNon404ApiError(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
 
-        $response = $this->createMock(ResponseInterface::class);
+
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(500);
         $response->method('getContent')->willReturn('Internal Server Error');
 
         $this->httpClient->expects($this->once())
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($response);
+            ->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/latest' => $response,
+            ]));
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'update.error_fetch');
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithGitTokenProvided(): void
     {
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -920,57 +828,61 @@ class UpdateHandlerTest extends CommandTestCase
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
         $this->httpClient->expects($this->once())
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($response);
+            ->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/latest' => $response,
+            ]));
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $handler->handle();
 
+        $entry = $this->findRecordedEntry($response, 'success', 'update.success_latest');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.success_latest', ['version' => '1.0.0']);
         $this->assertSame(0, $response->exitCode);
         // Token should be used in the request (verified by the mock expectation)
     }
 
     public function testHandleWithOlderVersionThanCurrent(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
 
         $releaseData = [
             'tag_name' => 'v0.9.0', // Older than current 1.0.0
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
         $this->httpClient->expects($this->once())
             ->method('request')
-            ->willReturn($response);
+            ->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/latest' => $response,
+            ]));
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $entry = $this->findRecordedEntry($response, 'success', 'update.success_latest');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.success_latest', ['version' => '1.0.0']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testGetBinaryPathUsesProvidedPath(): void
     {
         $testPath = '/test/path/to/binary.phar';
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -1000,8 +912,8 @@ class UpdateHandlerTest extends CommandTestCase
         // Since we can't easily mock Phar in tests, we test that the fallback works
         // The actual Phar path would be tested in integration tests
         $testPath = '/test/phar/path.phar';
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -1026,8 +938,8 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithGitTokenUsesAuthForDownload(): void
     {
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -1059,14 +971,14 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
@@ -1074,25 +986,12 @@ class UpdateHandlerTest extends CommandTestCase
         // but download creates a new client with auth headers)
         // Since we can't easily verify headers on a new HttpClient instance,
         // we verify the download succeeds when token is provided
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                // For download URL, return success - the auth header will be included
-                // by the new HttpClient created in downloadPhar
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $handler->handle();
 
@@ -1106,7 +1005,7 @@ class UpdateHandlerTest extends CommandTestCase
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
     }
 
-    public function testHandleWithRollbackOnFailure(): void
+    public function testHandleCreatesVersionedBackupBeforeReplacingBinary(): void
     {
 
         // Create a binary file with some content to verify rollback
@@ -1129,49 +1028,25 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        // Create a directory where the binary is located and make it non-writable
-        // This will cause the rename to fail, triggering rollback
-        $binaryDir = dirname($this->tempBinaryPath);
         $backupPath = $this->tempBinaryPath . '-1.0.0.bak';
 
-        // Make the directory non-writable to simulate failure after backup is created
-        // We'll use a different approach: create a file that already exists at the target
-        // Actually, let's use a simpler approach: make the temp file location unwritable
-        // But wait, we need to test the rollback. Let me think...
-        // We can't easily simulate a rename failure in PHP tests, but we can test the logic
-        // by checking that if backup exists, rollback would work.
-
-        // For now, let's test that the backup is created and the update succeeds
-        // The rollback logic is tested by the code structure itself
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
@@ -1205,34 +1080,23 @@ class UpdateHandlerTest extends CommandTestCase
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(2))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $releaseResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'update.error_asset_id');
         $this->assertSame(1, $response->exitCode);
     }
 
@@ -1266,40 +1130,33 @@ CHANGELOG;
         // Use real parser for this integration test
         $this->setupRealChangelogParser();
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $entry = $this->findRecordedEntry($response, 'section', 'update.changelog_section');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.changelog_section', ['version' => 'v1.0.1']);
+        $this->assertNotNull($this->findRecordedEntry($response, 'warning', 'update.breaking_changes_detected'));
         $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
@@ -1336,40 +1193,33 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $entry = $this->findRecordedEntry($response, 'section', 'update.changelog_section');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.changelog_section', ['version' => 'v1.0.1']);
+        $this->assertNull($this->findRecordedEntry($response, 'warning', 'update.breaking_changes_detected'));
         $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
@@ -1392,18 +1242,18 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(500);
-        $changelogErrorResponse->method('getContent')->with(false)->willReturn('Internal Server Error');
+        $changelogErrorResponse->expects($this->once())->method('getContent')->with(false)->willReturn('Internal Server Error');
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $logger->method('addSection');
         $logger->method('addLine');
         $logger->method('addText');
@@ -1425,18 +1275,11 @@ CHANGELOG;
             $this->httpClient
         );
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse, $downloadResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-
-                return $downloadResponse;
-            });
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -1447,6 +1290,7 @@ CHANGELOG;
         $response = $handler->handle();
 
         // Should still succeed even if changelog fetch fails
+        $this->assertNull($this->findRecordedEntry($response, 'section', 'update.changelog_section'));
         $this->assertSame(0, $response->exitCode);
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -1468,18 +1312,18 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(500);
-        $changelogErrorResponse->method('getContent')->with(false)->willReturn('Internal Server Error');
+        $changelogErrorResponse->expects($this->once())->method('getContent')->with(false)->willReturn('Internal Server Error');
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $logger->method('addSection');
         $logger->method('addLine');
         $logger->method('addText')
@@ -1511,18 +1355,11 @@ CHANGELOG;
             $this->httpClient
         );
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse, $downloadResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-
-                return $downloadResponse;
-            });
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -1533,6 +1370,7 @@ CHANGELOG;
         $response = $handler->handle();
 
         // Should still succeed even if changelog fetch fails
+        $this->assertNull($this->findRecordedEntry($response, 'section', 'update.changelog_section'));
         $this->assertSame(0, $response->exitCode);
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -1566,7 +1404,7 @@ CHANGELOG;
 
         $this->assertTrue($result['hasBreaking']);
         $this->assertCount(1, $result['breakingChanges']);
-        $this->assertStringContainsString('Breaking change in 1.0.1', $result['breakingChanges'][0]);
+        $this->assertSame('Breaking change in 1.0.1', $result['breakingChanges'][0]);
         $this->assertArrayHasKey('added', $result['sections']);
         $this->assertArrayHasKey('fixed', $result['sections']);
         $this->assertCount(1, $result['sections']['added']);
@@ -1592,8 +1430,8 @@ CHANGELOG;
 
         $this->assertTrue($result['hasBreaking']);
         $this->assertCount(2, $result['breakingChanges']);
-        $this->assertStringContainsString('Command renamed', $result['breakingChanges'][0]);
-        $this->assertStringContainsString('Removed deprecated', $result['breakingChanges'][1]);
+        $this->assertSame('Command renamed: old:command to new:command', $result['breakingChanges'][0]);
+        $this->assertSame('Removed deprecated feature', $result['breakingChanges'][1]);
         $this->assertArrayHasKey('added', $result['sections']);
     }
 
@@ -1623,8 +1461,8 @@ CHANGELOG;
         // Should include 1.0.1 and 1.0.2, but not 1.0.0
         $this->assertArrayHasKey('added', $result['sections']);
         $this->assertCount(2, $result['sections']['added']);
-        $this->assertStringContainsString('1.0.2', $result['sections']['added'][0]);
-        $this->assertStringContainsString('1.0.1', $result['sections']['added'][1]);
+        $this->assertSame('Feature in 1.0.2', $result['sections']['added'][0]);
+        $this->assertSame('Feature in 1.0.1', $result['sections']['added'][1]);
     }
 
     public function testGetSectionTitle(): void
@@ -1667,42 +1505,34 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $entry = $this->findRecordedEntry($response, 'section', 'update.changelog_section');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.changelog_section', ['version' => 'v1.0.1']);
+        $this->assertNull($this->findRecordedEntry($response, 'warning', 'update.breaking_changes_detected'));
         $this->assertSame(0, $response->exitCode);
-        // Test intent: handler completed successfully, verified by return value
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
     }
@@ -1734,40 +1564,30 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $this->assertNull($this->findRecordedEntry($response, 'section', 'update.changelog_section'));
         $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
@@ -1807,40 +1627,33 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $downloadResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
+        $entry = $this->findRecordedEntry($response, 'section', 'update.changelog_section');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.changelog_section', ['version' => 'v1.0.1']);
+        $this->assertNull($this->findRecordedEntry($response, 'warning', 'update.breaking_changes_detected'));
         $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
@@ -1863,29 +1676,22 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(500);
         $changelogErrorResponse->method('getContent')->willReturn('Internal Server Error');
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse, $downloadResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-
-                return $downloadResponse;
-            });
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -1895,6 +1701,7 @@ CHANGELOG;
 
         $response = $this->handler->handle();
 
+        $this->assertNull($this->findRecordedEntry($response, 'section', 'update.changelog_section'));
         $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
@@ -1969,8 +1776,8 @@ CHANGELOG;
         $this->assertArrayHasKey('added', $result['sections']);
         $this->assertCount(2, $result['sections']['added']);
         // Items should be from 1.0.2 and 1.0.1, but not 1.0.3 or 1.0.0
-        $this->assertStringContainsString('Should be included', $result['sections']['added'][0]);
-        $this->assertStringContainsString('Should be included', $result['sections']['added'][1]);
+        $this->assertSame('Should be included', $result['sections']['added'][0]);
+        $this->assertSame('Should be included', $result['sections']['added'][1]);
         // Verify 1.0.3 and 1.0.0 items are not included
         $allItems = implode(' ', $result['sections']['added']);
         $this->assertStringNotContainsString('Should not be included', $allItems);
@@ -2002,11 +1809,11 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
@@ -2014,27 +1821,21 @@ CHANGELOG;
         ]);
 
         // With --info flag, should NOT make download request
-        $this->httpClient->expects($this->exactly(2))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogResponse;
-                }
-                $this->fail('Should not request download when --info flag is set');
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $releaseResponse;
-            });
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
+        file_put_contents($this->tempBinaryPath, 'original binary content');
 
         $response = $this->handler->handle(true);
 
+        $entry = $this->findRecordedEntry($response, 'section', 'update.changelog_section');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.changelog_section', ['version' => 'v1.0.1']);
+        $this->assertNull($this->findRecordedEntry($response, 'warning', 'update.breaking_changes_detected'));
+        $this->assertStringEqualsFile($this->tempBinaryPath, 'original binary content');
         $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
@@ -2068,38 +1869,32 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
             'encoding' => 'base64',
         ]);
 
-        $this->httpClient->expects($this->exactly(2))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogResponse;
-                }
-                $this->fail('Should not request download when --info flag is set');
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $releaseResponse;
-            });
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
+        file_put_contents($this->tempBinaryPath, 'original binary content');
 
         $response = $this->handler->handle(true);
 
+        $entry = $this->findRecordedEntry($response, 'section', 'update.changelog_section');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.changelog_section', ['version' => 'v1.0.1']);
+        $this->assertNotNull($this->findRecordedEntry($response, 'warning', 'update.breaking_changes_detected'));
+        $this->assertStringEqualsFile($this->tempBinaryPath, 'original binary content');
         $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
@@ -2109,27 +1904,30 @@ CHANGELOG;
 
     public function testHandleWithInfoFlagAlreadyOnLatestVersion(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $releaseData = [
             'tag_name' => 'v1.0.0',
             'assets' => [],
         ];
 
-        $response = $this->createMock(ResponseInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
         $this->httpClient->expects($this->once())
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($response);
+            ->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/latest' => $response,
+            ]));
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle(true);
 
+        $entry = $this->findRecordedEntry($response, 'success', 'update.success_latest');
+        $this->assertNotNull($entry);
+        $this->assertMessageRef($entry->message, 'update.success_latest', ['version' => '1.0.0']);
         $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
     }
@@ -2146,36 +1944,27 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(500);
         $changelogErrorResponse->method('getContent')->willReturn('Internal Server Error');
 
-        $this->httpClient->expects($this->exactly(2))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                $this->fail('Should not request download when --info flag is set');
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $releaseResponse;
-            });
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
+        file_put_contents($this->tempBinaryPath, 'original binary content');
 
         $response = $this->handler->handle(true);
 
         // Should still exit successfully even if changelog fetch fails
+        $this->assertNull($this->findRecordedEntry($response, 'section', 'update.changelog_section'));
+        $this->assertStringEqualsFile($this->tempBinaryPath, 'original binary content');
         $this->assertSame(0, $response->exitCode);
 
         // Verify binary was NOT updated
@@ -2184,15 +1973,19 @@ CHANGELOG;
 
     public function testHandleWithGetLatestReleaseGenericExceptionWith404Message(): void
     {
-        $errorResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $errorResponse = $this->createStub(ResponseInterface::class);
         $errorResponse->method('getStatusCode')->willReturn(200);
         $errorResponse->method('toArray')
             ->willThrowException(new \Exception('GitHub API Error (Status: 404) when calling \'GET https://api.github.com/repos/studapart/stud-cli/releases/latest\'.'));
 
         $this->httpClient->expects($this->once())
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($errorResponse);
+            ->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/latest' => $errorResponse,
+            ]));
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
@@ -2209,28 +2002,29 @@ CHANGELOG;
             $this->httpClient
         );
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $handler->handle();
 
         // Should succeed even if release fetch fails with 404
+        $this->assertNotNull($this->findRecordedEntry($response, 'warning', 'update.warning_no_releases'));
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithGetLatestReleaseGenericExceptionWithout404Message(): void
     {
-        $errorResponse = $this->createMock(ResponseInterface::class);
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
+        $errorResponse = $this->createStub(ResponseInterface::class);
         $errorResponse->method('getStatusCode')->willReturn(200);
         $errorResponse->method('toArray')
             ->willThrowException(new \Exception('Network error occurred'));
 
         $this->httpClient->expects($this->once())
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($errorResponse);
+            ->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/latest' => $errorResponse,
+            ]));
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
@@ -2247,14 +2041,11 @@ CHANGELOG;
             $this->httpClient
         );
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $handler->handle();
 
         // Should fail if release fetch fails (non-404 error)
+        $this->assertMessageRef($response->getErrorMessage(), 'update.error_fetch');
         $this->assertSame(1, $response->exitCode);
     }
 
@@ -2277,21 +2068,21 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         // Create a response that throws Exception when toArray() is called
         // This will trigger the generic Exception catch block in displayChangelog
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')
             ->willThrowException(new \Exception('Failed to parse JSON response'));
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $logger->method('addSection');
         $logger->method('addLine'); // Allow all writeln calls (including logVerbose which calls writeln)
         $logger->method('addText');
@@ -2313,18 +2104,11 @@ CHANGELOG;
             $this->httpClient
         );
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogResponse;
-                }
-
-                return $downloadResponse;
-            });
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -2335,6 +2119,7 @@ CHANGELOG;
         $response = $handler->handle();
 
         // Should still succeed even if changelog fetch fails
+        $this->assertNull($this->findRecordedEntry($response, 'section', 'update.changelog_section'));
         $this->assertSame(0, $response->exitCode);
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -2356,37 +2141,23 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345678')) {
-                    return $downloadResponse;
-                }
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/12345678' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
-                return $releaseResponse;
-            });
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(false);
-        $io = new SymfonyStyle($input, $output);
 
         $response = $this->handler->handle();
 
@@ -2412,35 +2183,25 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345678')) {
-                    return $downloadResponse;
-                }
-
-                return $releaseResponse;
-            });
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/12345678' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('section')->willReturnSelf();
         $io->method('text')->willReturnSelf();
@@ -2449,12 +2210,10 @@ CHANGELOG;
         $io->method('writeln')->willReturnSelf();
         $io->method('newLine')->willReturnSelf();
         $io->method('success')->willReturnSelf();
-        $io->method('confirm')
-            ->with($this->anything(), false)
-            ->willReturn(false); // User aborts
 
         $response = $this->handler->handle();
 
+        $this->assertNotNull($this->findRecordedEntry($response, 'warning', 'update.error_hash_mismatch'));
         $this->assertSame(1, $response->exitCode);
 
         // Verify binary was NOT updated (tested via in-memory filesystem)
@@ -2477,35 +2236,25 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345678')) {
-                    return $downloadResponse;
-                }
-
-                return $releaseResponse;
-            });
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/12345678' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('section')->willReturnSelf();
         $io->method('text')->willReturnSelf();
@@ -2514,9 +2263,6 @@ CHANGELOG;
         $io->method('writeln')->willReturnSelf();
         $io->method('newLine')->willReturnSelf();
         $io->method('success')->willReturnSelf();
-        $io->method('confirm')
-            ->with($this->anything(), false)
-            ->willReturn(true); // User overrides
 
         // Handler uses $this->logger for verifyHash/replaceBinary; use a handler with logger that confirms
         $loggerWithConfirm = $this->createMock(\App\Service\Logger::class);
@@ -2532,8 +2278,8 @@ CHANGELOG;
         });
         $loggerWithConfirm->method('addWarning')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
-        $fileSystem = $this->createMock(FileSystem::class);
+        $loggerWithConfirm->expects($this->once())->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
+        $fileSystem = $this->createStub(FileSystem::class);
         $this->setupMigrationMocks($fileSystem);
         $fileSystem->method('filePutContents')->willReturnCallback(function ($path, $contents) {
             if (str_starts_with($path, '/tmp/')) {
@@ -2578,35 +2324,25 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345678')) {
-                    return $downloadResponse;
-                }
-
-                return $releaseResponse;
-            });
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/12345678' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('section')->willReturnSelf();
         $io->method('text')->willReturnSelf();
@@ -2615,12 +2351,10 @@ CHANGELOG;
         $io->method('writeln')->willReturnSelf();
         $io->method('newLine')->willReturnSelf();
         $io->method('success')->willReturnSelf();
-        $io->method('confirm')
-            ->with($this->anything(), false)
-            ->willReturn(false); // User aborts
 
         $response = $this->handler->handle();
 
+        $this->assertNotNull($this->findRecordedEntry($response, 'warning', 'update.error_digest_not_found'));
         $this->assertSame(1, $response->exitCode);
 
         // Verify binary was NOT updated (tested via in-memory filesystem)
@@ -2642,35 +2376,25 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345678')) {
-                    return $downloadResponse;
-                }
-
-                return $releaseResponse;
-            });
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/12345678' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('section')->willReturnCallback(function () use ($io) {
             return $io;
@@ -2712,8 +2436,8 @@ CHANGELOG;
         });
         $loggerWithConfirm->method('addWarning')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
-        $fileSystem = $this->createMock(FileSystem::class);
+        $loggerWithConfirm->expects($this->once())->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
+        $fileSystem = $this->createStub(FileSystem::class);
         $this->setupMigrationMocks($fileSystem);
         $fileSystem->method('filePutContents')->willReturnCallback(function ($path, $contents) {
             if (str_starts_with($path, '/tmp/')) {
@@ -2844,14 +2568,14 @@ CHANGELOG;
             'digest' => $wrongHash, // No "sha256:" prefix, but wrong hash
         ];
 
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('isQuiet')->willReturn(false);
         $io->method('isVeryVerbose')->willReturn(false);
         $io->method('isDebug')->willReturn(false);
 
         $prompt = $this->createMock(\App\Service\Logger::class);
-        $prompt->method('confirm')
+        $prompt->expects($this->once())->method('confirm')
             ->with($this->anything(), false)
             ->willReturn(false);
 
@@ -2898,8 +2622,8 @@ CHANGELOG;
 
     public function testCreateGithubGitHostingAdapterWithoutHttpClient(): void
     {
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -2922,8 +2646,8 @@ CHANGELOG;
 
     public function testCreateGithubGitHostingAdapterWithGitToken(): void
     {
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -2954,8 +2678,8 @@ CHANGELOG;
 
     public function testCreateGithubGitHostingAdapterWithGitTokenAndHttpClient(): void
     {
-        $changelogParser = $this->createMock(ChangelogParser::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $changelogParser = $this->createStub(ChangelogParser::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -3021,7 +2745,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             null,
             $this->httpClient,
             $testConfigPath,
@@ -3081,7 +2805,7 @@ CHANGELOG;
         // Write invalid YAML to in-memory filesystem
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         $logger->method('addSection')->willReturnCallback(function () {
         });
         $logger->method('addError')->willReturnCallback(function () {
@@ -3143,6 +2867,9 @@ CHANGELOG;
 
     public function testHandleWithPrerequisiteMigrationFailure(): void
     {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $input = new ArrayInput([]);
         $output = new BufferedOutput();
         $io = new SymfonyStyle($input, $output);
@@ -3160,14 +2887,14 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('fake phar content');
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(404);
 
         $this->httpClient->expects($this->atLeast(2))
@@ -3198,7 +2925,7 @@ CHANGELOG;
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
 
         try {
-            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger = $this->createStub(\App\Service\Logger::class);
             $logger->method('addSection')->willReturnCallback(function () {
             });
             $logger->method('addText')->willReturnCallback(function () {
@@ -3275,7 +3002,7 @@ CHANGELOG;
             $this->assertTrue($inMemoryFileSystem->fileExists($tempFile));
 
             // Override downloadPhar to return our temp file path and verifyHash to return true
-            $updateFileService = $this->createMock(\App\Service\UpdateFileService::class);
+            $updateFileService = $this->createStub(\App\Service\UpdateFileService::class);
             $updateFileService->method('getBinaryPath')->willReturn($this->tempBinaryPath);
             $updateFileService->method('verifyHash')->willReturn(true);
 
@@ -3506,7 +3233,7 @@ CHANGELOG;
                 $this->translationService,
                 $this->changelogParser,
                 new UpdateFileService($this->translationService, $this->prompt),
-                $this->createMock(\App\Service\Logger::class),
+                $this->createStub(\App\Service\Logger::class),
                 $inMemoryFileSystem,
                 null,
                 $this->httpClient
@@ -3546,7 +3273,7 @@ CHANGELOG;
         // Write invalid YAML to trigger exception in parseFile
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
 
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
         // In test environment, exceptions are gracefully handled without logging
         // So we don't expect error() to be called
 
@@ -3614,7 +3341,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -3629,7 +3356,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             null,
             $this->httpClient,
             $testConfigPath,
@@ -3688,7 +3415,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             null,
             $this->httpClient,
             $testConfigPath,
@@ -3750,7 +3477,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             null,
             $this->httpClient,
             $testConfigPath,
@@ -3794,7 +3521,7 @@ CHANGELOG;
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $migrationService = $this->createMock(GlobalMigrationService::class);
-        $migrationService->method('discoverPrerequisiteMigrations')
+        $migrationService->expects($this->once())->method('discoverPrerequisiteMigrations')
             ->with('0')
             ->willThrowException(new \RuntimeException('discovery failed'));
 
@@ -3851,7 +3578,7 @@ CHANGELOG;
     public function testDiscoverPrerequisiteMigrationsRethrowsOutsideTestEnvironment(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $migrationService = $this->createMock(GlobalMigrationService::class);
+        $migrationService = $this->createStub(GlobalMigrationService::class);
         $migrationService->method('discoverPrerequisiteMigrations')
             ->willThrowException(new \RuntimeException('discovery failed'));
         $detector = $this->createNonTestEnvironmentDetector();
@@ -3890,7 +3617,7 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -3906,7 +3633,7 @@ CHANGELOG;
     public function testGetErrorMessageWithTranslationSuccess(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator = $this->createStub(\App\Service\TranslationService::class);
 
         // Mock translator to return a translated message
         $translator->method('trans')
@@ -3944,7 +3671,7 @@ CHANGELOG;
     public function testGetErrorMessageWithTranslationReturnsKey(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator = $this->createStub(\App\Service\TranslationService::class);
 
         // Mock translator to return the key itself (simulating translation failure)
         $translator->method('trans')
@@ -3983,7 +3710,7 @@ CHANGELOG;
     public function testGetErrorMessageWithTranslationException(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator = $this->createStub(\App\Service\TranslationService::class);
 
         // Mock translator to throw exception when translating migration.error
         $translator->method('trans')
@@ -4036,32 +3763,22 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse = $this->createStub(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(3))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345678')) {
-                    return $downloadResponse;
-                }
-
-                return $releaseResponse;
-            });
+        $this->httpClient->method('request')->willReturnCallback($this->githubRoutes([
+                self::REPO_API_PATH . '/releases/assets/12345678' => $downloadResponse,
+                self::REPO_API_PATH . '/contents/CHANGELOG.md' => $changelogErrorResponse,
+                self::REPO_API_PATH . '/releases/latest' => $releaseResponse,
+            ]));
 
         // Create a FileSystem mock that throws RuntimeException on delete
         $fileSystem = $this->createMock(FileSystem::class);
@@ -4097,13 +3814,13 @@ CHANGELOG;
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService, $this->prompt),
-            $this->createMock(\App\Service\Logger::class),
+            $this->createStub(\App\Service\Logger::class),
             $fileSystem,
             null,
             $this->httpClient
         );
 
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
         $io->method('section')->willReturnSelf();
         $io->method('text')->willReturnSelf();
@@ -4112,14 +3829,12 @@ CHANGELOG;
         $io->method('writeln')->willReturnSelf();
         $io->method('newLine')->willReturnSelf();
         $io->method('success')->willReturnSelf();
-        $io->method('confirm')
-            ->with($this->anything(), false)
-            ->willReturn(false); // User aborts
 
         $response = $handler->handle();
 
         // Should return 1 (error) even though cleanup failed
         // The cleanup error is caught and ignored (line 87-89)
+        $this->assertNotNull($this->findRecordedEntry($response, 'warning', 'update.error_hash_mismatch'));
         $this->assertSame(1, $response->exitCode);
     }
 
@@ -4239,10 +3954,10 @@ CHANGELOG;
             '1.0.0',
             '/bin/stud',
             $this->translationService,
-            $this->createMock(ChangelogParser::class),
-            $this->createMock(\App\Service\UpdateFileService::class),
-            $this->createMock(\App\Service\Logger::class),
-            $this->createMock(\App\Service\FileSystem::class),
+            $this->createStub(ChangelogParser::class),
+            $this->createStub(\App\Service\UpdateFileService::class),
+            $this->createStub(\App\Service\Logger::class),
+            $this->createStub(\App\Service\FileSystem::class),
             testEnvironmentDetector: $this->createNonTestEnvironmentDetector(),
         );
 
@@ -4253,7 +3968,7 @@ CHANGELOG;
 
     public function testIsTestEnvironmentReturnsTrueWhenOnlyClassOrEnvDetectorReturnsTrue(): void
     {
-        $detector = $this->createMock(TestEnvironmentDetector::class);
+        $detector = $this->createStub(TestEnvironmentDetector::class);
         $detector->method('isTestEnvironmentByConstant')->willReturn(false);
         $detector->method('isTestEnvironmentByBacktrace')->willReturn(false);
         $detector->method('isTestEnvironmentByClassOrEnv')->willReturn(true);
@@ -4264,10 +3979,10 @@ CHANGELOG;
             '1.0.0',
             '/bin/stud',
             $this->translationService,
-            $this->createMock(ChangelogParser::class),
-            $this->createMock(\App\Service\UpdateFileService::class),
-            $this->createMock(\App\Service\Logger::class),
-            $this->createMock(\App\Service\FileSystem::class),
+            $this->createStub(ChangelogParser::class),
+            $this->createStub(\App\Service\UpdateFileService::class),
+            $this->createStub(\App\Service\Logger::class),
+            $this->createStub(\App\Service\FileSystem::class),
             testEnvironmentDetector: $detector,
         );
 
@@ -4276,13 +3991,33 @@ CHANGELOG;
         $this->assertTrue($result);
     }
 
-    private function createNonTestEnvironmentDetector(): TestEnvironmentDetector&MockObject
+    private function createNonTestEnvironmentDetector(): TestEnvironmentDetector&Stub
     {
-        $detector = $this->createMock(TestEnvironmentDetector::class);
+        $detector = $this->createStub(TestEnvironmentDetector::class);
         $detector->method('isTestEnvironmentByConstant')->willReturn(false);
         $detector->method('isTestEnvironmentByBacktrace')->willReturn(false);
         $detector->method('isTestEnvironmentByClassOrEnv')->willReturn(false);
 
         return $detector;
+    }
+
+    private function bindSubject(): void
+    {
+
+        $fileSystem = $this->createDefaultFileSystem();
+
+        $this->handler = UpdateHandlerTestKit::create(
+            'studapart', // repoOwner
+            'stud-cli',  // repoName
+            '1.0.0',     // currentVersion
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
+            $fileSystem, // FileSystem (position 9) - now mocked
+            null,        // gitToken
+            $this->httpClient
+        );
     }
 }

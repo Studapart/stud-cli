@@ -32,7 +32,7 @@ class JiraFieldMetadataService
 
         $data = $response->toArray();
 
-        return $this->normalizeFieldMetadata($data['fields'] ?? []);
+        return $this->normalizeCreateMetaFields($data['fields'] ?? []);
     }
 
     /**
@@ -57,6 +57,30 @@ class JiraFieldMetadataService
     }
 
     /**
+     * Createmeta may return a list. Prefer each entry's fieldId or key over the array index.
+     *
+     * @param array<string, mixed> $fields
+     *
+     * @return array<string, array{required: bool, name: string}>
+     */
+    private function normalizeCreateMetaFields(array $fields): array
+    {
+        $result = [];
+        foreach ($fields as $fieldId => $meta) {
+            if (! is_array($meta)) {
+                continue;
+            }
+            $id = $meta['fieldId'] ?? $meta['key'] ?? $fieldId;
+            $result[(string) $id] = [
+                'required' => (bool) ($meta['required'] ?? false),
+                'name' => (string) ($meta['name'] ?? $id),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * @param array<string, mixed> $fields
      *
      * @return array<string, array{required: bool, name: string}>
@@ -68,7 +92,7 @@ class JiraFieldMetadataService
             if (! is_array($meta)) {
                 continue;
             }
-            $result[$fieldId] = [
+            $result[(string) $fieldId] = [
                 'required' => (bool) ($meta['required'] ?? false),
                 'name' => (string) ($meta['name'] ?? $fieldId),
             ];

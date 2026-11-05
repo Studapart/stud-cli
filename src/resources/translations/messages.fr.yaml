@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -92,6 +93,8 @@ config:
     section_title: "Validation de la configuration"
     label_jira: "Jira"
     label_git_provider: "Fournisseur Git"
+    label_github: "GitHub"
+    label_gitlab: "GitLab"
     label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Échec"
@@ -106,6 +109,15 @@ config:
     error_git_ping: "Échec de la connexion au fournisseur Git : %error%"
     error_linear_not_configured: "Linear n'est pas configuré."
     error_linear_ping: "Échec de la connexion Linear : %error%"
+    notice_jira_non_blocking: "La vérification de connectivité Jira a échoué (sans bloquer ce projet)."
+    notice_linear_non_blocking: "La vérification de connectivité Linear a échoué (sans bloquer ce projet)."
+    error_readiness_failed: "La validation de la configuration a échoué pour ce dépôt ou cet environnement."
+    label_global_rollup: "État global"
+    label_project_rollup: "État du projet"
+    rollup_ok: "OK"
+    rollup_partial: "Partiel"
+    rollup_fail: "Échec"
+    rollup_not_applicable: "N/A"
   project_init:
     section_title: "Configuration du projet"
     not_git_repository: "Vous n'êtes pas dans un dépôt Git. Exécutez cette commande depuis un clone du dépôt."
@@ -134,6 +146,10 @@ config:
     prompt_github_token: "Jeton GitHub pour ce dépôt (masqué)"
     prompt_gitlab_token_hint: "Jeton GitLab : laissez vide pour ignorer ; saisissez « . » pour conserver le jeton actuel."
     prompt_gitlab_token: "Jeton GitLab pour ce dépôt (masqué)"
+    prompt_jira_url: "Jira URL for this repository (optional)"
+    prompt_jira_email: "Jira email for this repository (optional)"
+    prompt_jira_api_token: "Jira API token for this repository (hidden, optional)"
+    prompt_linear_api_key: "Linear API key for this repository (hidden, optional)"
     prompt_issue_tracker_provider: "Fournisseur de tickets pour ce dépôt (lorsque la config globale prend en charge Jira et Linear)"
     prompt_linear_team_key: "Clé d'équipe Linear (optionnel ; par défaut la clé projet Jira si partagée)"
     prompt_linear_start_state_id: "ID d'état de workflow Linear pour items:start (optionnel)"
@@ -344,11 +360,15 @@ item:
     error_createmeta: "Impossible de récupérer les métadonnées de création : %error%"
     error_extra_required: "Ce projet/type de ticket a des champs personnalisés obligatoires : %fields%. Exécutez la commande en mode interactif (stud items:create ou stud ic)."
     error_create: "Impossible de créer le ticket : %error%"
+    error_create_retry: "Impossible de créer le ticket : %error% Champs reportés : %fields%."
     linear_type_group_not_configured: "Le LabelGroup de type Linear n'est pas configuré. Définissez linearTypeLabelGroupId dans .git/stud.config."
     linear_type_label_not_found: "Impossible de résoudre le libellé de type Linear « %type% » dans le LabelGroup configuré."
     linear_type_resolver_unavailable: "Impossible de résoudre le libellé de type Linear ; le client API Linear n'est pas disponible."
     success: "Ticket %key% créé – %url%"
     note_skipped_optional_fields: "Les champs suivants ont été ignorés car non pris en charge pour ce projet/type de ticket : %fields%."
+    note_deferred_fields: "Le ticket a d'abord été créé, puis ces champs ont été appliqués : %fields%."
+    note_update_warnings: "Ces champs n'ont pas pu être appliqués après la création : %fields%."
+    error_required_on_create_screen: "Un champ obligatoire ne peut pas être défini sur l'écran de création : %fields%."
     skipped_field_labels: "labels"
     skipped_field_original_estimate: "estimation de temps initiale"
   update:
@@ -374,6 +394,7 @@ item:
     section: Récupération des tickets Jira
     error_fetch: 'Échec de la récupération des tickets : %error%'
     no_items: Aucun ticket trouvé correspondant à vos critères.
+    jql_query: "Requête JQL : %jql%"
     error_invalid_sort: 'Valeur de tri invalide ''%value%''. Valeurs acceptées : Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Linear est sélectionné mais LINEAR_API_KEY n''est pas configuré. Exécutez "stud config:init" ou définissez LINEAR_API_KEY dans ~/.config/stud/config.yml.'
@@ -456,6 +477,10 @@ push:
   confirm_please: "Push normal échoué. Exécuter « stud please » (force-with-lease) maintenant ?"
   confirm_flatten_publish: "La fusion des commits fixup a réécrit l'historique. Le publier avec un force-push sûr ?"
   note_uncommitted_left: "Vous avez des modifications non commitées. Le push a utilisé les commits déjà sur cette branche ; les fichiers non commités n'ont pas été inclus."
+  commit_created: "Commit créé"
+  commit_failed: "Échec du commit"
+  please_completed: "Force push terminé"
+  please_failed: "Échec du force push"
 commit_undo:
   error_not_repo: Pas dans un dépôt git.
   error_no_commit: Il n'y a pas de commit à annuler.
@@ -506,6 +531,9 @@ submit:
 
     Retour à un simple lien.'
   warning_issue_fetch: "Impossible de récupérer les détails du work item pour le corps de la PR : %error%\nRetour à un simple lien."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Création de la Pull Request...
   success_created: '✅ Pull Request créée : %url%'
   warning_no_provider: Aucun fournisseur Git configuré pour ce projet.

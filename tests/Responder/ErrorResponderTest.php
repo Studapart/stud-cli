@@ -14,7 +14,7 @@ class ErrorResponderTest extends CommandTestCase
     public function testRespondDisplaysError(): void
     {
         $response = FilterShowResponse::error('Test error message');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $logger = $this->createMock(Logger::class);
 
         $logger->expects($this->once())
@@ -28,7 +28,7 @@ class ErrorResponderTest extends CommandTestCase
     public function testRespondDisplaysErrorString(): void
     {
         $response = FilterShowResponse::error('Custom error');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $logger = $this->createMock(Logger::class);
 
         $logger->expects($this->once())
@@ -42,7 +42,7 @@ class ErrorResponderTest extends CommandTestCase
     public function testRespondJsonReturnsAgentJsonResponse(): void
     {
         $response = FilterShowResponse::error('Test error');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $logger = $this->createMock(Logger::class);
 
         $logger->expects($this->never())->method('error');
@@ -58,8 +58,8 @@ class ErrorResponderTest extends CommandTestCase
     public function testRespondCliReturnsNull(): void
     {
         $response = FilterShowResponse::error('Test error');
-        $io = $this->createMock(SymfonyStyle::class);
-        $logger = $this->createMock(Logger::class);
+        $io = $this->createStub(SymfonyStyle::class);
+        $logger = $this->createStub(Logger::class);
 
         $responder = new ErrorResponder($this->translationService, [], $logger);
         $result = $responder->respond($io, $response, OutputFormat::Cli);

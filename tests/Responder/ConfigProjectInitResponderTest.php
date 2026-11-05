@@ -19,12 +19,12 @@ class ConfigProjectInitResponderTest extends TestCase
     public function testJsonSuccessIncludesUpdatedAndConfig(): void
     {
         $translator = $this->translator();
-        $helper = new ResponderHelper($translator, $this->createMock(ColorHelper::class));
-        $logger = $this->createMock(Logger::class);
+        $helper = new ResponderHelper($translator, $this->createStub(ColorHelper::class));
+        $logger = $this->createStub(Logger::class);
         $responder = new ConfigProjectInitResponder($helper, $logger);
 
         $response = ConfigProjectInitResponse::success(true, ['projectKey' => 'SCI']);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $json = $responder->respond($io, $response, OutputFormat::Json);
 
         $this->assertNotNull($json);
@@ -36,11 +36,11 @@ class ConfigProjectInitResponderTest extends TestCase
     {
         $translator = $this->translator();
         $helper = new ResponderHelper($translator, null);
-        $logger = $this->createMock(Logger::class);
+        $logger = $this->createStub(Logger::class);
         $responder = new ConfigProjectInitResponder($helper, $logger);
 
         $response = ConfigProjectInitResponse::error('config.project_init.not_git_repository');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $json = $responder->respond($io, $response, OutputFormat::Json);
 
         $this->assertNotNull($json);
@@ -51,7 +51,7 @@ class ConfigProjectInitResponderTest extends TestCase
     public function testCliErrorLogsTranslatedMessage(): void
     {
         $translator = $this->createMock(TranslationService::class);
-        $translator->method('trans')
+        $translator->expects($this->once())->method('trans')
             ->with('config.project_init.failed', [])
             ->willReturn('Human error');
 
@@ -61,17 +61,17 @@ class ConfigProjectInitResponderTest extends TestCase
 
         $responder = new ConfigProjectInitResponder($helper, $logger);
         $response = ConfigProjectInitResponse::error('config.project_init.failed');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->assertNull($responder->respond($io, $response, OutputFormat::Cli));
     }
 
     public function testCliSuccessUpdatedShowsStatusAndDefinitionList(): void
     {
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturnCallback(fn (string $key): string => $key);
 
-        $colorHelper = $this->createMock(ColorHelper::class);
+        $colorHelper = $this->createStub(ColorHelper::class);
         $colorHelper->method('format')->willReturnArgument(1);
 
         $helper = new ResponderHelper($translator, $colorHelper);
@@ -87,25 +87,25 @@ class ConfigProjectInitResponderTest extends TestCase
             'nested' => ['a' => 1],
             'empty' => new \stdClass(),
         ]);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->assertNull($responder->respond($io, $response, OutputFormat::Cli));
     }
 
     public function testCliSuccessUnchangedSkipsDefinitionListWhenConfigEmpty(): void
     {
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
         $helper = new ResponderHelper($translator, null);
         $logger = $this->createMock(Logger::class);
         $logger->method('section');
-        $logger->method('text')->with(Logger::VERBOSITY_NORMAL, 'msg');
+        $logger->expects($this->once())->method('text')->with(Logger::VERBOSITY_NORMAL, 'msg');
         $logger->expects($this->never())->method('definitionList');
 
         $responder = new ConfigProjectInitResponder($helper, $logger);
         $response = ConfigProjectInitResponse::success(false, []);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
         $this->assertNull($responder->respond($io, $response, OutputFormat::Cli));
     }
@@ -114,7 +114,7 @@ class ConfigProjectInitResponderTest extends TestCase
     {
         $translator = $this->translator();
         $helper = new ResponderHelper($translator, null);
-        $logger = $this->createMock(Logger::class);
+        $logger = $this->createStub(Logger::class);
         $responder = new ConfigProjectInitResponder($helper, $logger);
 
         $ref = new \ReflectionClass(ConfigProjectInitResponse::class);
@@ -123,7 +123,7 @@ class ConfigProjectInitResponderTest extends TestCase
         \App\Util\ReflectionAccessor::ensureAccessible($ctor);
         $ctor->invoke($response, false, null, false, []);
 
-        $json = $responder->respond($this->createMock(SymfonyStyle::class), $response, OutputFormat::Json);
+        $json = $responder->respond($this->createStub(SymfonyStyle::class), $response, OutputFormat::Json);
 
         $this->assertNotNull($json);
         $this->assertFalse($json->success);
@@ -132,7 +132,7 @@ class ConfigProjectInitResponderTest extends TestCase
 
     private function translator(): TranslationService
     {
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('transForAgentText')->willReturnCallback(
             fn (string $id, array $parameters = []): string => $id . ($parameters === [] ? '' : ' ' . json_encode($parameters))
         );

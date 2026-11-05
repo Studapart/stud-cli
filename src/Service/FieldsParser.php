@@ -57,12 +57,13 @@ class FieldsParser
      *
      * @param array<string, string|list<string>> $parsedFields From parse() or agent mode JSON
      * @param array<string, array{required: bool, name: string}> $fieldsMeta From createmeta or editmeta
-     * @return array{matched: array<string, mixed>, unmatched: list<string>}
+     * @return array{matched: array<string, mixed>, unmatched: list<string>, inputByPayload: array<string, string>}
      */
     public function matchAndTransform(array $parsedFields, array $fieldsMeta): array
     {
         $matched = [];
         $unmatched = [];
+        $inputByPayload = [];
 
         foreach ($parsedFields as $inputKey => $value) {
             $resolvedId = $this->resolveFieldId((string) $inputKey, $fieldsMeta);
@@ -73,9 +74,10 @@ class FieldsParser
             }
             $payloadKey = $this->toPayloadKey($resolvedId);
             $matched[$payloadKey] = $this->transformValue($resolvedId, $value);
+            $inputByPayload[$payloadKey] = (string) $inputKey;
         }
 
-        return ['matched' => $matched, 'unmatched' => $unmatched];
+        return ['matched' => $matched, 'unmatched' => $unmatched, 'inputByPayload' => $inputByPayload];
     }
 
     /**

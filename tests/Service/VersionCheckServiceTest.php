@@ -7,7 +7,6 @@ use App\Service\GithubGitHostingAdapter;
 use App\Service\VersionCheckService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -20,7 +19,7 @@ class VersionCheckServiceTest extends TestCase
     private const GIT_TOKEN = 'test_token';
 
     private VersionCheckService $service;
-    private HttpClientInterface&MockObject $httpClientMock;
+    private HttpClientInterface $httpClientMock;
     private FileSystem $fileSystem;
     private FlysystemFilesystem $flysystem;
     private string $tempCacheDir;
@@ -30,27 +29,8 @@ class VersionCheckServiceTest extends TestCase
     {
         parent::setUp();
 
-        // Create in-memory filesystem
-        $adapter = new InMemoryFilesystemAdapter();
-        $this->flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($this->flysystem);
-
-        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->tempCacheDir = '/test/home';
-        // Cache file should be in .cache/stud/ subdirectory
-        $this->tempCacheFile = $this->tempCacheDir . '/.cache/stud/last_update_check.json';
-
-        // Create cache directory structure in memory
-        $this->flysystem->createDirectory($this->tempCacheDir . '/.cache/stud');
-
-        $this->service = new VersionCheckService(
-            self::REPO_OWNER,
-            self::REPO_NAME,
-            self::CURRENT_VERSION,
-            $this->fileSystem,
-            self::GIT_TOKEN,
-            $this->httpClientMock
-        );
+        $this->httpClientMock = $this->createStub(HttpClientInterface::class);
+        $this->bindSubject();
     }
 
     public function testConstructor(): void
@@ -69,6 +49,9 @@ class VersionCheckServiceTest extends TestCase
 
     public function testCheckForUpdateWithFreshCache(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         // Create a fresh cache file (less than 24 hours old) in in-memory filesystem
         $cacheData = [
             'latest_version' => '1.2.0',
@@ -100,6 +83,9 @@ class VersionCheckServiceTest extends TestCase
 
     public function testCheckForUpdateWithStaleCache(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         // Create a stale cache file (more than 24 hours old) in in-memory filesystem
         $cacheData = [
             'latest_version' => '1.0.0',
@@ -117,7 +103,7 @@ class VersionCheckServiceTest extends TestCase
                 'tag_name' => 'v1.2.0',
             ];
 
-            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock = $this->createStub(ResponseInterface::class);
             $responseMock->method('getStatusCode')->willReturn(200);
             $responseMock->method('toArray')->willReturn($releaseData);
 
@@ -146,6 +132,9 @@ class VersionCheckServiceTest extends TestCase
 
     public function testCheckForUpdateWithNoCache(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         // No cache file exists
 
         // Override HOME to use our temp directory
@@ -158,7 +147,7 @@ class VersionCheckServiceTest extends TestCase
                 'tag_name' => 'v1.2.0',
             ];
 
-            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock = $this->createStub(ResponseInterface::class);
             $responseMock->method('getStatusCode')->willReturn(200);
             $responseMock->method('toArray')->willReturn($releaseData);
 
@@ -186,13 +175,16 @@ class VersionCheckServiceTest extends TestCase
 
     public function testCheckForUpdateFailsSilentlyOnGitHubError(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         // Override HOME to use our temp directory
         $originalHome = $_SERVER['HOME'] ?? null;
         $_SERVER['HOME'] = $this->tempCacheDir;
 
         try {
             // Mock GitHub API error
-            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock = $this->createStub(ResponseInterface::class);
             $responseMock->method('getStatusCode')->willReturn(500);
             $responseMock->method('getContent')->willReturn('Internal Server Error');
 
@@ -221,6 +213,9 @@ class VersionCheckServiceTest extends TestCase
 
     public function testCheckForUpdateDoesNotDisplayWhenAlreadyOnLatest(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         // Override HOME to use our temp directory
         $originalHome = $_SERVER['HOME'] ?? null;
         $_SERVER['HOME'] = $this->tempCacheDir;
@@ -231,7 +226,7 @@ class VersionCheckServiceTest extends TestCase
                 'tag_name' => 'v1.1.0',
             ];
 
-            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock = $this->createStub(ResponseInterface::class);
             $responseMock->method('getStatusCode')->willReturn(200);
             $responseMock->method('toArray')->willReturn($releaseData);
 
@@ -254,6 +249,9 @@ class VersionCheckServiceTest extends TestCase
 
     public function testCheckForUpdateDoesNotDisplayWhenOnNewerVersion(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         // Override HOME to use our temp directory
         $originalHome = $_SERVER['HOME'] ?? null;
         $_SERVER['HOME'] = $this->tempCacheDir;
@@ -264,7 +262,7 @@ class VersionCheckServiceTest extends TestCase
                 'tag_name' => 'v1.0.0',
             ];
 
-            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock = $this->createStub(ResponseInterface::class);
             $responseMock->method('getStatusCode')->willReturn(200);
             $responseMock->method('toArray')->willReturn($releaseData);
 
@@ -391,6 +389,9 @@ class VersionCheckServiceTest extends TestCase
 
     public function testCheckForUpdateCreatesCacheDirectoryIfNotExists(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         // Create a service with a fresh temp directory that doesn't have cache dir
         $tempDir = '/test/no-cache-dir';
         $originalHome = $_SERVER['HOME'] ?? null;
@@ -408,7 +409,7 @@ class VersionCheckServiceTest extends TestCase
                 'tag_name' => 'v1.2.0',
             ];
 
-            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock = $this->createStub(ResponseInterface::class);
             $responseMock->method('getStatusCode')->willReturn(200);
             $responseMock->method('toArray')->willReturn($releaseData);
 
@@ -569,6 +570,9 @@ class VersionCheckServiceTest extends TestCase
 
     public function testFetchLatestVersionFromGitHubWithNoTagName(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('fetchLatestVersionFromGitHub');
         \App\Util\ReflectionAccessor::ensureAccessible($method);
@@ -582,7 +586,7 @@ class VersionCheckServiceTest extends TestCase
                 // No tag_name
             ];
 
-            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock = $this->createStub(ResponseInterface::class);
             $responseMock->method('getStatusCode')->willReturn(200);
             $responseMock->method('toArray')->willReturn($releaseData);
 
@@ -603,6 +607,9 @@ class VersionCheckServiceTest extends TestCase
 
     public function testCheckForUpdateWithFreshCacheButNullVersion(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         // Create a fresh cache file with null latest_version
         $cacheData = [
             'latest_version' => null,
@@ -634,6 +641,9 @@ class VersionCheckServiceTest extends TestCase
 
     public function testCheckForUpdateShouldDisplayWhenNewerVersionAvailable(): void
     {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->bindSubject();
+
         // Test that should_display is true when a newer version is available
         // This covers line 55: 'should_display' => $latestVersion !== null && $this->isNewerVersion($latestVersion)
         // Override HOME to use our temp directory
@@ -646,7 +656,7 @@ class VersionCheckServiceTest extends TestCase
                 'tag_name' => 'v1.2.0', // Newer than current version 1.1.0
             ];
 
-            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock = $this->createStub(ResponseInterface::class);
             $responseMock->method('getStatusCode')->willReturn(200);
             $responseMock->method('toArray')->willReturn($releaseData);
 
@@ -713,7 +723,7 @@ class VersionCheckServiceTest extends TestCase
         $_SERVER['HOME'] = $tempDir;
 
         // Create a mock FileSystem that throws RuntimeException on mkdir
-        $mockFileSystem = $this->createMock(FileSystem::class);
+        $mockFileSystem = $this->createStub(FileSystem::class);
         $mockFileSystem->method('isDir')
             ->willReturn(false); // Directory doesn't exist
         $mockFileSystem->method('mkdir')
@@ -743,5 +753,29 @@ class VersionCheckServiceTest extends TestCase
                 unset($_SERVER['HOME']);
             }
         }
+    }
+
+    private function bindSubject(): void
+    {
+
+        // Create in-memory filesystem
+        $adapter = new InMemoryFilesystemAdapter();
+        $this->flysystem = new FlysystemFilesystem($adapter);
+        $this->fileSystem = new FileSystem($this->flysystem);
+        $this->tempCacheDir = '/test/home';
+        // Cache file should be in .cache/stud/ subdirectory
+        $this->tempCacheFile = $this->tempCacheDir . '/.cache/stud/last_update_check.json';
+
+        // Create cache directory structure in memory
+        $this->flysystem->createDirectory($this->tempCacheDir . '/.cache/stud');
+
+        $this->service = new VersionCheckService(
+            self::REPO_OWNER,
+            self::REPO_NAME,
+            self::CURRENT_VERSION,
+            $this->fileSystem,
+            self::GIT_TOKEN,
+            $this->httpClientMock
+        );
     }
 }

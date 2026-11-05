@@ -12,9 +12,11 @@ use App\DTO\PullRequestFeedbackIds;
 use App\DTO\PullRequestFeedbackState;
 use App\Handler\PrCommentHandler;
 use App\Service\GitHostingPort;
+use App\Service\GitRepository;
 use App\Service\PullRequestFeedbackTargetResolver;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
+use PHPUnit\Framework\MockObject\MockObject;
 
 class PrCommentHandlerTest extends CommandTestCase
 {
@@ -24,19 +26,17 @@ class PrCommentHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createStub(GitRepository::class);
 
-        $this->gitProvider = $this->createMock(GitHostingPort::class);
-        TestKernel::$gitRepository = $this->gitRepository;
-        TestKernel::$translationService = $this->translationService;
-        $this->handler = new PrCommentHandler(
-            $this->gitRepository,
-            $this->gitProvider,
-            $this->translationService,
-        );
+        $this->gitProvider = $this->createStub(GitHostingPort::class);
+        $this->bindSubject();
     }
 
     public function testHandlePostsTopLevelComment(): void
     {
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+        $this->bindSubject();
+
         $this->mockActivePullRequest(123);
 
         $this->gitProvider
@@ -56,6 +56,9 @@ class PrCommentHandlerTest extends CommandTestCase
 
     public function testHandleUnescapesCheckboxMarkdownBeforePosting(): void
     {
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+        $this->bindSubject();
+
         $this->mockActivePullRequest(123);
 
         $this->gitProvider
@@ -80,6 +83,9 @@ class PrCommentHandlerTest extends CommandTestCase
 
     public function testHandleFailsWhenInputIsEmpty(): void
     {
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+        $this->bindSubject();
+
         $this->gitProvider->expects($this->never())->method('findPullRequestByBranch');
 
         $response = $this->handler->handle(new PrCommentRequest('   '));
@@ -89,6 +95,9 @@ class PrCommentHandlerTest extends CommandTestCase
 
     public function testHandleFailsWhenNoPullRequestIsFound(): void
     {
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+        $this->bindSubject();
+
         $this->mockActivePullRequest(null);
         $this->gitProvider->expects($this->never())->method('createComment');
 
@@ -99,6 +108,9 @@ class PrCommentHandlerTest extends CommandTestCase
 
     public function testHandleFailsWhenTopLevelCommentPostFails(): void
     {
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+        $this->bindSubject();
+
         $this->mockActivePullRequest(123);
 
         $this->gitProvider
@@ -113,6 +125,9 @@ class PrCommentHandlerTest extends CommandTestCase
 
     public function testHandleRepliesToFeedbackTarget(): void
     {
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+        $this->bindSubject();
+
         $conversation = $this->replyableConversation(canResolve: true);
         $this->mockActivePullRequest(123);
         $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([$conversation]);
@@ -157,6 +172,9 @@ class PrCommentHandlerTest extends CommandTestCase
 
     public function testHandleDoesNotResolveWhenReplyFails(): void
     {
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+        $this->bindSubject();
+
         $conversation = $this->replyableConversation(canResolve: true);
         $this->mockActivePullRequest(123);
         $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([$conversation]);
@@ -183,6 +201,9 @@ class PrCommentHandlerTest extends CommandTestCase
 
     public function testHandleFailsWhenTargetIsInvalid(): void
     {
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
+        $this->bindSubject();
+
         $this->mockActivePullRequest(123);
         $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([]);
         $this->gitProvider->expects($this->never())->method('replyToPullRequestFeedback');
@@ -243,8 +264,11 @@ class PrCommentHandlerTest extends CommandTestCase
 
     public function testFindActivePullRequestHandlesProviderException(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-96');
-        $this->gitRepository->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
+        $this->gitRepository->expects($this->once())->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
         $this->gitProvider->method('findPullRequestByBranch')->willThrowException(new \RuntimeException('API error'));
 
         $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', []);
@@ -254,9 +278,23 @@ class PrCommentHandlerTest extends CommandTestCase
 
     private function mockActivePullRequest(null|int|array $pullRequest): void
     {
+        $rebind = false;
+        if (! $this->gitRepository instanceof MockObject) {
+            $this->gitRepository = $this->createMock(GitRepository::class);
+            $rebind = true;
+        }
+        if (! $this->gitProvider instanceof MockObject) {
+            $this->gitProvider = $this->createMock(GitHostingPort::class);
+            $rebind = true;
+        }
+        if ($rebind) {
+            $this->bindSubject();
+        }
+
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-96');
-        $this->gitRepository->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
+        $this->gitRepository->expects($this->once())->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
         $this->gitProvider
+            ->expects($this->once())
             ->method('findPullRequestByBranch')
             ->with('studapart:feat/SCI-96')
             ->willReturn(is_int($pullRequest) ? ['number' => $pullRequest] : $pullRequest);
@@ -287,6 +325,17 @@ class PrCommentHandlerTest extends CommandTestCase
                 ),
             ],
             new PullRequestFeedbackActions(canReply: $canReply, canResolve: $canResolve),
+        );
+    }
+
+    private function bindSubject(): void
+    {
+        TestKernel::$gitRepository = $this->gitRepository;
+        TestKernel::$translationService = $this->translationService;
+        $this->handler = new PrCommentHandler(
+            $this->gitRepository,
+            $this->gitProvider,
+            $this->translationService,
         );
     }
 }

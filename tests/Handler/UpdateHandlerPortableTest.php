@@ -24,7 +24,7 @@ class UpdateHandlerPortableTest extends CommandTestCase
     private string $workspace;
     private HttpClientInterface&MockObject $httpClient;
     private PortableUpdateService&MockObject $portableUpdateService;
-    private PromptInterface&MockObject $prompt;
+    private PromptInterface&\PHPUnit\Framework\MockObject\Stub $prompt;
 
     protected function setUp(): void
     {
@@ -35,7 +35,7 @@ class UpdateHandlerPortableTest extends CommandTestCase
         $_SERVER['HOME'] = $this->workspace . '/home';
         $this->httpClient = $this->createMock(HttpClientInterface::class);
         $this->portableUpdateService = $this->createMock(PortableUpdateService::class);
-        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->prompt = $this->createStub(PromptInterface::class);
     }
 
     protected function tearDown(): void
@@ -79,10 +79,10 @@ class UpdateHandlerPortableTest extends CommandTestCase
             '1.0.0',
             $binaryPath,
             $this->translationService,
-            $this->createMock(ChangelogParser::class),
+            $this->createStub(ChangelogParser::class),
             new UpdateFileService($this->translationService, $this->prompt),
             $this->prompt,
-            $this->createMock(FileSystem::class),
+            $this->createStub(FileSystem::class),
             null,
             $this->httpClient,
             $service
@@ -138,13 +138,13 @@ class UpdateHandlerPortableTest extends CommandTestCase
 
     protected function mockReleaseFetch(): void
     {
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn([
             'tag_name' => 'v1.0.1',
             'assets' => [],
         ]);
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(404);
         $changelogResponse->method('getContent')->willReturn('{"message":"Not Found"}');
         $this->httpClient->expects(self::exactly(2))

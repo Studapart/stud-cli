@@ -1,0 +1,18 @@
+# Methods whose CRAP was already above 10 when the gate landed, with that score.
+# A higher score fails. A method that is not listed fails above 10.
+# At full coverage CRAP equals cyclomatic complexity for these methods.
+# Do not raise a score to hide a new violation.
+src/Guard/CommandGuard.php check 24
+src/Guard/Resolver/IssueTrackerProviderResolver.php resolve 22
+src/Handler/ConfigProjectInitHandler.php handle 13
+src/Handler/FilterShowHandler.php handle 11
+src/Handler/ItemListHandler.php fetchFromProviders 12
+src/Handler/GlobalInit/GitProviderTokensCollector.php collect 14
+src/Responder/ConfigValidateResponder.php respond 13
+src/Responder/ItemCreateResponder.php respond 11
+src/Responder/WorkflowResponder.php renderEntry 20
+src/Service/IssueFieldResolver.php fillStandardFieldByName 14
+src/Service/JiraIssueMapper.php normalizeAttachmentRow 13
+src/Service/LinearApiClient.php issueCreate 12
+src/Service/LinearApiClient.php issueUpdate 11
+src/Service/LinearGraphqlClient.php formatGraphQlErrors 11

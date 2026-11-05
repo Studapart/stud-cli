@@ -11,31 +11,30 @@ use App\Enum\BranchAutoCleanDecision;
 use App\Enum\BranchCleanupLocalAction;
 use App\Enum\BranchCleanupRemoteAction;
 use App\Service\BranchCleanupExecutor;
+use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 
 class BranchCleanupExecutorTest extends CommandTestCase
 {
-    private PromptInterface&MockObject $prompt;
+    private PromptInterface $prompt;
     private BranchCleanupExecutor $executor;
     private WorkflowRecorder $recorder;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createStub(GitRepository::class);
 
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->recorder = new WorkflowRecorder();
-        $this->executor = new BranchCleanupExecutor(
-            $this->gitRepository,
-            $this->translationService,
-            $this->prompt
-        );
+        $this->prompt = $this->createStub(PromptInterface::class);
+        $this->bindSubject();
     }
 
     public function testExecuteSafeDeletePrunesRemoteTrackingRefsOnce(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $plans = [
             $this->createCleanupPlan('feat/one'),
             $this->createCleanupPlan('feat/two'),
@@ -49,6 +48,9 @@ class BranchCleanupExecutorTest extends CommandTestCase
 
     public function testExecuteForceDeleteUsesForcePath(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $plan = $this->createCleanupPlan(
             'feat/provider',
             false,
@@ -84,6 +86,10 @@ class BranchCleanupExecutorTest extends CommandTestCase
 
     public function testExecutePromptsBeforeDeletingRemoteBranch(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $plan = $this->createCleanupPlan('feat/remote', true, BranchCleanupRemoteAction::PromptDelete);
 
         $this->prompt->expects($this->once())->method('confirm')->willReturn(true);
@@ -95,6 +101,10 @@ class BranchCleanupExecutorTest extends CommandTestCase
 
     public function testExecuteKeepsRemoteWhenPromptDenied(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $plan = $this->createCleanupPlan('feat/keep-remote', true, BranchCleanupRemoteAction::PromptDelete);
 
         $this->prompt->expects($this->once())->method('confirm')->willReturn(false);
@@ -105,6 +115,10 @@ class BranchCleanupExecutorTest extends CommandTestCase
 
     public function testExecuteKeepsRemoteInQuietMode(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $plan = $this->createCleanupPlan('feat/quiet', true, BranchCleanupRemoteAction::KeepQuiet);
 
         $this->prompt->expects($this->never())->method('confirm');
@@ -115,6 +129,9 @@ class BranchCleanupExecutorTest extends CommandTestCase
 
     public function testExecuteHandlesRemoteDeleteException(): void
     {
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $plan = $this->createCleanupPlan('feat/remote-fail', true, BranchCleanupRemoteAction::PromptDelete);
 
         $this->prompt->expects($this->once())->method('confirm')->willReturn(true);
@@ -137,6 +154,9 @@ class BranchCleanupExecutorTest extends CommandTestCase
 
     public function testExecuteReturnsForManualRemoteAction(): void
     {
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->bindSubject();
+
         $plan = $this->createCleanupPlan(
             'feat/manual-remote',
             true,
@@ -167,6 +187,16 @@ class BranchCleanupExecutorTest extends CommandTestCase
             $remoteExists,
             $localAction,
             $remoteAction
+        );
+    }
+
+    private function bindSubject(): void
+    {
+        $this->recorder = new WorkflowRecorder();
+        $this->executor = new BranchCleanupExecutor(
+            $this->gitRepository,
+            $this->translationService,
+            $this->prompt
         );
     }
 }

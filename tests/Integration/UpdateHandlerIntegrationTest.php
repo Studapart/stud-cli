@@ -108,12 +108,12 @@ class UpdateHandlerIntegrationTest extends TestCase
 CHANGELOG;
 
         // Mock release API response
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         // Mock changelog API response
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode($changelogContent),
@@ -121,7 +121,7 @@ CHANGELOG;
         ]);
 
         // Mock download response
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         // Setup HTTP client to return appropriate responses
@@ -179,18 +179,18 @@ CHANGELOG;
             ],
         ];
 
-        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse = $this->createStub(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse = $this->createStub(ResponseInterface::class);
         $changelogResponse->method('getStatusCode')->willReturn(200);
         $changelogResponse->method('toArray')->willReturn([
             'content' => base64_encode('## [1.0.1] - 2025-01-01'),
             'encoding' => 'base64',
         ]);
 
-        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse = $this->createStub(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $this->httpClient->expects($this->exactly(3))

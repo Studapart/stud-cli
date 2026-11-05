@@ -55,7 +55,7 @@ class JiraCredentialsCollectorTest extends TestCase
     {
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->never())->method('confirm');
-        $recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $recorder = $this->createStub(WorkflowEntryRecorder::class);
 
         $collector = new JiraCredentialsCollector(
             new GlobalConfigProviderResolver(),

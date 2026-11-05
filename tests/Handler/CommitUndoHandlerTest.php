@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\Handler\CommitUndoHandler;
+use App\Service\GitRepository;
 use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
@@ -16,20 +17,21 @@ class CommitUndoHandlerTest extends CommandTestCase
 {
     private CommitUndoHandler $handler;
 
-    private Logger&\PHPUnit\Framework\MockObject\MockObject $logger;
+    private Logger $logger;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        TestKernel::$gitRepository = $this->gitRepository;
-        TestKernel::$translationService = $this->translationService;
-        $this->logger = $this->createMock(Logger::class);
-        $this->handler = new CommitUndoHandler($this->gitRepository, $this->logger, $this->translationService);
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->logger = $this->createStub(Logger::class);
+        $this->bindSubject();
     }
 
     public function testHandleSuccessWhenNotPushed(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getProjectConfigPath')
             ->willReturn('/repo/.git/stud.config');
@@ -53,6 +55,10 @@ class CommitUndoHandlerTest extends CommandTestCase
 
     public function testHandleRefusesWhenPushedAndUserDoesNotConfirm(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getProjectConfigPath')
             ->willReturn('/repo/.git/stud.config');
@@ -80,6 +86,10 @@ class CommitUndoHandlerTest extends CommandTestCase
 
     public function testHandleUndoesWhenPushedAndUserConfirms(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getProjectConfigPath')
             ->willReturn('/repo/.git/stud.config');
@@ -107,6 +117,9 @@ class CommitUndoHandlerTest extends CommandTestCase
 
     public function testHandleErrorWhenNotInRepo(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getProjectConfigPath')
             ->willThrowException(new \RuntimeException('Not in a git repository.'));
@@ -126,6 +139,9 @@ class CommitUndoHandlerTest extends CommandTestCase
 
     public function testHandleErrorWhenNoCommit(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getProjectConfigPath')
             ->willReturn('/repo/.git/stud.config');
@@ -143,5 +159,13 @@ class CommitUndoHandlerTest extends CommandTestCase
         $result = $this->handler->handle($io);
 
         $this->assertFalse($result->isSuccess());
+    }
+
+    private function bindSubject(): void
+    {
+
+        TestKernel::$gitRepository = $this->gitRepository;
+        TestKernel::$translationService = $this->translationService;
+        $this->handler = new CommitUndoHandler($this->gitRepository, $this->logger, $this->translationService);
     }
 }

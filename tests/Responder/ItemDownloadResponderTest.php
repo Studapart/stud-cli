@@ -18,7 +18,7 @@ class ItemDownloadResponderTest extends CommandTestCase
     public function testRespondJsonReturnsFilesAndErrors(): void
     {
         $helper = new ResponderHelper($this->translationService);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $logger = $this->createLogger($io);
         $responder = new ItemDownloadResponder($helper, ['JIRA_URL' => 'https://jira.example'], $logger);
         $response = ItemDownloadResponse::result(
@@ -37,7 +37,7 @@ class ItemDownloadResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorWhenNotSuccessful(): void
     {
         $helper = new ResponderHelper($this->translationService);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $logger = $this->createLogger($io);
         $responder = new ItemDownloadResponder($helper, [], $logger);
         $response = ItemDownloadResponse::fatal('bad');
@@ -52,7 +52,7 @@ class ItemDownloadResponderTest extends CommandTestCase
     public function testRespondCliRendersTableWhenFilesPresent(): void
     {
         $helper = new ResponderHelper($this->translationService, new ColorHelper([]));
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         /** @var Logger&\PHPUnit\Framework\MockObject\MockObject $logger */
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->atLeastOnce())->method('section');
@@ -66,7 +66,7 @@ class ItemDownloadResponderTest extends CommandTestCase
     public function testRespondCliLogsPartialErrors(): void
     {
         $helper = new ResponderHelper($this->translationService);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         /** @var Logger&\PHPUnit\Framework\MockObject\MockObject $logger */
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->atLeastOnce())->method('section');
@@ -81,7 +81,7 @@ class ItemDownloadResponderTest extends CommandTestCase
     public function testRespondCliReturnsNullWhenFatal(): void
     {
         $helper = new ResponderHelper($this->translationService);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         /** @var Logger&\PHPUnit\Framework\MockObject\MockObject $logger */
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->never())->method('table');

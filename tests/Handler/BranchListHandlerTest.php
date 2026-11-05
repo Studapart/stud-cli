@@ -8,17 +8,17 @@ use App\Handler\BranchListHandler;
 use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GithubGitHostingAdapter;
 use App\Tests\CommandTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 
 class BranchListHandlerTest extends CommandTestCase
 {
     private BranchListHandler $handler;
-    private GithubGitHostingAdapter&MockObject $githubProvider;
+    private GithubGitHostingAdapter&Stub $githubProvider;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->githubProvider = $this->createStub(GithubGitHostingAdapter::class);
         $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
         $this->handler = new BranchListHandler(
             $this->gitRepository,

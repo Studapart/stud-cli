@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -92,6 +93,8 @@ config:
     section_title: "Xác thực cấu hình"
     label_jira: "Jira"
     label_git_provider: "Nhà cung cấp Git"
+    label_github: "GitHub"
+    label_gitlab: "GitLab"
     label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Lỗi"
@@ -106,6 +109,15 @@ config:
     error_git_ping: "Kết nối nhà cung cấp Git thất bại: %error%"
     error_linear_not_configured: "Linear chưa được cấu hình."
     error_linear_ping: "Kết nối Linear thất bại: %error%"
+    notice_jira_non_blocking: "Kiểm tra kết nối Jira thất bại (không chặn dự án này)."
+    notice_linear_non_blocking: "Kiểm tra kết nối Linear thất bại (không chặn dự án này)."
+    error_readiness_failed: "Xác thực cấu hình thất bại cho kho hoặc môi trường này."
+    label_global_rollup: "Sẵn sàng toàn cục"
+    label_project_rollup: "Sẵn sàng dự án"
+    rollup_ok: "OK"
+    rollup_partial: "Một phần"
+    rollup_fail: "Thất bại"
+    rollup_not_applicable: "N/A"
   project_init:
     section_title: "Cấu hình dự án"
     not_git_repository: "Không nằm trong kho Git. Chạy lệnh này từ bản checkout của kho."
@@ -134,6 +146,10 @@ config:
     prompt_github_token: "Token GitHub cho kho này (ẩn)"
     prompt_gitlab_token_hint: "Token GitLab: để trống để bỏ qua; nhập '.' để giữ token hiện có."
     prompt_gitlab_token: "Token GitLab cho kho này (ẩn)"
+    prompt_jira_url: "Jira URL for this repository (optional)"
+    prompt_jira_email: "Jira email for this repository (optional)"
+    prompt_jira_api_token: "Jira API token for this repository (hidden, optional)"
+    prompt_linear_api_key: "Linear API key for this repository (hidden, optional)"
     prompt_issue_tracker_provider: "Nhà cung cấp work-item cho kho lưu trữ này (khi cấu hình toàn cục hỗ trợ cả Jira và Linear)"
     prompt_linear_team_key: "Khóa team Linear (tùy chọn; mặc định khóa dự án Jira khi dùng chung)"
     prompt_linear_start_state_id: "ID trạng thái workflow Linear cho items:start (tùy chọn)"
@@ -344,11 +360,15 @@ item:
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run the command interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    error_create_retry: "Could not create issue: %error% Deferred fields: %fields%."
     linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
     linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
     linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: "Created issue %key% – %url%"
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
+    note_deferred_fields: "Created the issue first, then applied these fields: %fields%."
+    note_update_warnings: "These fields could not be applied after create: %fields%."
+    error_required_on_create_screen: "Required field cannot be set on the create screen: %fields%."
     skipped_field_labels: "labels"
     skipped_field_original_estimate: "time original estimate"
   update:
@@ -374,6 +394,7 @@ item:
     section: Đang lấy các mục Jira
     error_fetch: 'Không thể lấy các mục: %error%'
     no_items: Không tìm thấy mục nào phù hợp với tiêu chí của bạn.
+    jql_query: "Truy vấn JQL: %jql%"
     error_invalid_sort: 'Giá trị sắp xếp không hợp lệ ''%value%''. Giá trị được chấp nhận: Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Linear được chọn nhưng LINEAR_API_KEY chưa được cấu hình. Chạy "stud config:init" hoặc đặt LINEAR_API_KEY trong ~/.config/stud/config.yml.'
@@ -456,6 +477,10 @@ push:
   confirm_please: "Push thường thất bại. Chạy 'stud please' (force-with-lease) ngay?"
   confirm_flatten_publish: "Lịch sử đã được viết lại. Xuất bản bằng force-push an toàn?"
   note_uncommitted_left: "Bạn có thay đổi chưa commit. Push dùng các commit đã có trên nhánh; tệp chưa commit không được đưa vào."
+  commit_created: "Đã tạo commit"
+  commit_failed: "Tạo commit thất bại"
+  please_completed: "Force push hoàn tất"
+  please_failed: "Force push thất bại"
 commit_undo:
   error_not_repo: Không ở trong kho lưu trữ git.
   error_no_commit: Không có commit nào để hoàn tác.
@@ -506,6 +531,9 @@ submit:
 
     Quay lại liên kết đơn giản.'
   warning_issue_fetch: "Không thể lấy chi tiết work item cho nội dung PR: %error%\nQuay lại liên kết đơn giản."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Đang tạo Pull Request...
   success_created: '✅ Pull Request đã được tạo: %url%'
   warning_no_provider: Chưa cấu hình nhà cung cấp Git cho dự án này.

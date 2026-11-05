@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Response;
 
+use App\DTO\MessageRef;
+
 /**
  * Result of config:project-init: merged project config (redacted) and whether the file changed.
  */
@@ -14,7 +16,7 @@ final class ConfigProjectInitResponse extends AbstractResponse
      */
     private function __construct(
         bool $success,
-        ?string $error,
+        MessageRef|string|null $error,
         public readonly bool $updated,
         public readonly array $redactedProjectConfig,
     ) {
@@ -30,24 +32,20 @@ final class ConfigProjectInitResponse extends AbstractResponse
     }
 
     /**
-     * @param array<string, mixed> $parameters Optional translation parameters for the error key
+     * @param array<string, mixed> $parameters Translation parameters for the error key
      */
     public static function error(string $errorKey, array $parameters = []): self
     {
-        $r = new self(false, $errorKey, false, []);
-        $r->errorParameters = $parameters;
-
-        return $r;
+        return new self(false, MessageRef::key($errorKey, $parameters), false, []);
     }
-
-    /** @var array<string, mixed> */
-    private array $errorParameters = [];
 
     /**
      * @return array<string, mixed>
      */
     public function getErrorParameters(): array
     {
-        return $this->errorParameters;
+        $error = $this->getErrorMessage();
+
+        return $error instanceof MessageRef ? $error->parameters : [];
     }
 }

@@ -8,25 +8,20 @@ use App\DTO\ConfluencePushInput;
 use App\Exception\ApiException;
 use App\Handler\ConfluencePushHandler;
 use App\Service\MarkdownToAdfConverter;
-use App\Service\TranslationService;
 use App\Service\WikiPort;
-use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
+use App\Tests\CommandTestCase;
 
-class ConfluencePushHandlerTest extends TestCase
+class ConfluencePushHandlerTest extends CommandTestCase
 {
-    private WikiPort&MockObject $wiki;
-    private MarkdownToAdfConverter&MockObject $converter;
-    private TranslationService&MockObject $translator;
+    private WikiPort $wiki;
+    private MarkdownToAdfConverter $converter;
 
     protected function setUp(): void
     {
-        $this->wiki = $this->createMock(WikiPort::class);
-        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
-        $this->translator = $this->createMock(TranslationService::class);
-        $this->translator->method('trans')->willReturnCallback(
-            static fn (string $id, array $params = []): string => $id . ':' . json_encode($params)
-        );
+        parent::setUp();
+
+        $this->wiki = $this->createStub(WikiPort::class);
+        $this->converter = $this->createStub(MarkdownToAdfConverter::class);
     }
 
     private function createHandler(): ConfluencePushHandler
@@ -34,12 +29,15 @@ class ConfluencePushHandlerTest extends TestCase
         return new ConfluencePushHandler(
             $this->wiki,
             $this->converter,
-            $this->translator
+            $this->translationService
         );
     }
 
     public function testHandleCreateFlowSuccess(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('resolveSpaceId')
             ->with('DEV')
@@ -76,6 +74,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleUpdateFlowSuccess(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
@@ -115,6 +116,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleUpdateKeepsExistingTitleWhenNotProvided(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
@@ -144,6 +148,8 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleReturnsErrorWhenContentEmpty(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+
         $this->wiki->expects(self::never())->method('createPage');
         $this->wiki->expects(self::never())->method('getPage');
 
@@ -152,7 +158,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_no_content', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_no_content');
     }
 
     public function testHandleCreateReturnsErrorWhenSpaceMissing(): void
@@ -162,7 +168,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_space_required', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_space_required');
     }
 
     public function testHandleCreateReturnsErrorWhenTitleMissing(): void
@@ -172,11 +178,14 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_no_title', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_no_title');
     }
 
     public function testHandleCreateReturnsErrorWhenSpaceNotFound(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('resolveSpaceId')
             ->with('MISSING')
@@ -188,11 +197,13 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_space_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_space_not_found', ['key' => 'MISSING']);
     }
 
     public function testHandleUpdateReturnsErrorWhenPageNotFound(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+
         $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('99999')
@@ -203,11 +214,14 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_page_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_page_not_found', ['id' => '99999']);
     }
 
     public function testHandleCreateReturnsErrorOnApiException(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
         $this->wiki->expects(self::once())
@@ -219,11 +233,14 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_api', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Server error detail']);
     }
 
     public function testHandleUpdateReturnsErrorWhenUpdatePageThrows(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
@@ -243,11 +260,14 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_api', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Conflict detail']);
     }
 
     public function testBuildPageUrlWithEmptyWebuiReturnsBaseUrl(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
         $this->wiki->expects(self::once())
@@ -268,6 +288,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testBuildPageUrlWithAbsoluteUrlReturnsAsIs(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
         $fullUrl = 'https://other.atlassian.net/wiki/spaces/DEV/pages/999';
@@ -289,6 +312,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testCreateWithParentAsFolderUsesFolderSpaceId(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = '5315756039';
         $this->wiki->expects(self::once())
             ->method('getPage')
@@ -319,6 +345,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testCreateWithParentNotFoundReturnsError(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = '99999';
         $this->wiki->expects(self::once())
             ->method('getPage')
@@ -335,11 +364,14 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_parent_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_parent_not_found', ['id' => '99999']);
     }
 
     public function testCreateWithContactAppendsMentionToAdf(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $accountId = 'abc-123';
         $displayName = 'Jane Doe';
         $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
@@ -382,6 +414,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testCreateDuplicateTitleUnderParentUpdatesExistingPage(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'parent1';
         $title = 'Existing Title';
         $parentPage = ['id' => $parentId, 'title' => 'Parent', 'spaceId' => '1'];
@@ -434,6 +469,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleUpdateWithContactAppendsMentionToAdf(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
@@ -475,6 +513,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testCreateWithParentPageReturnsErrorWhenGetPageFailsWithNon404(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = '99999';
         $this->wiki->expects(self::once())
             ->method('getPage')
@@ -488,11 +529,14 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_page_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_page_not_found', ['id' => '99999']);
     }
 
     public function testCreateDuplicateTitleUnderParentUsesFolderChildrenWhenPageChildrenThrow(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'folder1';
         $title = 'Same Title';
         $this->wiki->expects(self::exactly(2))
@@ -542,6 +586,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenBothChildCallsThrow(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'p1';
         $title = 'Same';
         $this->wiki->expects(self::once())->method('getPage')->with($parentId)
@@ -559,11 +606,14 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertNotEmpty($response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Bad request title already exists']);
     }
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenNoMatchingChild(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'parent1';
         $title = 'Unique Title';
         $this->wiki->expects(self::once())
@@ -581,11 +631,14 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertNotEmpty($response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Bad request title already exists']);
     }
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenGetPageOfChildThrows(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'p1';
         $title = 'Same';
         $this->wiki->expects(self::exactly(2))
@@ -611,11 +664,14 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertNotEmpty($response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Bad request title already exists']);
     }
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenUpdatePageThrows(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $parentId = 'p1';
         $title = 'Same';
         $this->wiki->expects(self::exactly(2))
@@ -648,11 +704,14 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertNotEmpty($response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Bad request title already exists']);
     }
 
     public function testCreateWithContactAppendsMentionWhenAdfHasNoContentKey(): void
     {
+        $this->wiki = $this->createMock(WikiPort::class);
+        $this->converter = $this->createMock(MarkdownToAdfConverter::class);
+
         $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->with('x')->willReturn(['type' => 'doc', 'version' => 1]);
         $this->wiki->expects(self::once())

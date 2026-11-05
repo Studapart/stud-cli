@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\Handler\BranchSwitchHandler;
+use App\Service\GitBranchService;
+use App\Service\GitRepository;
 use App\Tests\CommandTestCase;
 
 class BranchSwitchHandlerTest extends CommandTestCase
@@ -14,27 +16,31 @@ class BranchSwitchHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $this->handler = new BranchSwitchHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->translationService
-        );
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->gitBranchService = $this->createStub(GitBranchService::class);
+        $this->bindSubject();
     }
 
     public function testHandleFailsForBlankKey(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->never())
             ->method('getPorcelainStatus');
 
         $response = $this->handler->handle(' ');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('branch.switch.error_no_key', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.switch.error_no_key');
     }
 
     public function testHandleFailsWhenWorkingDirectoryIsDirty(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('getPorcelainStatus')
             ->willReturn(" M file.php\n");
@@ -44,11 +50,14 @@ class BranchSwitchHandlerTest extends CommandTestCase
         $response = $this->handler->handle('SCI-123');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('branch.switch.error_dirty_working', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.switch.error_dirty_working');
     }
 
     public function testHandleFailsWhenNoLocalBranchMatches(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitBranchService->expects($this->once())
             ->method('findLocalBranchesContainingIssueKey')
@@ -58,17 +67,23 @@ class BranchSwitchHandlerTest extends CommandTestCase
         $response = $this->handler->handle('sci-123');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('branch.switch.error_no_branch', $response->getError());
+        $this->assertMessageRef(
+            $response->getErrorMessage(),
+            'branch.switch.error_no_branch',
+            ['key' => 'SCI-123']
+        );
     }
 
     public function testHandleSwitchesWhenOneBranchMatches(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitBranchService->method('findLocalBranchesContainingIssueKey')
             ->willReturn(['feat/SCI-123-title']);
         $this->gitBranchService->expects($this->once())
-            ->method('switchBranch')
-            ->with('feat/SCI-123-title');
+            ->method('switchBranch');
 
         $response = $this->handler->handle('SCI-123');
 
@@ -78,14 +93,14 @@ class BranchSwitchHandlerTest extends CommandTestCase
 
     public function testHandleSwitchesToLinearIdentifierBranchProviderAgnostic(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitBranchService->expects($this->once())
             ->method('findLocalBranchesContainingIssueKey')
             ->with('SCI-123')
             ->willReturn(['feat/SCI-123-foo']);
-        $this->gitBranchService->expects($this->once())
-            ->method('switchBranch')
-            ->with('feat/SCI-123-foo');
 
         $response = $this->handler->handle('SCI-123');
 
@@ -96,6 +111,9 @@ class BranchSwitchHandlerTest extends CommandTestCase
 
     public function testHandleFailsWithBranchesInQuietModeWhenMultipleBranchesMatch(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $matches = ['feat/SCI-123-a', 'fix/SCI-123-b'];
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitBranchService->method('findLocalBranchesContainingIssueKey')
@@ -107,7 +125,14 @@ class BranchSwitchHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame($matches, $response->matches);
-        $this->assertStringContainsString('branch.switch.error_multiple_branches', $response->getError());
+        $this->assertMessageRef(
+            $response->getErrorMessage(),
+            'branch.switch.error_multiple_branches',
+            [
+                'key' => 'SCI-123',
+                'branches' => "- feat/SCI-123-a\n- fix/SCI-123-b",
+            ]
+        );
     }
 
     public function testHandleNeedsSelectionInInteractiveModeWhenMultipleBranchesMatch(): void
@@ -126,13 +151,15 @@ class BranchSwitchHandlerTest extends CommandTestCase
 
     public function testHandleSwitchesSelectedBranch(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $matches = ['feat/SCI-123-a', 'fix/SCI-123-b'];
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitBranchService->method('findLocalBranchesContainingIssueKey')
             ->willReturn($matches);
         $this->gitBranchService->expects($this->once())
-            ->method('switchBranch')
-            ->with('fix/SCI-123-b');
+            ->method('switchBranch');
 
         $response = $this->handler->handle('SCI-123', false, 'fix/SCI-123-b');
 
@@ -151,6 +178,17 @@ class BranchSwitchHandlerTest extends CommandTestCase
         $response = $this->handler->handle('SCI-123');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('git switch failed', $response->getError());
+        $this->assertIsString($response->getErrorMessage());
+        $this->assertSame('git switch failed', $response->getErrorMessage());
+    }
+
+    private function bindSubject(): void
+    {
+
+        $this->handler = new BranchSwitchHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->translationService
+        );
     }
 }

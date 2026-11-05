@@ -156,7 +156,7 @@ class IssueTrackerResolverTest extends TestCase
 
     public function testReturnsErrorWhenNoProviderConfigured(): void
     {
-        $globalResolver = $this->createMock(GlobalConfigProviderResolver::class);
+        $globalResolver = $this->createStub(GlobalConfigProviderResolver::class);
         $globalResolver->method('resolveIssueTrackerProviders')->willReturn([]);
         $globalResolver->method('collectsJira')->willReturn(false);
         $globalResolver->method('collectsLinear')->willReturn(false);

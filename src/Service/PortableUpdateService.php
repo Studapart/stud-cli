@@ -91,7 +91,7 @@ class PortableUpdateService
         string $artifactName,
         bool $quiet,
     ): int {
-        $workspace = $this->createWorkspace();
+        $workspace = $this->createWorkspace($context->portableRoot);
 
         try {
             $archivePath = $workspace . '/' . $artifactName;
@@ -117,16 +117,24 @@ class PortableUpdateService
         }
     }
 
-    protected function createWorkspace(): string
+    protected function createWorkspace(?string $preferredBase = null): string
     {
-        $workspace = sys_get_temp_dir() . '/stud-portable-update-' . bin2hex(random_bytes(6));
-        if (! mkdir($workspace, 0777, true) && ! is_dir($workspace)) {
-            // @codeCoverageIgnoreStart
-            throw new \RuntimeException("Failed to create update workspace: {$workspace}");
-            // @codeCoverageIgnoreEnd
+        $candidates = [];
+        if (is_string($preferredBase) && $preferredBase !== '') {
+            $candidates[] = rtrim($preferredBase, '/');
+        }
+        $candidates[] = sys_get_temp_dir();
+
+        foreach ($candidates as $base) {
+            $workspace = $base . '/stud-portable-update-' . bin2hex(random_bytes(6));
+            if (mkdir($workspace, 0777, true) || is_dir($workspace)) {
+                return $workspace;
+            }
         }
 
-        return $workspace;
+        // @codeCoverageIgnoreStart
+        throw new \RuntimeException('Failed to create portable update workspace.');
+        // @codeCoverageIgnoreEnd
     }
 
     /**
@@ -244,7 +252,9 @@ class PortableUpdateService
         if (! is_dir(dirname($versionRoot))) {
             mkdir(dirname($versionRoot), 0777, true);
         }
-        rename($extractedRoot, $versionRoot);
+        if (! $this->moveDirectory($extractedRoot, $versionRoot)) {
+            return $this->fail('update.portable_extract_failed');
+        }
 
         if (! $this->switchSymlink((string) $context->managedSymlink, $versionRoot . '/stud', (string) $previousTarget)) {
             // @codeCoverageIgnoreStart
@@ -256,6 +266,21 @@ class PortableUpdateService
         $this->oldVersionCleaner->cleanup($context, $version, $quiet, $this->recorder);
 
         return 0;
+    }
+
+    protected function moveDirectory(string $from, string $to): bool
+    {
+        if (@rename($from, $to)) {
+            return true;
+        }
+
+        $process = new Process(['cp', '-a', $from, $to]);
+        $process->run();
+        if (! $process->isSuccessful()) {
+            return false;
+        }
+
+        return $this->oldVersionCleaner->removeDirectory($from);
     }
 
     protected function versionFromArtifact(string $artifactName, string $platform): string

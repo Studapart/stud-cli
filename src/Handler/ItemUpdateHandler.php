@@ -11,6 +11,7 @@ use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\ItemUpdateResponse;
 use App\Service\FieldsParser;
 use App\Service\IssueTrackerPort;
+use App\Service\Jira\JiraIssueFieldWriter;
 use App\Service\StudIssueKeys;
 
 class ItemUpdateHandler implements JiraAware
@@ -18,10 +19,14 @@ class ItemUpdateHandler implements JiraAware
     public function __construct(
         private readonly IssueTrackerPort $provider,
         mixed $_translator,
-        private readonly FieldsParser $fieldsParser
+        private readonly FieldsParser $fieldsParser,
+        ?JiraIssueFieldWriter $fieldWriter = null,
     ) {
         unset($_translator);
+        $this->fieldWriter = $fieldWriter ?? new JiraIssueFieldWriter($fieldsParser);
     }
+
+    private readonly JiraIssueFieldWriter $fieldWriter;
 
     public function handle(ItemUpdateInput $input): ItemUpdateResponse
     {
@@ -44,7 +49,7 @@ class ItemUpdateHandler implements JiraAware
         }
 
         if ($parsedFields !== []) {
-            $result = $this->fieldsParser->matchAndTransform($parsedFields, $editMetaOrError);
+            $result = $this->fieldWriter->matchAgainstMeta($parsedFields, $editMetaOrError);
             foreach ($result['matched'] as $key => $value) {
                 $fields[$key] = $value;
             }

@@ -32,7 +32,7 @@ class VersionCheckBootstrapTest extends TestCase
         $input = new ArrayInput([]);
         $output = new BufferedOutput();
         $event = new ConsoleTerminateEvent(
-            $this->createMock(\Symfony\Component\Console\Command\Command::class),
+            $this->createStub(\Symfony\Component\Console\Command\Command::class),
             $input,
             $output,
             0
@@ -71,7 +71,7 @@ class VersionCheckBootstrapTest extends TestCase
         $input = new ArrayInput([]);
         $output = new BufferedOutput();
         $event = new ConsoleTerminateEvent(
-            $this->createMock(\Symfony\Component\Console\Command\Command::class),
+            $this->createStub(\Symfony\Component\Console\Command\Command::class),
             $input,
             $output,
             0
@@ -97,7 +97,7 @@ class VersionCheckBootstrapTest extends TestCase
         $output = new BufferedOutput();
         $output->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_QUIET);
         $event = new ConsoleTerminateEvent(
-            $this->createMock(\Symfony\Component\Console\Command\Command::class),
+            $this->createStub(\Symfony\Component\Console\Command\Command::class),
             $input,
             $output,
             0

@@ -78,8 +78,8 @@ class PushHandler implements GitRepositoryAware
 
         return $this->normalizeResponse(
             $this->commitHandler->handle($isNew, $message, $stageAll, $quiet),
-            'Commit created',
-            'Commit failed',
+            MessageRef::key('push.commit_created'),
+            MessageRef::key('push.commit_failed'),
         );
     }
 
@@ -136,8 +136,8 @@ class PushHandler implements GitRepositoryAware
     {
         return $this->normalizeResponse(
             $this->pleaseHandler->handle($quiet),
-            'Force push completed',
-            'Force push failed',
+            MessageRef::key('push.please_completed'),
+            MessageRef::key('push.please_failed'),
         );
     }
 
@@ -370,7 +370,7 @@ class PushHandler implements GitRepositoryAware
         return $payload;
     }
 
-    private function normalizeResponse(CommandResponse|int $response, string $successMessage, string $errorMessage): CommandResponse
+    private function normalizeResponse(CommandResponse|int $response, MessageRef|string $successMessage, MessageRef|string $errorMessage): CommandResponse
     {
         if ($response instanceof CommandResponse) {
             return $response;

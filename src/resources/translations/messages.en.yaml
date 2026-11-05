@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 # Configuration
 confluence:
   push:
@@ -93,6 +94,8 @@ config:
     section_title: "Configuration validation"
     label_jira: "Jira"
     label_git_provider: "Git provider"
+    label_github: "GitHub"
+    label_gitlab: "GitLab"
     label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Fail"
@@ -107,6 +110,15 @@ config:
     error_git_ping: "Git provider connection failed: %error%"
     error_linear_not_configured: "Linear is not configured."
     error_linear_ping: "Linear connection failed: %error%"
+    notice_jira_non_blocking: "Jira connectivity check failed (non-blocking for this project)."
+    notice_linear_non_blocking: "Linear connectivity check failed (non-blocking for this project)."
+    error_readiness_failed: "Configuration validation failed for this repository or environment."
+    label_global_rollup: "Global readiness"
+    label_project_rollup: "Project readiness"
+    rollup_ok: "OK"
+    rollup_partial: "Partial"
+    rollup_fail: "Fail"
+    rollup_not_applicable: "N/A"
   project_init:
     section_title: "Project configuration"
     not_git_repository: "Not inside a Git repository. Run this command from a repository checkout."
@@ -135,6 +147,10 @@ config:
     prompt_github_token: "GitHub token for this repository (hidden)"
     prompt_gitlab_token_hint: "GitLab token: leave blank to skip; enter '.' to keep the existing token."
     prompt_gitlab_token: "GitLab token for this repository (hidden)"
+    prompt_jira_url: "Jira URL for this repository (optional)"
+    prompt_jira_email: "Jira email for this repository (optional)"
+    prompt_jira_api_token: "Jira API token for this repository (hidden, optional)"
+    prompt_linear_api_key: "Linear API key for this repository (hidden, optional)"
     prompt_issue_tracker_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
     prompt_linear_team_key: "Linear team key (optional; defaults to Jira project key when shared)"
     prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
@@ -343,11 +359,15 @@ item:
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run the command interactively to provide them (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    error_create_retry: "Could not create issue: %error% Deferred fields: %fields%."
     linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
     linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
     linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: "Created issue %key% – %url%"
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
+    note_deferred_fields: "Created the issue first, then applied these fields: %fields%."
+    note_update_warnings: "These fields could not be applied after create: %fields%."
+    error_required_on_create_screen: "Required field cannot be set on the create screen: %fields%."
     skipped_field_labels: "labels"
     skipped_field_original_estimate: "time original estimate"
   update:
@@ -376,6 +396,7 @@ item:
     section: "Fetching Jira Items"
     error_fetch: "Failed to fetch items: %error%"
     no_items: "No items found matching your criteria."
+    jql_query: "JQL Query: %jql%"
     error_invalid_sort: "Invalid sort value '%value%'. Accepted values: Key, Status"
 
 issue_tracker_provider:
@@ -471,6 +492,10 @@ push:
   confirm_please: "Normal push failed. Run 'stud please' (force-with-lease) now?"
   confirm_flatten_publish: "History was rewritten. Publish it with a safe force-push?"
   note_uncommitted_left: "You have uncommitted changes. Push used commits already on this branch; uncommitted files were not included."
+  commit_created: "Commit created"
+  commit_failed: "Commit failed"
+  please_completed: "Force push completed"
+  please_failed: "Force push failed"
 
 # Commit Undo Handler
 commit_undo:
@@ -525,6 +550,9 @@ submit:
   error_no_jira_key: "Could not parse Jira key from commit message. Cannot create PR."
   warning_jira_fetch: "Could not fetch Jira issue details for PR body: %error%\nFalling back to a simple link."
   warning_issue_fetch: "Could not fetch work item details for PR body: %error%\nFalling back to a simple link."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: "Creating Pull Request..."
   success_created: "✅ Pull Request created: %url%"
   warning_no_provider: "No Git provider configured for this project."

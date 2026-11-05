@@ -10,17 +10,16 @@ use App\Exception\LinearTypeLabelException;
 use App\Service\BranchNameGenerator;
 use App\Service\LinearApiClient;
 use App\Service\LinearTypeLabelResolver;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class LinearTypeLabelResolverTest extends TestCase
 {
-    private LinearApiClient&MockObject $linearApiClient;
+    private LinearApiClient $linearApiClient;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->linearApiClient = $this->createStub(LinearApiClient::class);
     }
 
     public function testResolveBranchPrefixMapsBugToFix(): void
@@ -36,6 +35,8 @@ class LinearTypeLabelResolverTest extends TestCase
 
     public function testResolveBranchPrefixUsesUnknownLabelWarning(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+
         $config = $this->linearConfig([
             ProjectStudConfigKeys::LINEAR_TYPE_BRANCH_PREFIXES => [
                 'Story' => 'feat',
@@ -86,6 +87,8 @@ class LinearTypeLabelResolverTest extends TestCase
 
     public function testResolveBranchPrefixFetchesTypeLabelsFromApi(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+
         $config = $this->linearConfig([
             ProjectStudConfigKeys::LINEAR_TYPE_BRANCH_PREFIXES => [
                 'Bug' => 'fix',
@@ -115,6 +118,8 @@ class LinearTypeLabelResolverTest extends TestCase
 
     public function testResolveTypeLabelIdReturnsChildLabelId(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+
         $config = $this->linearConfig();
 
         $this->linearApiClient->expects($this->once())
@@ -129,6 +134,8 @@ class LinearTypeLabelResolverTest extends TestCase
 
     public function testResolveTypeLabelIdThrowsWhenLabelMissing(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+
         $config = $this->linearConfig();
 
         $this->linearApiClient->expects($this->once())
@@ -164,6 +171,8 @@ class LinearTypeLabelResolverTest extends TestCase
 
     public function testResolveTypeLabelIdLabelNotFoundUsesMessageRefKey(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+
         $config = $this->linearConfig();
 
         $this->linearApiClient->expects($this->once())
@@ -192,6 +201,8 @@ class LinearTypeLabelResolverTest extends TestCase
 
     public function testResolveBranchPrefixCachesTypeLabelNamesFromApi(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+
         $config = $this->linearConfig();
 
         $this->linearApiClient->expects($this->once())
@@ -216,6 +227,8 @@ class LinearTypeLabelResolverTest extends TestCase
 
     public function testResolveBranchPrefixSkipsNonMatchingLabelGroups(): void
     {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+
         $config = $this->linearConfig();
 
         $this->linearApiClient->expects($this->once())

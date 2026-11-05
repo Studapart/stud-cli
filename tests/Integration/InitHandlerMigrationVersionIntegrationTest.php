@@ -178,7 +178,7 @@ class InitHandlerMigrationVersionIntegrationTest extends TestCase
         $logger = new Logger(new SymfonyStyle(new ArrayInput([]), new BufferedOutput()), []);
         $migration = new Migration20260619102828000_ProviderLists($logger, $this->translationService);
         $executor = new MigrationExecutor(
-            new CommandOutputBuffer($logger, $this->createMock(PromptInterface::class)),
+            new CommandOutputBuffer($logger, $this->createStub(PromptInterface::class)),
             $this->fileSystem,
             $this->translationService,
         );

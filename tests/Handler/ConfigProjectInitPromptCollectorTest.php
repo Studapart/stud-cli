@@ -31,7 +31,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         ?array $globalConfig = null,
         ?ProjectMetadataPromptService $metadataPrompts = null,
     ): ConfigProjectInitPromptCollector {
-        $fileSystem = $this->createMock(FileSystem::class);
+        $fileSystem = $this->createStub(FileSystem::class);
         $fileSystem->method('fileExists')->willReturn($globalConfig !== null);
         if ($globalConfig !== null) {
             $fileSystem->method('parseFile')->willReturn($globalConfig);
@@ -40,19 +40,19 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         return new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
-            $this->createMock(TranslationService::class),
+            $this->createStub(TranslationService::class),
             $prompt,
             new GitTokenPromptResolver(),
             $fileSystem,
             '/tmp/global-config.yml',
             new GlobalConfigProviderResolver(),
-            $metadataPrompts ?? $this->createDefaultMetadataPromptsMock(),
+            $metadataPrompts ?? $this->createDefaultMetadataPrompts(),
         );
     }
 
-    private function createDefaultMetadataPromptsMock(): ProjectMetadataPromptService
+    private function createDefaultMetadataPrompts(): ProjectMetadataPromptService
     {
-        $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
+        $metadataPrompts = $this->createStub(ProjectMetadataPromptService::class);
         $metadataPrompts->method('chooseJiraTransitionId')->willReturn(null);
         $metadataPrompts->method('chooseLinearStartStateId')->willReturn(null);
         $metadataPrompts->method('chooseLinearTypeLabelGroupId')->willReturn(null);
@@ -75,16 +75,16 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             'gitlabToken' => 'gl',
         ];
 
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn($existing);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturn('');
         $prompt->method('askHidden')->willReturn('');
 
@@ -99,17 +99,19 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturnOnConsecutiveCalls(
             'SCI',
+            '',
+            '',
             '',
             '',
             '',
@@ -133,13 +135,13 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
     public function testCollectSkipsTransitionWhenMetadataPickerReturnsNull(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturn('');
         $prompt->method('choice')->willReturn('github');
 
@@ -153,20 +155,22 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn('main');
 
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturn('note');
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturnOnConsecutiveCalls(
             '',
             '',
             '',
             'develop',
+            '',
+            '',
             '',
             '',
             ''
@@ -195,16 +199,18 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn(['provider' => 'gitlab']);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn(['provider' => 'gitlab']);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturnOnConsecutiveCalls(
+            '',
+            '',
             '',
             '',
             '',
@@ -239,18 +245,18 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             'gitlabToken' => '',
         ];
 
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn($existing);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturn('');
-        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('.', '');
+        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('.', '', '');
 
         $collector = $this->createCollector($gitRepository, $prompt, $gitSetup);
 
@@ -265,18 +271,18 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             'githubToken' => '',
         ];
 
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn($existing);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturn('');
-        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('', '.');
+        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('', '.', '');
 
         $collector = $this->createCollector($gitRepository, $prompt, $gitSetup);
 
@@ -287,15 +293,15 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturnOnConsecutiveCalls(
             'SCI',
             'jira',
@@ -303,10 +309,12 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             '',
             '',
             '',
-            'https://gitlab.example/'
+            'https://gitlab.example/',
+            '',
+            ''
         );
         $prompt->method('choice')->willReturn('gitlab');
-        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('gh-secret', 'gl-secret');
+        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('gh-secret', 'gl-secret', '');
 
         $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
         $metadataPrompts->expects($this->once())
@@ -337,13 +345,13 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             'projectKey' => 'X',
         ];
 
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn($existing);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
         $prompt = $this->createMock(PromptInterface::class);
@@ -360,9 +368,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
         $prompt = $this->createMock(PromptInterface::class);
@@ -389,12 +397,12 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('choice')->willReturn('github');
         $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', '', '', '', '');
         $prompt->method('askHidden')->willReturn('');
@@ -435,9 +443,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
         $prompt = $this->createMock(PromptInterface::class);
@@ -464,9 +472,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn(['issueTrackerProvider' => 'invalid']);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
         $prompt = $this->createMock(PromptInterface::class);
@@ -493,16 +501,16 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $fileSystem = $this->createMock(\App\Service\FileSystem::class);
+        $fileSystem = $this->createStub(\App\Service\FileSystem::class);
         $fileSystem->method('fileExists')->willReturn(true);
         $fileSystem->method('parseFile')->willThrowException(new \RuntimeException('bad yaml'));
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('choice')->willReturn('github');
         $prompt->method('ask')->willReturn('');
         $prompt->method('askHidden')->willReturn('');
@@ -510,13 +518,13 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
-            $this->createMock(TranslationService::class),
+            $this->createStub(TranslationService::class),
             $prompt,
             new GitTokenPromptResolver(),
             $fileSystem,
             '/tmp/global-config.yml',
             new GlobalConfigProviderResolver(),
-            $this->createDefaultMetadataPromptsMock(),
+            $this->createDefaultMetadataPrompts(),
         );
 
         $this->assertSame(['gitProvider' => 'github'], $collector->collect(new WorkflowRecorder()));
@@ -529,12 +537,12 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             'linearStartStateId' => 'existing-state',
             'linearTypeLabelGroupId' => 'existing-group',
         ]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('choice')->willReturn('github');
         $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', '', '', '', '');
         $prompt->method('askHidden')->willReturn('');
@@ -570,9 +578,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     public function testResolveEffectiveWorkItemProviderDefaultsWhenUnset(): void
     {
         $collector = $this->createCollector(
-            $this->createMock(GitRepository::class),
-            $this->createMock(PromptInterface::class),
-            $this->createMock(GitSetupService::class),
+            $this->createStub(GitRepository::class),
+            $this->createStub(PromptInterface::class),
+            $this->createStub(GitSetupService::class),
             ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
         );
 
@@ -589,16 +597,16 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->exactly(2))
             ->method('choice')
             ->willReturnOnConsecutiveCalls('auto', 'github');
-        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'ENG', '', '', '', '', '', '', '');
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'ENG', '', '', '', '', '', '', '', '', '');
         $prompt->method('askHidden')->willReturn('');
 
         $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
@@ -639,9 +647,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     public function testShouldRunLinearTeamKeyPromptReturnsFalseForSingleProviderGlobal(): void
     {
         $collector = $this->createCollector(
-            $this->createMock(GitRepository::class),
-            $this->createMock(PromptInterface::class),
-            $this->createMock(GitSetupService::class),
+            $this->createStub(GitRepository::class),
+            $this->createStub(PromptInterface::class),
+            $this->createStub(GitSetupService::class),
             ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Linear->value]],
         );
 
@@ -655,19 +663,19 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+        $gitRepository->expects($this->once())->method('parseGitUrl')->with('origin')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->exactly(2))
             ->method('choice')
             ->willReturnOnConsecutiveCalls('auto', 'github');
-        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'SCI', '', '', '', '', '', '', '');
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'SCI', '', '', '', '', '', '', '', '', '');
         $prompt->method('askHidden')->willReturn('');
 
-        $metadataPrompts = $this->createDefaultMetadataPromptsMock();
+        $metadataPrompts = $this->createDefaultMetadataPrompts();
 
         $collector = $this->createCollector(
             $gitRepository,
@@ -700,9 +708,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             ->willReturn('ENG');
 
         $collector = $this->createCollector(
-            $this->createMock(GitRepository::class),
+            $this->createStub(GitRepository::class),
             $prompt,
-            $this->createMock(GitSetupService::class),
+            $this->createStub(GitSetupService::class),
         );
 
         $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptLinearTeamKey');
@@ -716,13 +724,13 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
     public function testPromptLinearTeamKeyReturnsEmptyWhenUserSkips(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturn('');
 
         $collector = $this->createCollector(
-            $this->createMock(GitRepository::class),
+            $this->createStub(GitRepository::class),
             $prompt,
-            $this->createMock(GitSetupService::class),
+            $this->createStub(GitSetupService::class),
         );
 
         $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptLinearTeamKey');
@@ -734,9 +742,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     public function testMergeProjectConfigSkipsUnknownInputKeys(): void
     {
         $collector = $this->createCollector(
-            $this->createMock(GitRepository::class),
-            $this->createMock(PromptInterface::class),
-            $this->createMock(GitSetupService::class),
+            $this->createStub(GitRepository::class),
+            $this->createStub(PromptInterface::class),
+            $this->createStub(GitSetupService::class),
         );
 
         $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'mergeProjectConfig');
@@ -760,9 +768,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             ->willReturn('');
 
         $collector = $this->createCollector(
-            $this->createMock(GitRepository::class),
+            $this->createStub(GitRepository::class),
             $prompt,
-            $this->createMock(GitSetupService::class),
+            $this->createStub(GitSetupService::class),
         );
         $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptStoredLabelList');
         \App\Util\ReflectionAccessor::ensureAccessible($method);
@@ -778,13 +786,13 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
     public function testPromptStoredLabelListStoresAcceptedSuggestion(): void
     {
-        $prompt = $this->createMock(PromptInterface::class);
+        $prompt = $this->createStub(PromptInterface::class);
         $prompt->method('ask')->willReturn('AI-Generated');
 
         $collector = $this->createCollector(
-            $this->createMock(GitRepository::class),
+            $this->createStub(GitRepository::class),
             $prompt,
-            $this->createMock(GitSetupService::class),
+            $this->createStub(GitSetupService::class),
         );
         $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptStoredLabelList');
         \App\Util\ReflectionAccessor::ensureAccessible($method);
@@ -810,9 +818,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             ->willReturn('AI-Generated,RFR');
 
         $collector = $this->createCollector(
-            $this->createMock(GitRepository::class),
+            $this->createStub(GitRepository::class),
             $prompt,
-            $this->createMock(GitSetupService::class),
+            $this->createStub(GitSetupService::class),
         );
         $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptStoredLabelList');
         \App\Util\ReflectionAccessor::ensureAccessible($method);

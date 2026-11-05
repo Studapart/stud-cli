@@ -397,7 +397,7 @@ class LoggerTest extends CommandTestCase
 
     public function testGetCurrentVerbosityReturnsVeryVerbose(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
         $io->method('isQuiet')->willReturn(false);
         $io->method('isDebug')->willReturn(false);
         $io->method('isVeryVerbose')->willReturn(true);

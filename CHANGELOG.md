@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-11-05
+
+### Breaking
+
+- **stud-cli 5.x (SCI-229):** This `develop` line will ship as 5.x and requires PHP 8.5 (8.5.12 or newer). PHP 8.4 stays on stud-cli 4.x. PHP 8.6 will be stud-cli 6.x. CI runs on PHP 8.5 and posts one coverage comment. The installer no longer installs a distro PHP package or the Ondřej PPA. Debian and Ubuntu users are pointed at <https://packages.sury.org/php/>. The bundled portable runtime remains PHP 8.4.23.
+
+### Added
+
+- **Complexity gates (SCI-229):** PHPMD fails cyclomatic complexity above 10, NPath above 200, method length above 40, class length above 400, more than 4 arguments, and more than 10 properties. `phpmd.baseline.xml` records violations that already existed. CRAP above 10 fails from the Clover report of the same PHPUnit run. `crap.baseline.txt` records the score of methods that were already above 10, and a higher score fails. CI runs both gates on PHP 8.5.
+
+- **Project issue-tracker credentials (SCI-228):** `.git/stud.config` may set `JIRA_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and `LINEAR_API_KEY`. A non-empty value replaces that one global field for clients, readiness checks, and `config:validate` pings. A blank value, or a non-string agent value, does not clear or replace the stored field. `config:show -k JIRA_URL` shows the URL in effect. Warnings about credentials missing from the global file still describe that file.
+
+### Fixed
+
+- **Jira create field ids and create-screen fallback (SCI-221):** `items:create` reads Jira createmeta `fieldId` values, so labels stay `labels` instead of `customfield_<index>`. When Jira rejects optional fields on the create screen, stud retries create once without those fields and applies them with `items:update`. The create error keeps the full Jira body so a long field-error list still parses, while the failure text stays within the 500-character technical-detail cap. Auto-filled values that were not user inputs, such as the current-user assignee, are restored on that update or named in `updateWarnings` when the edit screen rejects them. If that retry also fails, the error names the deferred fields. Agent success JSON can include `deferredFields` and `updateWarnings`. Linear create is unchanged.
+
+### Changed
+
+- **Direct libraries (SCI-229):** Castor is 1.9.1 and PHPUnit is 13. php-cs-fixer is 3.95.28. Symfony console, http-client, translation, and yaml are 8.1.11. Command output, options, and agent JSON are unchanged. Composer resolves dependencies as PHP 8.5.12.
+
+- **PHPUnit 13 test doubles (SCI-229):** Shared fixtures are stubs. A test that verifies a call builds its own mock and rebinds the object under test, so `#[AllowMockObjectsWithoutExpectations]` is not used. `with()` always has an `expects()` count, and `expects($this->any())` is gone. PHPUnit now fails on PHPUnit notices, PHPUnit deprecations, and warnings. The CI coverage comment runs PHPUnit with `--colors=never`, because PHPUnit 13 colours the text report even when piped and the summary came out empty. Internal/dev-facing only.
+
+- **Test outcome asserts (SCI-227):** Update-handler tests assert message refs, recorded workflow entries, and the binary on disk. Integration tests assert catalog-rendered agent text, JSON fields, and exact commit subjects. Handler and responder tests keep a prose-assert allowlist. Internal/dev-facing only.
+
+- **Responder and help test outcomes (SCI-226):** Search, item list, item show, and PR comment responder tests, plus help and command-reference tests, assert translation keys and agent JSON fields instead of English prose. Item list verbose output already uses `item.list.jql_query`, so those tests keep that key and also require `currentUser()`. Internal/dev-facing only.
+
+- **Workflow handler test outcomes (SCI-224):** `ItemStartHandlerTest`, `ItemTakeoverHandlerTest`, `BranchRenameHandlerTest`, `CommitHandlerTest`, `PushHandlerTest`, and `SubmitHandlerTest` assert message refs, response fields, and exit codes instead of mock call order. `CommandTestCase::assertWorkflowEntry()` checks a normal-verbosity workflow entry. Internal/dev-facing only.
+
+- **Git repository test split (SCI-225):** `GitRepositoryTest` asserts process output and exceptions. Argv and `mustRun`/`run` mode live in `GitRepositoryWireContractTest`, one case per git invocation. Internal/dev-facing only.
+
+- **Handler error assertions (SCI-223):** ItemCreate, ConfluencePush, ItemDownload, ItemUpdate, and ConfigProjectInit handler tests assert message-ref keys and parameters instead of error-string substrings. ConfigProjectInit already stores a message ref (SCI-222), so those tests keep `assertErrorRef` and now include the two parameter checks that were missing. Internal/dev-facing only.
+
+- **Message refs for leftover English strings (SCI-222):** `config:project-init` errors are message refs with parameters. `stud push` reports commit and force-push outcomes through translation keys when a delegate returns an exit code. PR body building warns with a translation key when HTML conversion needs the PHP XML extension. `stud items:list` verbose output uses the `item.list.jql_query` translation for the JQL line.
+
+- **Unit test assertion patterns (SCI-220):** Shared agent JSON assert helpers on `CommandTestCase`, README fixture for `HelpServiceTest`, and `BranchSwitchHandlerTest` pilot using `MessageRef` outcomes instead of rendered error strings. Internal/dev-facing only.
+
+- **Project-aware config validate (SCI-218):** `stud config:validate` reports global and project readiness rollups and pings GitHub and GitLab separately when both are listed globally. It always probes configured integrations before scoring readiness, so a setup or project-selection failure is reported in the result instead of aborting the command. In a repository with stud project config, exit code follows **project** readiness (global `partial` with project `ok` exits 0). When only one issue tracker is configured globally, an unpinned project uses that tracker, including a Linear-only setup whose project file has `projectKey` and no `linearTeamKey`. A project file that exists but cannot be parsed fails project readiness instead of being treated as absent. Non-blocking tracker notices use translation keys. Agent mode defaults to compact success (`{"success":true}`); use `"compact":false` for full `data` including legacy flat status fields. `config:validate` is completion-only in the agent schema.
+
 ## [4.3.0] - 2026-10-12
 
 ### Added

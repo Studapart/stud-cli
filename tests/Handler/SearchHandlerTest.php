@@ -5,6 +5,7 @@ namespace App\Tests\Handler;
 use App\DTO\WorkItem;
 use App\Handler\SearchHandler;
 use App\Response\SearchResponse;
+use App\Service\IssueTrackerPort;
 use App\Tests\CommandTestCase;
 
 class SearchHandlerTest extends CommandTestCase
@@ -14,6 +15,7 @@ class SearchHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
 
         $this->handler = new SearchHandler($this->issueTracker);
     }

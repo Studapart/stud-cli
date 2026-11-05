@@ -205,7 +205,7 @@ final class IssueTrackerProviderResolverTest extends TestCase
 
     public function testUnexpectedThrowableMapsToAmbiguousGuardError(): void
     {
-        $factory = $this->createMock(IssueTrackerFactory::class);
+        $factory = $this->createStub(IssueTrackerFactory::class);
         $factory->method('resolveType')->willReturnCallback(static function (): never {
             static $calls = 0;
             ++$calls;
@@ -233,7 +233,7 @@ final class IssueTrackerProviderResolverTest extends TestCase
 
     public function testIssueKeyResolutionExceptionSurfacesMessageRef(): void
     {
-        $factory = $this->createMock(IssueTrackerFactory::class);
+        $factory = $this->createStub(IssueTrackerFactory::class);
         $factory->method('resolveType')->willThrowException(
             IssueTrackerResolutionException::unknownPrefix('OPS', 'SCI (jira)'),
         );
@@ -253,7 +253,7 @@ final class IssueTrackerProviderResolverTest extends TestCase
 
     public function testResolveTypeFallbackAfterActiveProviderFails(): void
     {
-        $factory = $this->createMock(IssueTrackerFactory::class);
+        $factory = $this->createStub(IssueTrackerFactory::class);
         $factory->method('resolveType')->willReturnCallback(static function (): string {
             static $calls = 0;
             ++$calls;
@@ -317,7 +317,7 @@ final class IssueTrackerProviderResolverTest extends TestCase
 
     public function testResolveTypeResolutionExceptionMapsToBlockedResult(): void
     {
-        $factory = $this->createMock(IssueTrackerFactory::class);
+        $factory = $this->createStub(IssueTrackerFactory::class);
         $factory->method('resolveType')->willReturnCallback(static function (): never {
             static $calls = 0;
             ++$calls;

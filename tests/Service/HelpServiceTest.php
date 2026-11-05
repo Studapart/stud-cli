@@ -11,6 +11,7 @@ use App\Service\Logger;
 use App\Service\TranslationService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class HelpServiceTest extends TestCase
@@ -23,7 +24,7 @@ class HelpServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->translationService = $this->createMock(TranslationService::class);
+        $this->translationService = $this->createStub(TranslationService::class);
         $this->translationService->method('trans')
             ->willReturnCallback(function ($id, $parameters = []) {
                 return $id . (empty($parameters) ? '' : ' ' . json_encode($parameters));
@@ -35,13 +36,8 @@ class HelpServiceTest extends TestCase
         $flysystem = new FlysystemFilesystem($adapter);
         $this->fileSystem = new FileSystem($flysystem);
 
-        // Create README.md in in-memory filesystem for tests that need it
-        // Use relative path from project root
-        $readmePath = 'README.md';
-        if (file_exists(__DIR__ . '/../../README.md')) {
-            $readmeContent = file_get_contents(__DIR__ . '/../../README.md');
-            $flysystem->write($readmePath, $readmeContent);
-        }
+        $readmeContent = file_get_contents(__DIR__ . '/../Fixtures/readme/minimal-commands.md');
+        $flysystem->write('README.md', $readmeContent);
 
         $this->helpService = new HelpService($this->translationService, $this->fileSystem);
     }
@@ -50,7 +46,8 @@ class HelpServiceTest extends TestCase
     {
         $helpText = $this->helpService->getCommandHelp('commit');
 
-        $this->assertTrue($helpText === null || is_string($helpText));
+        $this->assertIsString($helpText);
+        $this->assertStringStartsWith('stud commit', $helpText);
     }
 
     public function testGetCommandHelpForNonExistentCommand(): void
@@ -62,7 +59,7 @@ class HelpServiceTest extends TestCase
 
     public function testGetCommandHelpExtractsCommandSectionFromDetailedReadme(): void
     {
-        $fileSystem = $this->createMock(FileSystem::class);
+        $fileSystem = $this->createStub(FileSystem::class);
         $fileSystem->method('read')->willReturn(<<<'MD'
 # Commands
 
@@ -122,59 +119,17 @@ MD);
             'deploy',
         ];
 
+        // The fixture holds only stud commit.
         foreach ($commands as $command) {
             $helpText = $this->helpService->getCommandHelp($command);
-            // Test intent: all supported commands should return help text or null (if README doesn't have it)
-            // We don't assert on specific content, just that the method handles it correctly
-            $this->assertTrue(
-                $helpText === null || is_string($helpText),
-                "Command '{$command}' should return null or string"
-            );
+            if ($command === 'commit') {
+                $this->assertIsString($helpText);
+
+                continue;
+            }
+
+            $this->assertNull($helpText);
         }
-    }
-
-    public function testDisplayCommandHelpForExistingCommand(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
-
-        $this->helpService->displayCommandHelp($logger, 'commit');
-    }
-
-    public function testDisplayCommandHelpForNonExistentCommand(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($message) {
-                return is_string($message) && ! empty($message);
-            }));
-
-        $this->helpService->displayCommandHelp($logger, 'nonexistent');
     }
 
     public function testGeneralHelpCommandGroupsCoverCommandMap(): void
@@ -214,281 +169,75 @@ MD);
         }
     }
 
-    public function testDisplayCommandHelpCallsSection(): void
+    #[DataProvider('displayCommandHelpProvider')]
+    public function testDisplayCommandHelpRendersTranslatedHelp(string $command, string $commandToken): void
     {
         $logger = $this->createMock(Logger::class);
-
         $logger->expects($this->once())
             ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
-
-        $logger->expects($this->atLeastOnce())
+            ->with(Logger::VERBOSITY_NORMAL, 'help.command_help_title {"command":"' . $command . '"}');
+        $logger->expects($this->once())
             ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
-
-        $logger->expects($this->atLeastOnce())
+            ->with(Logger::VERBOSITY_NORMAL, $this->stringContains('stud ' . $commandToken));
+        $logger->expects($this->once())
             ->method('newLine')
             ->with(Logger::VERBOSITY_NORMAL);
-
-        $logger->expects($this->atLeastOnce())
+        $logger->expects($this->once())
             ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
+            ->with(Logger::VERBOSITY_NORMAL, 'help.see_readme_note');
 
-        $this->helpService->displayCommandHelp($logger, 'commit');
+        $this->helpService->displayCommandHelp($logger, $command);
     }
 
-    public function testDisplayCommandHelpForNonExistentCommandCallsSection(): void
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function displayCommandHelpProvider(): iterable
     {
-        $logger = $this->createMock(Logger::class);
-
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
-
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
-
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
-
-        $this->helpService->displayCommandHelp($logger, 'nonexistent');
+        yield 'testDisplayCommandHelpForExistingCommand' => ['commit', 'commit'];
+        yield 'testDisplayCommandHelpCallsSection' => ['commit', 'commit'];
+        yield 'testDisplayCommandHelpUsesTranslationWhenReadmeReturnsNull' => ['completion', 'completion'];
+        yield 'testDisplayCommandHelpWithAliasAndArguments' => ['release', 'release'];
+        yield 'testDisplayCommandHelpWithVersionArgument' => ['release', 'release'];
+        yield 'testDisplayCommandHelpWithJqlArgument' => ['items:search', 'items:search'];
+        yield 'testDisplayCommandHelpWithShellArgument' => ['completion', 'completion'];
+        yield 'testDisplayCommandHelpWithLabelsOption' => ['submit', 'submit'];
+        yield 'testDisplayCommandHelpWithMessageOption' => ['commit', 'commit'];
+        yield 'testDisplayCommandHelpWithKeyOption' => ['items:list', 'items:list'];
+        yield 'testDisplayCommandHelpWithMultipleOptions' => ['submit', 'submit'];
+        yield 'testDisplayCommandHelpWithCommitMultipleOptions' => ['commit', 'commit'];
+        yield 'testDisplayCommandHelpWithPrCommentCommand' => ['pr:comment', 'pr:comment'];
+        yield 'testDisplayCommandHelpWithFiltersShow' => ['filters:show', 'filters:show'];
     }
 
-    public function testDisplayCommandHelpFallsBackToTranslationWhenCommandNotFound(): void
+    #[DataProvider('displayCommandHelpNotFoundProvider')]
+    public function testDisplayCommandHelpRendersNotFound(string $command): void
     {
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->once())
             ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
-        $logger->expects($this->atLeastOnce())
+            ->with(Logger::VERBOSITY_NORMAL, 'help.command_help_title {"command":"' . $command . '"}');
+        $logger->expects($this->once())
             ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
-        $logger->expects($this->atLeastOnce())
+            ->with(Logger::VERBOSITY_NORMAL, 'help.command_not_found {"command":"' . $command . '"}');
+        $logger->expects($this->once())
             ->method('newLine')
             ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
+        $logger->expects($this->once())
             ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($message) {
-                return is_string($message) && ! empty($message);
-            }));
+            ->with(Logger::VERBOSITY_NORMAL, 'help.see_readme_note');
 
-        // Use a command that doesn't exist in README and doesn't have a translation key
-        $this->helpService->displayCommandHelp($logger, 'nonexistentcommand12345');
+        $this->helpService->displayCommandHelp($logger, $command);
     }
 
-    public function testDisplayCommandHelpUsesTranslationWhenReadmeReturnsNull(): void
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function displayCommandHelpNotFoundProvider(): iterable
     {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
-
-        // Test with a command that exists in COMMAND_PATTERNS but might not be in README
-        // This tests the fallback to translation when getCommandHelp returns null
-        $this->helpService->displayCommandHelp($logger, 'completion');
-    }
-
-    public function testDisplayCommandHelpWithAliasAndArguments(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test release command which has alias 'rl' and argument '<version>'
-        $this->helpService->displayCommandHelp($logger, 'release');
-    }
-
-    public function testDisplayCommandHelpWithVersionArgument(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test release command with optional [<version>] argument
-        $this->helpService->displayCommandHelp($logger, 'release');
-    }
-
-    public function testDisplayCommandHelpWithJqlArgument(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test items:search command with <jql> argument
-        $this->helpService->displayCommandHelp($logger, 'items:search');
-    }
-
-    public function testDisplayCommandHelpWithShellArgument(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test completion command with <shell> argument
-        $this->helpService->displayCommandHelp($logger, 'completion');
-    }
-
-    public function testDisplayCommandHelpWithLabelsOption(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test submit command which has --labels option with <labels> argument
-        $this->helpService->displayCommandHelp($logger, 'submit');
-    }
-
-    public function testDisplayCommandHelpWithMessageOption(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test commit command which has --message option with <message> argument
-        $this->helpService->displayCommandHelp($logger, 'commit');
-    }
-
-    public function testDisplayCommandHelpWithKeyOption(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test items:list command which has --project option with <key> argument
-        $this->helpService->displayCommandHelp($logger, 'items:list');
-    }
-
-    public function testDisplayCommandHelpWithMultipleOptions(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test submit command which has multiple options (--draft and --labels)
-        $this->helpService->displayCommandHelp($logger, 'submit');
-    }
-
-    public function testDisplayCommandHelpWithCommitMultipleOptions(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test commit command which has multiple options (--new and --message)
-        $this->helpService->displayCommandHelp($logger, 'commit');
+        yield 'testDisplayCommandHelpForNonExistentCommand' => ['nonexistent'];
+        yield 'testDisplayCommandHelpForNonExistentCommandCallsSection' => ['nonexistent'];
+        yield 'testDisplayCommandHelpFallsBackToTranslationWhenCommandNotFound' => ['nonexistentcommand12345'];
     }
 
     public function testFormatCommandHelpFromTranslationWithVersionArgument(): void
@@ -527,6 +276,9 @@ MD);
         // Test intent: should return formatted help text
         $this->assertIsString($result);
         $this->assertNotEmpty($result);
+        $this->assertStringContainsString('stud items:list', $result);
+        $this->assertStringContainsString('stud ls', $result);
+        $this->assertStringContainsString('--project <key> or -p <key>', $result);
     }
 
     public function testFormatCommandHelpFromTranslationWithSubmitFirstOptionWithArgument(): void
@@ -543,6 +295,10 @@ MD);
         // Test intent: should return formatted help text
         $this->assertIsString($result);
         $this->assertNotEmpty($result);
+        $this->assertStringContainsString('stud submit', $result);
+        $this->assertStringContainsString('stud su', $result);
+        $this->assertStringContainsString('--draft or -d', $result);
+        $this->assertStringContainsString('--labels <labels>', $result);
     }
 
     public function testFormatCommandHelpFromTranslationWithItemsCreateSecondOptionWithType(): void
@@ -575,26 +331,9 @@ MD);
         // Test intent: should return formatted help text
         $this->assertIsString($result);
         $this->assertNotEmpty($result);
-    }
-
-    public function testDisplayCommandHelpWithPrCommentCommand(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test pr:comment command which has alias 'pc' and argument '<message>'
-        $this->helpService->displayCommandHelp($logger, 'pr:comment');
+        $this->assertStringContainsString('stud items:show <key>', $result);
+        $this->assertStringContainsString('(Alias: stud sh <key>)', $result);
+        $this->assertStringContainsString('stud items:show JIRA-33', $result);
     }
 
     public function testFormatCommandHelpFromTranslationWithPrComment(): void
@@ -609,26 +348,10 @@ MD);
         // Test intent: should return formatted help text
         $this->assertIsString($result);
         $this->assertNotEmpty($result);
-    }
-
-    public function testDisplayCommandHelpWithFiltersShow(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('newLine')
-            ->with(Logger::VERBOSITY_NORMAL);
-        $logger->expects($this->atLeastOnce())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-
-        // Test filters:show command which has alias 'fs' and argument '<filterName>'
-        $this->helpService->displayCommandHelp($logger, 'filters:show');
+        $this->assertStringContainsString('stud pr:comment <message>', $result);
+        $this->assertStringContainsString('stud pc', $result);
+        $this->assertStringContainsString('--reply-to <target>', $result);
+        $this->assertStringContainsString('"Comment text"', $result);
     }
 
     public function testFormatCommandHelpFromTranslationWithFiltersShow(): void
@@ -643,14 +366,16 @@ MD);
         // Test intent: should return formatted help text
         $this->assertIsString($result);
         $this->assertNotEmpty($result);
+        $this->assertStringContainsString('stud filters:show <filterName>', $result);
+        $this->assertStringContainsString('stud fs', $result);
+        $this->assertStringContainsString('"My Filter"', $result);
     }
 
     public function testGetCommandHelpForFiltersShowHandlesConciseReadme(): void
     {
         $helpText = $this->helpService->getCommandHelp('filters:show');
 
-        // Test intent: README may be an index, so command-specific help can fall back to translations.
-        $this->assertTrue($helpText === null || is_string($helpText));
+        $this->assertNull($helpText);
     }
 
     public function testFormatCommandHelpFromTranslationWithItemsTransition(): void
@@ -951,7 +676,7 @@ MD);
     {
         // Test that getCommandHelp returns null when file read throws RuntimeException
         // This covers line 60 (catch block)
-        $fileSystem = $this->createMock(\App\Service\FileSystem::class);
+        $fileSystem = $this->createStub(\App\Service\FileSystem::class);
         $fileSystem->method('read')
             ->willThrowException(new \RuntimeException('File read failed'));
 

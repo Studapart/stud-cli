@@ -8,6 +8,7 @@ use App\DTO\WorkItem;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\FilterShowHandler;
 use App\Response\FilterShowResponse;
+use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
 use App\Tests\CommandTestCase;
 
@@ -18,21 +19,15 @@ class FilterShowHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $portSupplier = $this->createMock(IssueTrackerPortSupplier::class);
-        $portSupplier->method('resolveForProvider')
-            ->with('jira', $this->anything())
-            ->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
-
-        $this->handler = new FilterShowHandler(
-            $portSupplier,
-            ['ISSUE_TRACKER_PROVIDERS' => ['jira']],
-            ['issueTrackerProvider' => 'jira'],
-        );
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
+        $this->bindSubject();
     }
 
     public function testHandleReturnsSuccessResponseWithIssues(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $issue = new WorkItem(
             '1000',
             'TPW-35',
@@ -60,6 +55,9 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenNoMatches(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('runFilterOrView')
             ->with('My Filter')
@@ -74,7 +72,10 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleFallsBackWhenProviderListEmpty(): void
     {
-        $portSupplier = $this->createMock(\App\Service\IssueTrackerPortSupplier::class);
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
+        $portSupplier = $this->createStub(\App\Service\IssueTrackerPortSupplier::class);
         $portSupplier->method('resolve')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
         $portSupplier->method('resolveForProvider')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
         $handler = new FilterShowHandler($portSupplier, [], []);
@@ -88,7 +89,7 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenFallbackResolutionFails(): void
     {
-        $portSupplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $portSupplier = $this->createStub(IssueTrackerPortSupplier::class);
         $portSupplier->method('resolve')->willReturn([
             'ok' => false,
             'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured'),
@@ -102,7 +103,7 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenSingleProviderResolutionFails(): void
     {
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturn([
             'ok' => false,
             'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured'),
@@ -116,6 +117,9 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorOnApiException(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->bindSubject();
+
         $this->issueTracker->expects($this->once())
             ->method('runFilterOrView')
             ->with('My Filter')
@@ -133,12 +137,12 @@ class FilterShowHandlerTest extends CommandTestCase
     public function testHandleDualAutoContinuesWhenOneProviderFails(): void
     {
         $issue = new WorkItem('1', 'ENG-1', 'Linear issue', 'Open', null, '', [], 'Story');
-        $linearPort = $this->createMock(\App\Service\IssueTrackerPort::class);
+        $linearPort = $this->createStub(IssueTrackerPort::class);
         $linearPort->method('runFilterOrView')->willReturn([$issue]);
 
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturnCallback(
-            static function (string $provider) use ($linearPort): array {
+            static function (string $provider, mixed ...$ignored) use ($linearPort): array {
                 return match ($provider) {
                     IssueTrackerProvider::Jira->value => ['ok' => false, 'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured')],
                     IssueTrackerProvider::Linear->value => ['ok' => true, 'provider' => 'linear', 'port' => $linearPort],
@@ -162,18 +166,18 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleDualAutoSkipsProviderFetchExceptionWhenOtherMatches(): void
     {
-        $jiraPort = $this->issueTracker;
+        $jiraPort = $this->createMock(IssueTrackerPort::class);
         $jiraPort->expects($this->once())
             ->method('runFilterOrView')
             ->willThrowException(new \Exception('Jira API error'));
 
-        $linearPort = $this->createMock(\App\Service\IssueTrackerPort::class);
+        $linearPort = $this->createStub(IssueTrackerPort::class);
         $issue = new WorkItem('2', 'ENG-2', 'Linear issue', 'Open', null, '', [], 'Story');
         $linearPort->method('runFilterOrView')->willReturn([$issue]);
 
-        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturnCallback(
-            static function (string $provider) use ($jiraPort, $linearPort): array {
+            static function (string $provider, mixed ...$ignored) use ($jiraPort, $linearPort): array {
                 return match ($provider) {
                     IssueTrackerProvider::Jira->value => ['ok' => true, 'provider' => 'jira', 'port' => $jiraPort],
                     IssueTrackerProvider::Linear->value => ['ok' => true, 'provider' => 'linear', 'port' => $linearPort],
@@ -218,5 +222,19 @@ class FilterShowHandlerTest extends CommandTestCase
             'projectKey' => 'SCI',
             'linearTeamKey' => 'ENG',
         ];
+    }
+
+    private function bindSubject(): void
+    {
+
+        $portSupplier = $this->createStub(IssueTrackerPortSupplier::class);
+        $portSupplier->method('resolveForProvider')
+            ->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
+
+        $this->handler = new FilterShowHandler(
+            $portSupplier,
+            ['ISSUE_TRACKER_PROVIDERS' => ['jira']],
+            ['issueTrackerProvider' => 'jira'],
+        );
     }
 }

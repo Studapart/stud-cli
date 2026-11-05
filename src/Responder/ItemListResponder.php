@@ -42,7 +42,10 @@ class ItemListResponder
 
         if ($this->shouldShowJqlComment($response)) {
             $jql = JiraAssignedActiveJqlBuilder::build($response->project, ! $response->all);
-            $this->logger->comment(Logger::VERBOSITY_VERBOSE, '  ' . $this->helper->formatComment("JQL Query: {$jql}"));
+            $this->logger->comment(
+                Logger::VERBOSITY_VERBOSE,
+                '  ' . $this->helper->formatComment($this->helper->translator->trans('item.list.jql_query', ['%jql%' => $jql])),
+            );
         }
 
         if (empty($response->issues)) {

@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\Config\SecretKeyPolicy;
+use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\ConfigProjectInitHandler;
 use App\Handler\ConfigProjectInitPromptCollector;
+use App\Response\ConfigProjectInitResponse;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
 use PHPUnit\Framework\TestCase;
@@ -15,62 +18,61 @@ class ConfigProjectInitHandlerTest extends TestCase
 {
     public function testNotGitRepositoryReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willThrowException(new \RuntimeException('not a git repo'));
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], false, false);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.not_git_repository', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.not_git_repository');
     }
 
     public function testAgentUnknownKeysReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['badKey' => 'x'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.unknown_keys', $response->getError());
-        $this->assertSame(['%keys%' => 'badKey'], $response->getErrorParameters());
+        $this->assertErrorRef($response, 'config.project_init.unknown_keys', ['%keys%' => 'badKey']);
     }
 
     public function testAgentReservedMigrationVersionReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['migration_version' => '9'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.reserved_keys', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.reserved_keys', ['%keys%' => 'migration_version']);
     }
 
     public function testAgentInvalidTransitionIdReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['transitionId' => 1.5], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_transition_id', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_transition_id');
     }
 
     public function testNoPatchesReturnsSuccessUnchanged(): void
@@ -78,8 +80,8 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'develop']);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], false, true);
@@ -109,7 +111,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createMock(GitSetupService::class);
         $gitSetup->expects($this->once())->method('validateBaseBranchOnRemote')->with('main');
 
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['projectKey' => 'sci', 'baseBranch' => 'origin/main'], false, true);
@@ -131,7 +133,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createMock(GitSetupService::class);
         $gitSetup->expects($this->never())->method('validateBaseBranchOnRemote');
 
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['baseBranch' => 'feature-x'], true, true);
@@ -141,32 +143,32 @@ class ConfigProjectInitHandlerTest extends TestCase
 
     public function testNegativeTransitionIdFromCliReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['transitionId' => -1], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_transition_id', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_transition_id');
     }
 
     public function testInvalidGitProviderReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['gitProvider' => 'bitbucket'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_git_provider', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_git_provider');
     }
 
     public function testCliPatchesMergeJiraDefaultProject(): void
@@ -181,8 +183,8 @@ class ConfigProjectInitHandlerTest extends TestCase
             ->method('writeProjectConfig')
             ->with(['JIRA_DEFAULT_PROJECT' => 'XYZ']);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['jiraDefaultProject' => 'xyz'], false, true);
@@ -203,7 +205,7 @@ class ConfigProjectInitHandlerTest extends TestCase
             ->method('writeProjectConfig')
             ->with(['projectKey' => 'ABC']);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
         $prompts->expects($this->once())->method('collect')->willReturn(['projectKey' => 'abc']);
 
@@ -216,22 +218,21 @@ class ConfigProjectInitHandlerTest extends TestCase
 
     public function testBaseBranchRemoteValidationFailureReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $gitSetup->method('validateBaseBranchOnRemote')
             ->willThrowException(new \RuntimeException('no such ref'));
 
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['baseBranch' => 'gone'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.base_branch_error', $response->getError());
-        $this->assertSame(['%message%' => 'no such ref'], $response->getErrorParameters());
+        $this->assertErrorRef($response, 'config.project_init.base_branch_error', ['%message%' => 'no such ref']);
     }
 
     public function testAgentCoercesGitProviderString(): void
@@ -246,8 +247,8 @@ class ConfigProjectInitHandlerTest extends TestCase
             ->method('writeProjectConfig')
             ->with($this->callback(fn (array $c): bool => ($c['gitProvider'] ?? null) === 'gitlab'));
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['gitProvider' => '  GITLAB  '], true, true);
@@ -257,12 +258,12 @@ class ConfigProjectInitHandlerTest extends TestCase
 
     public function testAgentSkipsNullPatchValues(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'develop']);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['projectKey' => null], false, true);
@@ -283,8 +284,8 @@ class ConfigProjectInitHandlerTest extends TestCase
             ->method('writeProjectConfig')
             ->with($this->callback(fn (array $c): bool => ($c['transitionId'] ?? null) === 7));
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['transitionId' => '  7  '], true, true);
@@ -304,8 +305,8 @@ class ConfigProjectInitHandlerTest extends TestCase
             ->method('writeProjectConfig')
             ->with(['projectKey' => 'ZZZ']);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['projectKey' => '  zzz  '], true, true);
@@ -315,12 +316,12 @@ class ConfigProjectInitHandlerTest extends TestCase
 
     public function testAgentTransitionIdNullPassesValidation(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'develop']);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['transitionId' => null], false, true);
@@ -341,8 +342,8 @@ class ConfigProjectInitHandlerTest extends TestCase
             ->method('writeProjectConfig')
             ->with(['transitionId' => 42]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['transitionId' => 42], true, true);
@@ -352,18 +353,18 @@ class ConfigProjectInitHandlerTest extends TestCase
 
     public function testAgentUnknownFieldKeyReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'develop']);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['notAProjectInitField' => 'x'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.unknown_keys', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.unknown_keys', ['%keys%' => 'notAProjectInitField']);
     }
 
     public function testAgentCoerceLeavesNonStringValuesUnchanged(): void
@@ -378,8 +379,8 @@ class ConfigProjectInitHandlerTest extends TestCase
             ->method('writeProjectConfig')
             ->with(['githubToken' => 99]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['githubToken' => 99], true, true);
@@ -394,8 +395,8 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturn(['githubToken' => 'keep-me']);
         $gitRepository->expects($this->never())->method('writeProjectConfig');
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['githubToken' => '   '], true, true);
@@ -411,8 +412,8 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturn(['projectKey' => 'KEEP']);
         $gitRepository->expects($this->never())->method('writeProjectConfig');
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['projectKey' => '   '], true, true);
@@ -445,8 +446,8 @@ class ConfigProjectInitHandlerTest extends TestCase
                 'linearTypeBranchPrefixes' => ['Story' => 'feat'],
             ]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([
@@ -473,8 +474,8 @@ class ConfigProjectInitHandlerTest extends TestCase
             ->method('writeProjectConfig')
             ->with(['issueTrackerProvider' => IssueTrackerProvider::Linear->value]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['workItemProvider' => IssueTrackerProvider::Linear->value], false, true);
@@ -485,41 +486,41 @@ class ConfigProjectInitHandlerTest extends TestCase
 
     public function testAgentInvalidWorkItemProviderReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['issueTrackerProvider' => 'asana'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_issue_tracker_provider', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_issue_tracker_provider');
     }
 
     public function testAgentInvalidLinearTypeBranchPrefixesReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['linearTypeBranchPrefixes' => 'not-a-map'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_linear_type_branch_prefixes', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_linear_type_branch_prefixes');
     }
 
     public function testAgentSkipsLinearTypeBranchPrefixesWithEmptyTypeLabel(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'develop']);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['linearTypeBranchPrefixes' => ['' => 'feat']], false, true);
@@ -530,12 +531,12 @@ class ConfigProjectInitHandlerTest extends TestCase
 
     public function testAgentSkipsEmptyLinearTypeBranchPrefixesMap(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'develop']);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['linearTypeBranchPrefixes' => ['' => 'feat', 'Story' => '']], false, true);
@@ -556,8 +557,8 @@ class ConfigProjectInitHandlerTest extends TestCase
             ->method('writeProjectConfig')
             ->with(['linearTypeBranchPrefixes' => ['Story' => 'feat']]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([
@@ -569,34 +570,34 @@ class ConfigProjectInitHandlerTest extends TestCase
 
     public function testInteractiveInvalidLinearTypeBranchPrefixesEmptyKeyReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
         $prompts->method('collect')->willReturn(['linearTypeBranchPrefixes' => ['' => 'feat']]);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], true, false);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_linear_type_branch_prefixes', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_linear_type_branch_prefixes');
     }
 
     public function testInteractiveInvalidLinearTypeBranchPrefixesEmptyValueReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
         $prompts->method('collect')->willReturn(['linearTypeBranchPrefixes' => ['Story' => '']]);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], true, false);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_linear_type_branch_prefixes', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_linear_type_branch_prefixes');
     }
 
     public function testInteractiveIgnoresUnknownPatchKeysFromCollector(): void
@@ -611,8 +612,8 @@ class ConfigProjectInitHandlerTest extends TestCase
             ->method('writeProjectConfig')
             ->with(['projectKey' => 'SCI']);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
         $prompts->method('collect')->willReturn(['projectKey' => 'SCI', 'notInFieldMap' => 'x']);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
@@ -628,8 +629,8 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturn(['projectKey' => 'KEEP']);
         $gitRepository->expects($this->never())->method('writeProjectConfig');
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
         $prompts->method('collect')->willReturn(['projectKey' => '   ']);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
@@ -641,19 +642,19 @@ class ConfigProjectInitHandlerTest extends TestCase
 
     public function testInteractiveInvalidTransitionIdReturnsError(): void
     {
-        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository = $this->createStub(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
         $gitRepository->method('readProjectConfig')->willReturn([]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
-        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
+        $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
         $prompts->method('collect')->willReturn(['transitionId' => -1]);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], false, false);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_transition_id', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_transition_id');
     }
 
     public function testAgentNeverInvokesPromptCollector(): void
@@ -663,7 +664,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturn(['projectKey' => 'SCI']);
         $gitRepository->expects($this->never())->method('writeProjectConfig');
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
         $prompts->expects($this->never())->method('collect');
 
@@ -719,7 +720,7 @@ class ConfigProjectInitHandlerTest extends TestCase
                 'linearTypeBranchPrefixes' => ['Story' => 'feat', 'Bug' => 'fix'],
             ]);
 
-        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
         $prompts->expects($this->never())->method('collect');
 
@@ -757,8 +758,8 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $handler = new ConfigProjectInitHandler(
             $gitRepository,
-            $this->createMock(GitSetupService::class),
-            $this->createMock(ConfigProjectInitPromptCollector::class),
+            $this->createStub(GitSetupService::class),
+            $this->createStub(ConfigProjectInitPromptCollector::class),
         );
         $response = $handler->handle([
             'workItemLabels' => [' AI-Generated ', ''],
@@ -778,8 +779,8 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $handler = new ConfigProjectInitHandler(
             $gitRepository,
-            $this->createMock(GitSetupService::class),
-            $this->createMock(ConfigProjectInitPromptCollector::class),
+            $this->createStub(GitSetupService::class),
+            $this->createStub(ConfigProjectInitPromptCollector::class),
         );
 
         foreach ([[], [''], null] as $empty) {
@@ -801,13 +802,13 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $handler = new ConfigProjectInitHandler(
             $gitRepository,
-            $this->createMock(GitSetupService::class),
-            $this->createMock(ConfigProjectInitPromptCollector::class),
+            $this->createStub(GitSetupService::class),
+            $this->createStub(ConfigProjectInitPromptCollector::class),
         );
         $response = $handler->handle(['workItemLabels' => ['AI-Generated', 1]], true, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_label_list', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_label_list');
     }
 
     public function testAgentRejectsStringLabelList(): void
@@ -819,12 +820,86 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $handler = new ConfigProjectInitHandler(
             $gitRepository,
-            $this->createMock(GitSetupService::class),
-            $this->createMock(ConfigProjectInitPromptCollector::class),
+            $this->createStub(GitSetupService::class),
+            $this->createStub(ConfigProjectInitPromptCollector::class),
         );
         $response = $handler->handle(['pullRequestLabels' => 'AI-Generated'], true, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_label_list', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_label_list');
+    }
+
+    public function testAgentWritesTrimmedIssueTrackerCredentials(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturnOnConsecutiveCalls([], [
+            'JIRA_URL' => 'https://proj.example',
+            'JIRA_EMAIL' => 'person@example.com',
+            'JIRA_API_TOKEN' => 'tok',
+            'LINEAR_API_KEY' => 'lin',
+        ]);
+        $gitRepository->expects($this->once())
+            ->method('writeProjectConfig')
+            ->with([
+                'JIRA_URL' => 'https://proj.example',
+                'JIRA_EMAIL' => 'person@example.com',
+                'JIRA_API_TOKEN' => 'tok',
+                'LINEAR_API_KEY' => 'lin',
+            ]);
+
+        $handler = new ConfigProjectInitHandler(
+            $gitRepository,
+            $this->createStub(GitSetupService::class),
+            $this->createStub(ConfigProjectInitPromptCollector::class),
+        );
+        $response = $handler->handle([
+            'jiraUrl' => ' https://proj.example/ ',
+            'jiraEmail' => ' person@example.com ',
+            'jiraApiToken' => ' tok ',
+            'linearApiKey' => ' lin ',
+        ], false, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->updated);
+        $this->assertSame('https://proj.example', $response->redactedProjectConfig['JIRA_URL']);
+        $this->assertSame('person@example.com', $response->redactedProjectConfig['JIRA_EMAIL']);
+        $this->assertSame(SecretKeyPolicy::REDACTED_PLACEHOLDER, $response->redactedProjectConfig['JIRA_API_TOKEN']);
+        $this->assertSame(SecretKeyPolicy::REDACTED_PLACEHOLDER, $response->redactedProjectConfig['LINEAR_API_KEY']);
+    }
+
+    public function testAgentOmitsBlankIssueTrackerCredentials(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturn(['JIRA_URL' => 'https://keep.example']);
+        $gitRepository->expects($this->never())->method('writeProjectConfig');
+
+        $handler = new ConfigProjectInitHandler(
+            $gitRepository,
+            $this->createStub(GitSetupService::class),
+            $this->createStub(ConfigProjectInitPromptCollector::class),
+        );
+        $response = $handler->handle([
+            'jiraUrl' => '///',
+            'jiraEmail' => '   ',
+            'linearApiKey' => '',
+        ], false, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertFalse($response->updated);
+    }
+
+    /**
+     * @param array<string, mixed>|null $parameters
+     */
+    private function assertErrorRef(ConfigProjectInitResponse $response, string $key, ?array $parameters = null): void
+    {
+        $message = $response->getErrorMessage();
+        $this->assertInstanceOf(MessageRef::class, $message);
+        $this->assertSame($key, $message->key);
+        if ($parameters !== null) {
+            $this->assertSame($parameters, $message->parameters);
+        }
     }
 }

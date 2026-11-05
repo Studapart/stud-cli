@@ -7,6 +7,7 @@ namespace App\Tests\Service;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 
@@ -23,18 +24,18 @@ class GitBranchServiceTest extends TestCase
         $this->gitBranchService = new GitBranchService($this->gitRepository);
     }
 
-    private function createSuccessProcess(string $output = ''): Process&MockObject
+    private function createSuccessProcess(string $output = ''): Process&Stub
     {
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $process->method('getOutput')->willReturn($output);
 
         return $process;
     }
 
-    private function createFailedProcess(): Process&MockObject
+    private function createFailedProcess(): Process&Stub
     {
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         return $process;
@@ -84,7 +85,7 @@ class GitBranchServiceTest extends TestCase
                 $this->assertSame($expected[$callIndex], $command);
                 $callIndex++;
 
-                return $this->createMock(Process::class);
+                return $this->createStub(Process::class);
             });
 
         $this->gitBranchService->renameRemoteBranch('old-branch', 'new-branch', 'origin');
@@ -110,7 +111,7 @@ class GitBranchServiceTest extends TestCase
                 $this->assertSame($expected[$callIndex], $command);
                 $callIndex++;
 
-                return $this->createMock(Process::class);
+                return $this->createStub(Process::class);
             });
 
         $this->gitBranchService->renameRemoteBranch('old-branch', 'new-branch', 'origin');

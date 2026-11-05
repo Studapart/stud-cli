@@ -18,10 +18,7 @@ class Migration20260703120000000_IssueTrackerConfigKeysTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $logger = $this->createMock(Logger::class);
-        $translator = $this->createMock(TranslationService::class);
-        $this->migration = new Migration20260703120000000_IssueTrackerConfigKeys($logger, $translator);
+        $this->migration = new Migration20260703120000000_IssueTrackerConfigKeys($this->createStub(Logger::class), $this->createStub(TranslationService::class));
     }
 
     public function testGetIdAndScope(): void

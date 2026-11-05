@@ -41,6 +41,9 @@ class ItemsUpdateAgentIntegrationTest extends TestCase
         $stdout = $proc->getOutput();
         $stderr = $proc->getErrorOutput();
         $fullOutput = $stdout . $stderr;
+        $decoded = json_decode($stdout, true);
+        self::assertIsArray($decoded, 'Output must be valid JSON. Output: ' . $fullOutput);
+        self::assertArrayHasKey('success', $decoded);
 
         // Before fix: _read_agent_input($key) tried to read file "SCI-99" and failed with "Cannot read input file".
         // After fix: we read from stdin; we may get editmeta/update or config errors, but not file read error.
@@ -74,6 +77,9 @@ class ItemsUpdateAgentIntegrationTest extends TestCase
         $stdout = $proc->getOutput();
         $stderr = $proc->getErrorOutput();
         $fullOutput = $stdout . $stderr;
+        $decoded = json_decode($stdout, true);
+        self::assertIsArray($decoded, 'Output must be valid JSON. Output: ' . $fullOutput);
+        self::assertArrayHasKey('success', $decoded);
 
         // Must read from stdin; must not fail with "Cannot read input file" or "error_no_key" (key is in JSON).
         self::assertStringNotContainsString('Cannot read input file', $fullOutput);

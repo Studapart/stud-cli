@@ -8,6 +8,9 @@ use App\DTO\WorkItem;
 use App\Handler\SubmitHandler;
 use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GithubGitHostingAdapter;
+use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
+use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -23,35 +26,31 @@ class SubmitHandlerTest extends CommandTestCase
     ];
     private ?GithubGitHostingAdapter $githubProvider;
     private CanConvertToMarkdownInterface $htmlConverter;
-    private \App\Service\Prompt\PromptInterface $prompt;
+    private PromptInterface $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->issueTracker = $this->createStub(IssueTrackerPort::class);
 
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
-        TestKernel::$gitRepository = $this->gitRepository;
-        TestKernel::$issueTracker = $this->issueTracker;
-        TestKernel::$translationService = $this->translationService;
-        $this->prompt = $this->createMock(\App\Service\Logger::class);
-        $this->handler = new SubmitHandler(
-            $this->gitRepository,
-            $this->issueTracker,
-            $this->githubProvider,
-            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
-            'origin/develop',
-            $this->translationService,
-            $this->prompt
-        );
+        $this->githubProvider = $this->createStub(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
+        $this->prompt = $this->createStub(PromptInterface::class);
+        $this->bindSubject();
     }
 
     public function testHandleSuccess(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -70,7 +69,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->issueTracker->method('getIssue')->willReturn($workItem);
+        $this->issueTracker->expects($this->once())->method('getIssue')->with('TPW-35')->willReturn($workItem);
 
         $this->htmlConverter->expects($this->once())
             ->method('toMarkdown')
@@ -91,17 +90,19 @@ class SubmitHandlerTest extends CommandTestCase
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1', 'number' => 1]);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
         $this->assertSame(1, $response->pullNumber);
     }
 
     public function testAlreadyPublishedSkipsSecondPushAndKeepsRewritten(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
@@ -135,6 +136,7 @@ class SubmitHandlerTest extends CommandTestCase
             ],
         ));
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/2']);
         $this->assertSame(0, $response->exitCode);
         $this->assertTrue($response->rewritten);
         $this->assertSame(2, $response->pullNumber);
@@ -146,11 +148,15 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleUsesWorkItemUrlForLinearPrBody(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('chore/SCIL-195-x');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('SCIL-195');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -183,15 +189,19 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle();
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/2']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandlePassesAssignToAuthorIntentWhenRequested(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -218,20 +228,22 @@ class SubmitHandlerTest extends CommandTestCase
             ->with($this->callback(fn ($prData): bool => $prData instanceof PullRequestData && $prData->assignToAuthor === true))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle(new SubmitOptions(assignToAuthor: true));
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleReportsAssignmentFailureAfterPullRequestCreation(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -261,16 +273,18 @@ class SubmitHandlerTest extends CommandTestCase
             ));
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle(new SubmitOptions(assignToAuthor: true));
 
+        $this->assertMessageRef($response->getErrorMessage(), 'submit.error_assign_author');
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleDerivesPrTitleFromFirstLineOfMultilineCommit(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $multilineMessage = "feat(my-scope): My feature [TPW-35]\n\n"
             . "Additional body paragraph describing the change.\n"
             . "It may span several lines and should not leak into the PR title.";
@@ -279,7 +293,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn(null);
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -314,11 +328,10 @@ class SubmitHandlerTest extends CommandTestCase
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -344,6 +357,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleResolvesJiraKeyFromCommitBodyWhenBranchHasNone(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $multilineMessage = "feat(my-scope): My feature\n\n"
             . "Body paragraph referencing ticket [TPW-77].";
 
@@ -351,7 +367,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feature-branch');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn(null);
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -385,20 +401,23 @@ class SubmitHandlerTest extends CommandTestCase
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleSuccessWithDraft(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -437,20 +456,23 @@ class SubmitHandlerTest extends CommandTestCase
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle(new SubmitOptions(true));
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithDirtyWorkingDirectoryLogsNoteAndSucceeds(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn(" M file1.php");
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -482,11 +504,11 @@ class SubmitHandlerTest extends CommandTestCase
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getNotices()[0]->message, 'submit.note_dirty_working');
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -495,11 +517,10 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'submit.error_base_branch');
         $this->assertSame(1, $response->exitCode);
     }
 
@@ -507,15 +528,14 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'submit.error_push');
         $this->assertSame(1, $response->exitCode);
     }
 
@@ -523,28 +543,30 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn(null);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'submit.error_no_logical');
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithNoJiraKeyInCommitMessage(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         // Test that branch name is used first when commit message doesn't have Jira key
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -581,11 +603,10 @@ class SubmitHandlerTest extends CommandTestCase
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -595,29 +616,31 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feature-branch');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn(null);
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature'); // No Jira key
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'submit.error_no_jira_key');
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithJiraKeyInBranchNameTakesPriority(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         // Test that branch name Jira key takes priority even if commit message has different key
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -655,21 +678,23 @@ class SubmitHandlerTest extends CommandTestCase
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleUnescapesCheckboxMarkdownInPrBody(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -704,19 +729,21 @@ class SubmitHandlerTest extends CommandTestCase
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithJiraApiClientExceptionForPrBody(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -743,15 +770,20 @@ class SubmitHandlerTest extends CommandTestCase
         $response = $this->handler->handle();
 
         $outputText = $output->fetch();
+        $this->assertMessageRef($response->getWarnings()[0]->message, 'submit.warning_issue_fetch');
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithResolutionHintOnPrBodyFetchFailure(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('chore/SCIL-195-x');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('SCIL-195');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -775,14 +807,24 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getWarnings()[0]->message, 'issue_tracker_provider.fetch_failed_prefix_matches_other', [
+            '%key%' => 'SCIL-195',
+            '%attempted%' => 'jira',
+            '%prefix%' => 'SCIL',
+            '%alternate%' => 'linear',
+        ]);
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithEmptyJiraDescription(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -824,15 +866,19 @@ class SubmitHandlerTest extends CommandTestCase
         $response = $this->handler->handle();
 
         $outputText = $output->fetch();
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithPullRequestCreationApiExceptionNon422(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -870,20 +916,23 @@ class SubmitHandlerTest extends CommandTestCase
             );
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getErrorMessage(), 'submit.error_create_pr');
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithJiraFetchApiExceptionVerbose(): void
     {
+        $this->issueTracker = $this->createMock(IssueTrackerPort::class);
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -891,7 +940,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
 
-        $this->issueTracker->method('getIssue')
+        $this->issueTracker->expects($this->once())->method('getIssue')
             ->with('TPW-35', true)
             ->willThrowException(new \App\Exception\ApiException('Failed to fetch Jira issue.', 'HTTP 500: Internal Server Error', 500));
 
@@ -910,13 +959,15 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getWarnings()[0]->message, 'submit.warning_issue_fetch');
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithNoGitProviderConfigured(): void
     {
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->issueTracker,
@@ -929,7 +980,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -950,11 +1001,10 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->issueTracker->method('getIssue')->willReturn($workItem);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getWarnings()[0]->message, 'submit.warning_no_provider');
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -963,7 +1013,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -995,6 +1045,7 @@ class SubmitHandlerTest extends CommandTestCase
         $response = $this->handler->handle();
 
         $outputText = $output->fetch();
+        $this->assertMessageRef($response->getErrorMessage(), 'submit.error_create_pr');
         $this->assertSame(1, $response->exitCode);
     }
 
@@ -1003,7 +1054,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1042,6 +1093,8 @@ class SubmitHandlerTest extends CommandTestCase
         $response = $this->handler->handle();
 
         $outputText = $output->fetch();
+        $this->assertMessageRef($response->getNotices()[0]->message, 'submit.note_pr_exists');
+        $this->assertWorkflowEntry($response, 'submit.success_pushed');
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -1050,7 +1103,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1083,15 +1136,19 @@ class SubmitHandlerTest extends CommandTestCase
         $response = $this->handler->handle();
 
         $outputText = $output->fetch();
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithNullRemoteOwnerFallsBackToBranchName(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn(null);
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1128,16 +1185,18 @@ class SubmitHandlerTest extends CommandTestCase
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testValidateAndProcessLabelsAllValid(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
             ['name' => 'enhancement'],
@@ -1148,8 +1207,6 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willReturn($remoteLabels);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1162,8 +1219,6 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsEmptyInput(): void
     {
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1176,8 +1231,6 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsNullInput(): void
     {
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1213,6 +1266,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsCaseInsensitive(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'Bug'], // Note: capital B
         ];
@@ -1222,8 +1278,6 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willReturn($remoteLabels);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1237,10 +1291,14 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleSuccessWithLabels(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1261,7 +1319,7 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->issueTracker->method('getIssue')->willReturn($workItem);
 
-        $this->htmlConverter->method('toMarkdown')
+        $this->htmlConverter->expects($this->once())->method('toMarkdown')
             ->with('My rendered description')
             ->willReturn('My rendered description');
 
@@ -1304,15 +1362,19 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions(false, 'bug,enhancement'));
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithLabelsFetchError(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1352,15 +1414,19 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
+        $this->assertMessageRef($response->getErrorMessage(), 'submit.error_fetch_labels');
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithLabelsFetchErrorApiException(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1400,11 +1466,15 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
+        $this->assertMessageRef($response->getErrorMessage(), 'submit.error_fetch_labels');
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testValidateAndProcessLabelsCreateMissingLabel(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1435,6 +1505,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsIgnoreMissingLabel(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1461,6 +1534,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsRetryMissingLabel(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1487,6 +1563,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsQuietIgnoresUnknownLabels(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1509,6 +1588,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsCreateLabelFails(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1536,6 +1618,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsCreateLabelFailsApiException(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1563,6 +1648,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testValidateAndProcessLabelsIgnoreWithVerbose(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $remoteLabels = [
             ['name' => 'bug'],
         ];
@@ -1573,7 +1661,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->willReturn($remoteLabels);
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createStub(SymfonyStyle::class);
 
 
 
@@ -1589,10 +1677,13 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithLabelsAddLabelsError(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1643,14 +1734,14 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
-        // Adding labels failure causes the whole operation to fail
+        $this->assertWorkflowEntry($response, 'submit.error_create_pr');
         $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithLabelsNoProvider(): void
     {
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->issueTracker,
@@ -1663,7 +1754,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1701,10 +1792,13 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRAndLabels(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1778,16 +1872,20 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions(false, 'bug,enhancement'));
 
+        $this->assertWorkflowEntry($response, 'submit.success_pushed');
         $this->assertSame(0, $response->exitCode);
         $this->assertSame(42, $response->pullNumber);
     }
 
     public function testHandleWithExistingPRAndDraft(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1840,20 +1938,22 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('updatePullRequest')
             ->with(42, true);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle(new SubmitOptions(true));
 
+        $this->assertWorkflowEntry($response, 'submit.success_pushed');
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRAndLabelsAndDraft(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1932,15 +2032,19 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions(true, 'bug'));
 
+        $this->assertWorkflowEntry($response, 'submit.success_pushed');
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRAlreadyDraft(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -1992,20 +2096,22 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->never())
             ->method('updatePullRequest');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle(new SubmitOptions(true));
 
+        $this->assertWorkflowEntry($response, 'submit.success_pushed');
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRFindFails(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -2058,15 +2164,19 @@ class SubmitHandlerTest extends CommandTestCase
         $response = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
         // Should still succeed even if finding PR fails
+        $this->assertWorkflowEntry($response, 'submit.success_pushed');
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRAddLabelsFails(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -2138,15 +2248,20 @@ class SubmitHandlerTest extends CommandTestCase
         $response = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
         // Should still succeed even if adding labels fails
+        $this->assertMessageRef($response->getWarnings()[0]->message, 'submit.error_add_labels');
+        $this->assertWorkflowEntry($response, 'submit.success_pushed');
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRUpdateDraftFails(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -2197,19 +2312,19 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('updatePullRequest')
             ->willThrowException(new \App\Exception\ApiException('Failed to update pull request #123.', 'Draft API Error', 500));
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle(new SubmitOptions(true));
 
         // Should still succeed even if updating draft fails
+        $this->assertMessageRef($response->getWarnings()[0]->message, 'submit.error_update_draft');
+        $this->assertWorkflowEntry($response, 'submit.success_pushed');
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRNoProvider(): void
     {
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $logger = $this->createStub(\App\Service\Logger::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->issueTracker,
@@ -2222,7 +2337,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -2255,6 +2370,7 @@ class SubmitHandlerTest extends CommandTestCase
         // Should handle gracefully when no provider (labels/draft ignored)
         $response = $this->handler->handle(new SubmitOptions(true, 'bug'));
 
+        $this->assertWorkflowEntry($response, 'submit.warning_no_provider');
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -2263,12 +2379,16 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithHtmlConverterDOMDocumentException(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $this->gitRepository->method('getRepositoryName')->willReturn('my-repo');
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -2306,11 +2426,11 @@ class SubmitHandlerTest extends CommandTestCase
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle();
 
+        $this->assertMessageRef($response->getWarnings()[0]->message, 'submit.warning_html_xml_missing');
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/1']);
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -2334,6 +2454,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleExistingPrAssignsAuthorWhenRequested(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $existingPr = [
             'number' => 123,
             'draft' => false,
@@ -2357,6 +2480,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleExistingPrReportsAuthorAssignmentFailure(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $existingPr = [
             'number' => 123,
             'draft' => false,
@@ -2378,10 +2504,13 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleAssignsExistingPullRequestAuthorWhenCreateReportsAlreadyExists(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -2421,8 +2550,6 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('assignPullRequestToAuthor')
             ->with($existingPr);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle(new SubmitOptions(assignToAuthor: true));
 
@@ -2431,6 +2558,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleAppliesPullRequestLabelDefaultWhenOpeningNewPullRequest(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willReturn([['name' => 'bug']]);
@@ -2444,12 +2574,16 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions());
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/7']);
         $this->assertSame(0, $response->exitCode);
         $this->assertSame(7, $response->pullNumber);
     }
 
     public function testHandleOpensPullRequestWithoutLabelsWhenDefaultLabelCatalogCannotBeRead(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willThrowException(
@@ -2462,6 +2596,8 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions());
 
+        $this->assertMessageRef($response->getWarnings()[0]->message, 'submit.warning_label_default_unavailable');
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/11']);
         $this->assertSame(0, $response->exitCode);
         $this->assertSame(11, $response->pullNumber);
         $warningParameters = [];
@@ -2477,6 +2613,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleDoesNotCreatePullRequestWhenDefaultLabelRetryAborts(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willReturn([]);
@@ -2490,6 +2629,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleDoesNotApplyPullRequestLabelDefaultToExistingPullRequest(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willReturn([['name' => 'bug']]);
@@ -2511,6 +2653,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleOpensPullRequestWithoutLabelsWhenProjectConfigIsUnreadable(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willThrowException(new \RuntimeException('Not in a git repository.'));
         $this->githubProvider->expects($this->once())
@@ -2520,12 +2665,16 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions());
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/8']);
         $this->assertSame(0, $response->exitCode);
         $this->assertSame(8, $response->pullNumber);
     }
 
     public function testHandleUsesExplicitLabelsInsteadOfPullRequestDefault(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willReturn([['name' => 'enhancement'], ['name' => 'bug']]);
@@ -2538,11 +2687,15 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions(labels: 'enhancement'));
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/9']);
         $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleUsesExplicitLabelsOnExistingPullRequestInsteadOfDefault(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->method('getLabels')->willReturn([['name' => 'enhancement'], ['name' => 'bug']]);
@@ -2566,6 +2719,9 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleTreatsEmptyLabelStringAsOptOutWhenPullRequestDefaultIsSet(): void
     {
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
+        $this->bindSubject();
+
         $this->stubSubmitPreflight();
         $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
         $this->githubProvider->expects($this->once())
@@ -2576,6 +2732,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $response = $this->handler->handle(new SubmitOptions(labels: ''));
 
+        $this->assertWorkflowEntry($response, 'submit.success_created', ['url' => 'https://github.com/my-owner/my-repo/pull/10']);
         $this->assertSame(0, $response->exitCode);
         $this->assertSame(10, $response->pullNumber);
     }
@@ -2585,7 +2742,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
@@ -2603,5 +2760,21 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description',
         ));
+    }
+
+    private function bindSubject(): void
+    {
+        TestKernel::$gitRepository = $this->gitRepository;
+        TestKernel::$issueTracker = $this->issueTracker;
+        TestKernel::$translationService = $this->translationService;
+        $this->handler = new SubmitHandler(
+            $this->gitRepository,
+            $this->issueTracker,
+            $this->githubProvider,
+            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
+            'origin/develop',
+            $this->translationService,
+            $this->prompt
+        );
     }
 }

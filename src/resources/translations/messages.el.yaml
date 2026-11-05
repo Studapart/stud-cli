@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -92,6 +93,8 @@ config:
     section_title: "Επικύρωση ρυθμίσεων"
     label_jira: "Jira"
     label_git_provider: "Πάροχος Git"
+    label_github: "GitHub"
+    label_gitlab: "GitLab"
     label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Αποτυχία"
@@ -106,6 +109,15 @@ config:
     error_git_ping: "Αποτυχία σύνδεσης παρόχου Git: %error%"
     error_linear_not_configured: "Το Linear δεν έχει ρυθμιστεί."
     error_linear_ping: "Αποτυχία σύνδεσης Linear: %error%"
+    notice_jira_non_blocking: "Ο έλεγχος συνδεσιμότητας Jira απέτυχε (δεν μπλοκάρει αυτό το έργο)."
+    notice_linear_non_blocking: "Ο έλεγχος συνδεσιμότητας Linear απέτυχε (δεν μπλοκάρει αυτό το έργο)."
+    error_readiness_failed: "Η επικύρωση ρυθμίσεων απέτυχε για αυτό το αποθετήριο ή το περιβάλλον."
+    label_global_rollup: "Καθολική ετοιμότητα"
+    label_project_rollup: "Ετοιμότητα έργου"
+    rollup_ok: "OK"
+    rollup_partial: "Μερική"
+    rollup_fail: "Αποτυχία"
+    rollup_not_applicable: "Δ/Υ"
   project_init:
     section_title: "Ρύθμιση έργου"
     not_git_repository: "Δεν βρίσκεστε σε αποθετήριο Git. Εκτελέστε αυτή την εντολή από checkout αποθετηρίου."
@@ -134,6 +146,10 @@ config:
     prompt_github_token: "Διακριτικό GitHub για αυτό το αποθετήριο (κρυφό)"
     prompt_gitlab_token_hint: "Διακριτικό GitLab: αφήστε κενό για παράλειψη· πληκτρολογήστε '.' για να κρατήσετε το υπάρχον διακριτικό."
     prompt_gitlab_token: "Διακριτικό GitLab για αυτό το αποθετήριο (κρυφό)"
+    prompt_jira_url: "Jira URL for this repository (optional)"
+    prompt_jira_email: "Jira email for this repository (optional)"
+    prompt_jira_api_token: "Jira API token for this repository (hidden, optional)"
+    prompt_linear_api_key: "Linear API key for this repository (hidden, optional)"
     prompt_issue_tracker_provider: "Πάροχος work-item για αυτό το αποθετήριο (όταν η καθολική ρύθμιση υποστηρίζει Jira και Linear)"
     prompt_linear_team_key: "Κλειδί ομάδας Linear (προαιρετικό· προεπιλογή κλειδί έργου Jira όταν κοινό)"
     prompt_linear_start_state_id: "ID κατάστασης workflow Linear για items:start (προαιρετικό)"
@@ -344,11 +360,15 @@ item:
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    error_create_retry: "Could not create issue: %error% Deferred fields: %fields%."
     linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
     linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
     linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: Created issue %key% - %url%
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
+    note_deferred_fields: "Created the issue first, then applied these fields: %fields%."
+    note_update_warnings: "These fields could not be applied after create: %fields%."
+    error_required_on_create_screen: "Required field cannot be set on the create screen: %fields%."
     skipped_field_labels: "labels"
     skipped_field_original_estimate: "time original estimate"
   update:
@@ -374,6 +394,7 @@ item:
     section: Λήψη Θεμάτων Jira
     error_fetch: 'Αποτυχία λήψης θεμάτων: %error%'
     no_items: Δεν βρέθηκαν θέματα που να ταιριάζουν με τα κριτήριά σας.
+    jql_query: "JQL Query: %jql%"
     error_invalid_sort: 'Μη έγκυρη τιμή ταξινόμησης ''%value%''. Επιτρεπόμενες τιμές: Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Επιλέχθηκε Linear αλλά το LINEAR_API_KEY δεν έχει ρυθμιστεί. Εκτελέστε "stud config:init" ή ορίστε LINEAR_API_KEY στο ~/.config/stud/config.yml.'
@@ -456,6 +477,10 @@ push:
   confirm_please: "Το κανονικό push απέτυχε. Εκτέλεση 'stud please' (force-with-lease) τώρα;"
   confirm_flatten_publish: "Το ιστορικό ξαναγράφτηκε. Να δημοσιευτεί με ασφαλές force-push;"
   note_uncommitted_left: "Έχετε μη committed αλλαγές. Το push χρησιμοποίησε commits που βρίσκονται ήδη σε αυτόν τον κλάδο· τα μη committed αρχεία δεν συμπεριλήφθηκαν."
+  commit_created: "Το commit δημιουργήθηκε"
+  commit_failed: "Το commit απέτυχε"
+  please_completed: "Το force push ολοκληρώθηκε"
+  please_failed: "Το force push απέτυχε"
 commit_undo:
   error_not_repo: Δεν βρίσκεστε σε git repository.
   error_no_commit: Δεν υπάρχει commit προς ακύρωση.
@@ -506,6 +531,9 @@ submit:
 
     Επιστροφή σε απλό σύνδεσμο.'
   warning_issue_fetch: "Δεν ήταν δυνατή η λήψη λεπτομερειών work item για το σώμα PR: %error%\nΕπιστροφή σε απλό σύνδεσμο."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Δημιουργία Pull Request...
   success_created: '✅ Pull Request δημιουργήθηκε: %url%'
   warning_no_provider: Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο.

@@ -7,19 +7,18 @@ namespace App\Tests\Service;
 use App\Service\GitRemoteUrlParser;
 use App\Service\ProcessFactory;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 
 class GitRemoteUrlParserTest extends TestCase
 {
-    private ProcessFactory&MockObject $processFactory;
+    private ProcessFactory $processFactory;
     private GitRemoteUrlParser $parser;
 
     protected function setUp(): void
     {
-        $this->processFactory = $this->createMock(ProcessFactory::class);
-        $this->parser = new GitRemoteUrlParser($this->processFactory);
+        $this->processFactory = $this->createStub(ProcessFactory::class);
+        $this->bindSubject();
     }
 
     /**
@@ -45,6 +44,9 @@ class GitRemoteUrlParserTest extends TestCase
 
     public function testParseRemoteUsesGitConfig(): void
     {
+        $this->processFactory = $this->createMock(ProcessFactory::class);
+        $this->bindSubject();
+
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
@@ -63,6 +65,9 @@ class GitRemoteUrlParserTest extends TestCase
 
     public function testGetRemoteUrlReturnsNullWhenConfigMissing(): void
     {
+        $this->processFactory = $this->createMock(ProcessFactory::class);
+        $this->bindSubject();
+
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
@@ -77,6 +82,9 @@ class GitRemoteUrlParserTest extends TestCase
 
     public function testGetRemoteUrlTrimsTrailingDot(): void
     {
+        $this->processFactory = $this->createMock(ProcessFactory::class);
+        $this->bindSubject();
+
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
@@ -87,5 +95,10 @@ class GitRemoteUrlParserTest extends TestCase
         $process->expects($this->once())->method('getOutput')->willReturn('https://github.com/o/r.git.');
 
         $this->assertSame('https://github.com/o/r.git', $this->parser->getRemoteUrl());
+    }
+
+    private function bindSubject(): void
+    {
+        $this->parser = new GitRemoteUrlParser($this->processFactory);
     }
 }

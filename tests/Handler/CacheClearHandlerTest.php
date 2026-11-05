@@ -85,10 +85,10 @@ class CacheClearHandlerTest extends CommandTestCase
         $_SERVER['HOME'] = $this->tempCacheDir;
 
         $mockFileSystem = $this->createMock(FileSystem::class);
-        $mockFileSystem->method('fileExists')
+        $mockFileSystem->expects($this->once())->method('fileExists')
             ->with($this->tempCacheFile)
             ->willReturn(true);
-        $mockFileSystem->method('delete')
+        $mockFileSystem->expects($this->once())->method('delete')
             ->with($this->tempCacheFile)
             ->willThrowException(new \RuntimeException('Delete failed'));
 

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -92,6 +93,8 @@ config:
     section_title: "Configuratievalidatie"
     label_jira: "Jira"
     label_git_provider: "Git-provider"
+    label_github: "GitHub"
+    label_gitlab: "GitLab"
     label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Mislukt"
@@ -106,6 +109,15 @@ config:
     error_git_ping: "Git-providerverbinding mislukt: %error%"
     error_linear_not_configured: "Linear is niet geconfigureerd."
     error_linear_ping: "Linear-verbinding mislukt: %error%"
+    notice_jira_non_blocking: "De Jira-connectiviteitscontrole is mislukt (niet blokkerend voor dit project)."
+    notice_linear_non_blocking: "De Linear-connectiviteitscontrole is mislukt (niet blokkerend voor dit project)."
+    error_readiness_failed: "Configuratievalidatie mislukt voor deze repository of omgeving."
+    label_global_rollup: "Globale gereedheid"
+    label_project_rollup: "Projectgereedheid"
+    rollup_ok: "OK"
+    rollup_partial: "Gedeeltelijk"
+    rollup_fail: "Mislukt"
+    rollup_not_applicable: "N.v.t."
   project_init:
     section_title: "Projectconfiguratie"
     not_git_repository: "U bevindt zich niet in een Git-repository. Voer deze opdracht uit vanuit een checkout van een repository."
@@ -134,6 +146,10 @@ config:
     prompt_github_token: "GitHub-token voor deze repository (verborgen)"
     prompt_gitlab_token_hint: "GitLab-token: leeg laten om over te slaan; typ '.' om het bestaande token te behouden."
     prompt_gitlab_token: "GitLab-token voor deze repository (verborgen)"
+    prompt_jira_url: "Jira URL for this repository (optional)"
+    prompt_jira_email: "Jira email for this repository (optional)"
+    prompt_jira_api_token: "Jira API token for this repository (hidden, optional)"
+    prompt_linear_api_key: "Linear API key for this repository (hidden, optional)"
     prompt_issue_tracker_provider: "Work-item provider voor deze repository (wanneer globale config zowel Jira als Linear ondersteunt)"
     prompt_linear_team_key: "Linear team key (optioneel; standaard Jira projectsleutel wanneer gedeeld)"
     prompt_linear_start_state_id: "Linear workflow state-id voor items:start (optioneel)"
@@ -344,11 +360,15 @@ item:
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run the command interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    error_create_retry: "Could not create issue: %error% Deferred fields: %fields%."
     linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
     linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
     linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: "Created issue %key% – %url%"
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
+    note_deferred_fields: "Created the issue first, then applied these fields: %fields%."
+    note_update_warnings: "These fields could not be applied after create: %fields%."
+    error_required_on_create_screen: "Required field cannot be set on the create screen: %fields%."
     skipped_field_labels: "labels"
     skipped_field_original_estimate: "time original estimate"
   update:
@@ -374,6 +394,7 @@ item:
     section: Jira Tickets ophalen
     error_fetch: 'Fout bij ophalen van tickets: %error%'
     no_items: Geen tickets gevonden die overeenkomen met uw criteria.
+    jql_query: "JQL Query: %jql%"
     error_invalid_sort: 'Ongeldige sorteerwaarde ''%value%''. Toegestane waarden: Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Linear is geselecteerd maar LINEAR_API_KEY is niet geconfigureerd. Voer "stud config:init" uit of stel LINEAR_API_KEY in in ~/.config/stud/config.yml.'
@@ -456,6 +477,10 @@ push:
   confirm_please: "Normale push mislukt. Nu 'stud please' (force-with-lease) uitvoeren?"
   confirm_flatten_publish: "De geschiedenis is herschreven. Publiceren met een veilige force-push?"
   note_uncommitted_left: "U heeft niet-gecommitte wijzigingen. De push gebruikte commits die al op deze branch staan; niet-gecommitte bestanden zijn niet meegenomen."
+  commit_created: "Commit gemaakt"
+  commit_failed: "Commit mislukt"
+  please_completed: "Force push voltooid"
+  please_failed: "Force push mislukt"
 commit_undo:
   error_not_repo: Niet in een git repository.
   error_no_commit: Er is geen commit om ongedaan te maken.
@@ -506,6 +531,9 @@ submit:
 
     Terugvallen op een eenvoudige link.'
   warning_issue_fetch: "Kon work item details niet ophalen voor PR-body: %error%\nVal terug op een eenvoudige link."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Pull Request aanmaken...
   success_created: '✅ Pull Request aangemaakt: %url%'
   warning_no_provider: Geen Git provider geconfigureerd voor dit project.

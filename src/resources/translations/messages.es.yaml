@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -92,6 +93,8 @@ config:
     section_title: "Validación de configuración"
     label_jira: "Jira"
     label_git_provider: "Proveedor Git"
+    label_github: "GitHub"
+    label_gitlab: "GitLab"
     label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Fallo"
@@ -106,6 +109,15 @@ config:
     error_git_ping: "Error de conexión con el proveedor Git: %error%"
     error_linear_not_configured: "Linear no está configurado."
     error_linear_ping: "Error de conexión con Linear: %error%"
+    notice_jira_non_blocking: "La comprobación de conectividad de Jira ha fallado (no bloquea este proyecto)."
+    notice_linear_non_blocking: "La comprobación de conectividad de Linear ha fallado (no bloquea este proyecto)."
+    error_readiness_failed: "La validación de configuración falló para este repositorio o entorno."
+    label_global_rollup: "Estado global"
+    label_project_rollup: "Estado del proyecto"
+    rollup_ok: "OK"
+    rollup_partial: "Parcial"
+    rollup_fail: "Error"
+    rollup_not_applicable: "N/D"
   project_init:
     section_title: "Configuración del proyecto"
     not_git_repository: "No está dentro de un repositorio Git. Ejecute este comando desde un checkout del repositorio."
@@ -134,6 +146,10 @@ config:
     prompt_github_token: "Token de GitHub para este repositorio (oculto)"
     prompt_gitlab_token_hint: "Token de GitLab: deje en blanco para omitir; escriba '.' para conservar el token actual."
     prompt_gitlab_token: "Token de GitLab para este repositorio (oculto)"
+    prompt_jira_url: "Jira URL for this repository (optional)"
+    prompt_jira_email: "Jira email for this repository (optional)"
+    prompt_jira_api_token: "Jira API token for this repository (hidden, optional)"
+    prompt_linear_api_key: "Linear API key for this repository (hidden, optional)"
     prompt_issue_tracker_provider: "Proveedor de tickets para este repositorio (cuando la config global admite Jira y Linear)"
     prompt_linear_team_key: "Clave de equipo Linear (opcional; usa la clave de proyecto Jira cuando es compartida)"
     prompt_linear_start_state_id: "ID de estado de workflow de Linear para items:start (opcional)"
@@ -344,11 +360,15 @@ item:
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    error_create_retry: "Could not create issue: %error% Deferred fields: %fields%."
     linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
     linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
     linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: Created issue %key% - %url%
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
+    note_deferred_fields: "Created the issue first, then applied these fields: %fields%."
+    note_update_warnings: "These fields could not be applied after create: %fields%."
+    error_required_on_create_screen: "Required field cannot be set on the create screen: %fields%."
     skipped_field_labels: "labels"
     skipped_field_original_estimate: "time original estimate"
   update:
@@ -374,6 +394,7 @@ item:
     section: Obteniendo tickets de Jira
     error_fetch: 'Error al obtener tickets: %error%'
     no_items: No se encontraron tickets que coincidan con sus criterios.
+    jql_query: "Consulta JQL: %jql%"
     error_invalid_sort: 'Valor de ordenación inválido ''%value%''. Valores aceptados: Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Linear está seleccionado pero LINEAR_API_KEY no está configurado. Ejecute "stud config:init" o configure LINEAR_API_KEY en ~/.config/stud/config.yml.'
@@ -456,6 +477,10 @@ push:
   confirm_please: "El push normal falló. ¿Ejecutar ahora 'stud please' (force-with-lease)?"
   confirm_flatten_publish: "El historial se reescribió. ¿Publicarlo con un force-push seguro?"
   note_uncommitted_left: "Tiene cambios sin confirmar. El push usó los commits ya presentes en esta rama; los archivos sin confirmar no se incluyeron."
+  commit_created: "Commit creado"
+  commit_failed: "Error al crear el commit"
+  please_completed: "Force push completado"
+  please_failed: "Error en el force push"
 commit_undo:
   error_not_repo: No está en un repositorio git.
   error_no_commit: No hay commit que deshacer.
@@ -506,6 +531,9 @@ submit:
 
     Volviendo a un enlace simple.'
   warning_issue_fetch: "No se pudieron obtener los detalles del work item para el cuerpo de la PR: %error%\nUsando un enlace simple."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Creando Pull Request...
   success_created: '✅ Pull Request creada: %url%'
   warning_no_provider: No hay proveedor Git configurado para este proyecto.

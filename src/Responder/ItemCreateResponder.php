@@ -30,11 +30,19 @@ class ItemCreateResponder
                 return new AgentJsonResponse(false, error: $this->translator->renderForAgentText($response->getErrorMessage()));
             }
 
-            return new AgentJsonResponse(true, data: [
+            $data = [
                 'key' => $response->key,
                 'self' => $response->self,
                 'skippedOptionalFields' => $this->renderSkippedFields($response->skippedOptionalFields ?? [], agent: true),
-            ]);
+            ];
+            if ($response->deferredFields !== null && $response->deferredFields !== []) {
+                $data['deferredFields'] = $response->deferredFields;
+            }
+            if ($response->updateWarnings !== null && $response->updateWarnings !== []) {
+                $data['updateWarnings'] = $response->updateWarnings;
+            }
+
+            return new AgentJsonResponse(true, data: $data);
         }
 
         if (! $response->isSuccess() || $response->key === null) {
@@ -51,8 +59,21 @@ class ItemCreateResponder
         if ($skipped !== []) {
             $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.create.note_skipped_optional_fields', ['%fields%' => implode(', ', $skipped)]));
         }
+        $this->noteFieldList('item.create.note_deferred_fields', $response->deferredFields);
+        $this->noteFieldList('item.create.note_update_warnings', $response->updateWarnings);
 
         return null;
+    }
+
+    /**
+     * @param list<string>|null $fields
+     */
+    private function noteFieldList(string $translationKey, ?array $fields): void
+    {
+        if ($fields === null || $fields === []) {
+            return;
+        }
+        $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans($translationKey, ['%fields%' => implode(', ', $fields)]));
     }
 
     /**

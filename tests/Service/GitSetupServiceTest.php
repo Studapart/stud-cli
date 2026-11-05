@@ -8,40 +8,37 @@ use App\Service\GitRepository;
 use App\Service\GitSetupService;
 use App\Service\Logger;
 use App\Service\TranslationService;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 class GitSetupServiceTest extends TestCase
 {
     private GitSetupService $gitSetupService;
-    private GitRepository&MockObject $gitRepository;
-    private GitBranchService&MockObject $gitBranchService;
-    private Logger&MockObject $logger;
-    private TranslationService&MockObject $translator;
+    private GitRepository $gitRepository;
+    private GitBranchService $gitBranchService;
+    private Logger $logger;
+    private TranslationService&Stub $translator;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->gitRepository = $this->createMock(GitRepository::class);
-        $this->gitBranchService = $this->createMock(GitBranchService::class);
-        $this->logger = $this->createMock(Logger::class);
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->gitBranchService = $this->createStub(GitBranchService::class);
+        $this->logger = $this->createStub(Logger::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturnArgument(0);
-
-        $this->gitSetupService = new GitSetupService(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->logger,
-            $this->translator
-        );
+        $this->bindSubject();
     }
 
     // ── detectBaseBranch ────────────────────────────────────────────────
 
     public function testDetectBaseBranchReturnsDevelopWhenPresent(): void
     {
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['develop', 'main', 'feature-x']);
 
@@ -52,7 +49,10 @@ class GitSetupServiceTest extends TestCase
 
     public function testDetectBaseBranchReturnsMainWhenDevelopNotPresent(): void
     {
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['main', 'feature-x']);
 
@@ -63,7 +63,10 @@ class GitSetupServiceTest extends TestCase
 
     public function testDetectBaseBranchReturnsNullWhenNoCandidatesFound(): void
     {
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['feature-branch']);
 
@@ -96,9 +99,12 @@ class GitSetupServiceTest extends TestCase
 
     public function testGetBaseBranchAutoDetectsWhenNotInConfig(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('readProjectConfig')
             ->willReturn([]);
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['develop', 'main']);
 
@@ -109,9 +115,12 @@ class GitSetupServiceTest extends TestCase
 
     public function testGetBaseBranchThrowsExceptionWhenNotConfiguredAndCannotDetect(): void
     {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
         $this->gitRepository->method('readProjectConfig')
             ->willReturn([]);
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['feature-branch']);
 
@@ -125,11 +134,14 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredReturnsConfiguredBranchWhenValid(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'main']);
-        $this->gitRepository->method('remoteBranchExists')->with('origin', 'main')->willReturn(true);
+        $this->gitRepository->expects($this->once())->method('remoteBranchExists')->with('origin', 'main')->willReturn(true);
 
         $result = $this->gitSetupService->ensureBaseBranchConfigured($io);
 
@@ -138,11 +150,14 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredReturnsConfiguredBranchWithOriginPrefix(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'origin/main']);
-        $this->gitRepository->method('remoteBranchExists')->with('origin', 'main')->willReturn(true);
+        $this->gitRepository->expects($this->once())->method('remoteBranchExists')->with('origin', 'main')->willReturn(true);
 
         $result = $this->gitSetupService->ensureBaseBranchConfigured($io);
 
@@ -151,7 +166,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredPromptsWhenConfiguredBranchInvalid(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'nonexistent']);
@@ -168,12 +183,15 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredPromptsWhenNotConfiguredWithAutoDetection(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['main']);
-        $this->gitRepository->method('remoteBranchExists')->with('origin', 'main')->willReturn(true);
+        $this->gitRepository->expects($this->once())->method('remoteBranchExists')->with('origin', 'main')->willReturn(true);
         $this->logger->method('ask')->willReturn('main');
 
         $result = $this->gitSetupService->ensureBaseBranchConfigured($io);
@@ -183,7 +201,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredThrowsWhenNotInGitRepo(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')
             ->willThrowException(new \RuntimeException('Not in a git repository.'));
@@ -196,7 +214,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredThrowsWhenUserEntersInvalidBranch(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -212,7 +230,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredThrowsWhenUserEntersEmptyBranch(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -227,12 +245,15 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredValidatorRejectsEmptyInput(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
-        $this->gitRepository->method('remoteBranchExists')->with('origin', 'develop')->willReturn(true);
+        $this->gitRepository->expects($this->once())->method('remoteBranchExists')->with('origin', 'develop')->willReturn(true);
 
         $this->logger->method('ask')->willReturnCallback(function ($question, $default, $validator) {
             if ($validator !== null) {
@@ -256,11 +277,15 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredQuietUsesDefaultWhenNotConfigured(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
-        $this->gitRepository->method('remoteBranchExists')->with('origin', 'develop')->willReturn(true);
+        $this->gitRepository->expects($this->once())->method('remoteBranchExists')->with('origin', 'develop')->willReturn(true);
 
         $this->logger->expects($this->never())->method('ask');
 
@@ -275,7 +300,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredQuietThrowsWhenDefaultNotOnRemote(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -289,11 +314,14 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureBaseBranchConfiguredQuietThrowsWhenConfiguredBranchInvalid(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'nonexistent']);
-        $this->gitRepository->method('remoteBranchExists')->with('origin', 'nonexistent')->willReturn(false);
+        $this->gitRepository->expects($this->once())->method('remoteBranchExists')->with('origin', 'nonexistent')->willReturn(false);
 
         $this->expectException(\App\Exception\StudConfigException::class);
         $this->expectExceptionMessage('config.base_branch_invalid');
@@ -303,6 +331,9 @@ class GitSetupServiceTest extends TestCase
 
     public function testValidateBaseBranchOnRemoteChecksBareNameWhenGivenOriginPrefix(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->once())
             ->method('remoteBranchExists')
             ->with('origin', 'main')
@@ -322,6 +353,9 @@ class GitSetupServiceTest extends TestCase
 
     public function testValidateBaseBranchOnRemoteThrowsWhenStrippedBranchNameIsEmpty(): void
     {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
         $this->gitRepository->expects($this->never())->method('remoteBranchExists');
 
         $this->expectException(\App\Exception\StudConfigException::class);
@@ -331,7 +365,10 @@ class GitSetupServiceTest extends TestCase
 
     public function testDetectDefaultBaseBranchNameDelegatesToRemoteCandidates(): void
     {
-        $this->gitBranchService->method('getAllRemoteBranches')
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->bindSubject();
+
+        $this->gitBranchService->expects($this->once())->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['release', 'main']);
 
@@ -342,7 +379,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitProviderConfiguredReturnsConfiguredProvider(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn(['gitProvider' => 'gitlab']);
@@ -354,11 +391,11 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitProviderConfiguredThrowsWhenNotInGitRepo(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')
             ->willThrowException(new \RuntimeException('Not in a git repository.'));
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturn('Git provider is required');
 
         $gitSetupService = new GitSetupService(
@@ -376,11 +413,15 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitProviderConfiguredQuietReturnsDetected(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
-        $this->gitRepository->method('parseGitUrl')
+        $this->gitRepository->expects($this->once())->method('parseGitUrl')
             ->with('origin')
             ->willReturn(['owner' => 'owner', 'name' => 'repo', 'provider' => 'github']);
 
@@ -393,7 +434,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitProviderConfiguredQuietThrowsWhenNotDetected(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -407,7 +448,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitProviderConfiguredPromptsWhenNotConfiguredWithAutoDetection(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -422,7 +463,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitProviderConfiguredPromptsWhenNotConfiguredWithoutAutoDetection(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -436,14 +477,14 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitProviderConfiguredThrowsWhenInvalidChoice(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
         $this->gitRepository->method('parseGitUrl')->willReturn([]);
         $this->logger->method('choice')->willReturn(null);
 
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturn('Git provider is required');
 
         $gitSetupService = new GitSetupService(
@@ -463,7 +504,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitTokenConfiguredReturnsTokenFromProjectConfig(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn(['githubToken' => 'test_token']);
@@ -475,7 +516,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitTokenConfiguredReturnsTokenFromGlobalConfig(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -491,7 +532,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitTokenConfiguredReturnsTokenFromGlobalConfigForGitLab(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -507,12 +548,12 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitTokenConfiguredThrowsWhenNotInGitRepo(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')
             ->willThrowException(new \RuntimeException('Not in a git repository.'));
 
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturn('Git token is required');
 
         $gitSetupService = new GitSetupService(
@@ -530,7 +571,10 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitTokenConfiguredQuietReturnsNullWhenMissing(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -544,12 +588,15 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitTokenConfiguredWarnsOnTokenTypeMismatch(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
 
-        $this->translator = $this->createMock(TranslationService::class);
+        $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(function ($key, $params = []) {
             if ($key === 'config.git_token_type_mismatch') {
                 return "Provider is set to '{$params['provider']}' but only {$params['opposite']} token is configured.";
@@ -588,7 +635,10 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitTokenConfiguredShowsGlobalSuggestionWhenNoTokens(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->logger = $this->createMock(Logger::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -607,7 +657,10 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitTokenConfiguredPromptsAndSavesToken(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -624,7 +677,7 @@ class GitSetupServiceTest extends TestCase
 
     public function testEnsureGitTokenConfiguredReturnsNullWhenUserSkips(): void
     {
-        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $io = $this->createStub(\Symfony\Component\Console\Style\SymfonyStyle::class);
 
         $this->gitRepository->method('getProjectConfigPath')->willReturn('/test/.git/stud.config');
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
@@ -644,5 +697,16 @@ class GitSetupServiceTest extends TestCase
         \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         return $method->invokeArgs($this->gitSetupService, $args);
+    }
+
+    private function bindSubject(): void
+    {
+
+        $this->gitSetupService = new GitSetupService(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->logger,
+            $this->translator
+        );
     }
 }

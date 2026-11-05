@@ -10,26 +10,9 @@ The installer downloads the latest PHAR release, installs it to `~/.local/bin/st
 
 ## Requirements for PHAR
 
-Install PHP 8.4.1+ and required extensions.
+Install PHP 8.5 (8.5.12 or newer) and the `xml`, `curl`, and `mbstring` extensions. This install is the stud-cli 5.x line. Package names such as `php8.5-*` do not encode the patch, so check `php -v` before continuing.
 
-Ubuntu 24.04+ / Debian 12+:
-
-```bash
-sudo apt update && sudo apt install php8.4-cli php8.4-xml php8.4-curl php8.4-mbstring
-```
-
-Ubuntu 22.04 may need the Ondrej PPA first:
-
-```bash
-sudo add-apt-repository ppa:ondrej/php
-sudo apt update && sudo apt install php8.4-cli php8.4-xml php8.4-curl php8.4-mbstring
-```
-
-Fedora / RHEL:
-
-```bash
-sudo dnf install php-cli php-xml php-curl php-mbstring
-```
+Debian and Ubuntu packages are published at <https://packages.sury.org/php/>.
 
 Verify:
 

@@ -11,28 +11,28 @@ use App\Service\GitHostingPort;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 class BranchRenamePrCoordinatorTest extends TestCase
 {
-    private GitRepository&MockObject $gitRepository;
-    private GitHostingPort&MockObject $githubProvider;
+    private GitRepository&Stub $gitRepository;
+    private GitHostingPort&Stub $githubProvider;
     private BranchRenamePrCoordinator $coordinator;
 
     protected function setUp(): void
     {
-        $this->gitRepository = $this->createMock(GitRepository::class);
-        $this->githubProvider = $this->createMock(GitHostingPort::class);
+        $this->gitRepository = $this->createStub(GitRepository::class);
+        $this->githubProvider = $this->createStub(GitHostingPort::class);
         $this->coordinator = new BranchRenamePrCoordinator(
             $this->gitRepository,
-            $this->createMock(IssueTrackerPort::class),
+            $this->createStub(IssueTrackerPort::class),
             $this->githubProvider,
             ['JIRA_URL' => 'https://jira.example.com'],
             'origin/develop',
-            $this->createMock(\App\Service\TranslationService::class),
-            $this->createMock(PromptInterface::class),
-            $this->createMock(CanConvertToMarkdownInterface::class),
+            $this->createStub(\App\Service\TranslationService::class),
+            $this->createStub(PromptInterface::class),
+            $this->createStub(CanConvertToMarkdownInterface::class),
         );
     }
 

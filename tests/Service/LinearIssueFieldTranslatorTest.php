@@ -6,24 +6,26 @@ namespace App\Tests\Service;
 
 use App\Service\LinearApiClient;
 use App\Service\LinearIssueFieldTranslator;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class LinearIssueFieldTranslatorTest extends TestCase
 {
-    private LinearApiClient&MockObject $client;
+    private LinearApiClient $client;
 
     private LinearIssueFieldTranslator $translator;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->client = $this->createMock(LinearApiClient::class);
-        $this->translator = new LinearIssueFieldTranslator();
+        $this->client = $this->createStub(LinearApiClient::class);
+        $this->bindSubject();
     }
 
     public function testToCreateInputMapsHandlerFields(): void
     {
+        $this->client = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->client->expects($this->once())->method('resolveTeamId')->with('ENG')->willReturn('team-1');
         $this->client->expects($this->exactly(2))
             ->method('resolveLabelIds')
@@ -58,6 +60,9 @@ class LinearIssueFieldTranslatorTest extends TestCase
 
     public function testExtractDescriptionFromAdfPlainText(): void
     {
+        $this->client = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->client->expects($this->once())->method('resolveTeamId')->with('ENG')->willReturn('team-1');
         $this->client->expects($this->once())
             ->method('resolveLabelIds')
@@ -93,6 +98,9 @@ class LinearIssueFieldTranslatorTest extends TestCase
 
     public function testToUpdateInputMapsSummaryDescriptionLabelsAndPriority(): void
     {
+        $this->client = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->client->expects($this->once())->method('resolveTeamKeyFromIssue')->with('SCI-1')->willReturn('SCI');
         $this->client->expects($this->once())->method('resolveLabelIds')->with('SCI', ['bug'], 'group-1')->willReturn(['label-bug']);
 
@@ -118,6 +126,9 @@ class LinearIssueFieldTranslatorTest extends TestCase
 
     public function testToCreateInputExtractsLinearMarkdownFromAdf(): void
     {
+        $this->client = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->client->expects($this->once())->method('resolveTeamId')->willReturn('team-1');
         $this->client->expects($this->once())->method('resolveLabelIds')->willReturn([]);
 
@@ -136,6 +147,9 @@ class LinearIssueFieldTranslatorTest extends TestCase
 
     public function testToCreateInputResolvesStringPriorityAndSkipsZeroPriority(): void
     {
+        $this->client = $this->createMock(LinearApiClient::class);
+        $this->bindSubject();
+
         $this->client->expects($this->exactly(2))->method('resolveTeamId')->willReturn('team-1');
         $this->client->expects($this->exactly(2))->method('resolveLabelIds')->willReturn([]);
 
@@ -185,5 +199,10 @@ class LinearIssueFieldTranslatorTest extends TestCase
         \App\Util\ReflectionAccessor::ensureAccessible($callable);
 
         return $callable->invokeArgs($this->translator, $args);
+    }
+
+    private function bindSubject(): void
+    {
+        $this->translator = new LinearIssueFieldTranslator();
     }
 }
