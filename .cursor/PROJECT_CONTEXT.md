@@ -85,7 +85,7 @@ No repository playbook overrides. Skills use the bundled software-engineering pl
   - PHPMD fails CC above 10, NPath above 200, method length above 40, class length above 400, more than 4 arguments, and more than 10 properties. CRAP above 10 fails from the Clover report. `crap.baseline.txt` stores the current score and a higher score fails. Nesting depth and LCOM4 stay review notes.
   - `documentation/reference/commands.md` is generated. After command-signature changes run `stud docs:generate` and `stud docs:check`.
   - Invoke the installed `stud` binary on `PATH`.
-  - This develop line is stud-cli 5.x. PHP platform is 8.5.12. The installer rejects anything below that. stud-cli 4.x is the PHP 8.4 line. stud-cli 6.x will track PHP 8.6. The bundled portable runtime stays PHP 8.4.23.
+  - This develop line is stud-cli 5.x. PHP platform is 8.5.12. The installer rejects anything below that. stud-cli 4.x is the PHP 8.4 line. stud-cli 6.x will track PHP 8.6. The bundled portable runtime is PHP 8.5.12.
   - `.cursor/tmp/` is local scratch and stays gitignored.
 
 ## Stack addenda
