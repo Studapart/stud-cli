@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.1] - 2026-11-05
+
 ### Fixed
 
 - **Portable runtime and PHP floor for the 5.x release (SCI-230):** The portable bundles use the published StaticPHP PHP 8.5.12 runtime instead of 8.4.23, which the 5.x PHAR refuses to load. The release checks PHP 8.5.12 or newer before it builds the PHAR and before it packages each portable runtime. CI, the release workflow, and the `stud-cli-setup` action refresh the preinstalled PHP 8.5 patch.
