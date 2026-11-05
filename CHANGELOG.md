@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-11-05
+
 ### Breaking
 
 - **stud-cli 5.x (SCI-229):** This `develop` line will ship as 5.x and requires PHP 8.5 (8.5.12 or newer). PHP 8.4 stays on stud-cli 4.x. PHP 8.6 will be stud-cli 6.x. CI runs on PHP 8.5 and posts one coverage comment. The installer no longer installs a distro PHP package or the Ondřej PPA. Debian and Ubuntu users are pointed at <https://packages.sury.org/php/>. The bundled portable runtime remains PHP 8.4.23.
