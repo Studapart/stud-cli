@@ -9,6 +9,7 @@ use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\ConfigProjectInitPromptCollector;
+use App\Handler\ProjectGitPrompts;
 use App\Service\FileSystem;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
@@ -39,9 +40,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         return new ConfigProjectInitPromptCollector(
             $gitRepository,
-            $gitSetup,
+            new ProjectGitPrompts($gitRepository, $gitSetup, $prompt, new GitTokenPromptResolver()),
             $prompt,
-            new GitTokenPromptResolver(),
             $fileSystem,
             '/tmp/global-config.yml',
             new GlobalConfigProviderResolver(),
@@ -516,9 +516,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
-            $gitSetup,
+            new ProjectGitPrompts($gitRepository, $gitSetup, $prompt, new GitTokenPromptResolver()),
             $prompt,
-            new GitTokenPromptResolver(),
             $fileSystem,
             '/tmp/global-config.yml',
             new GlobalConfigProviderResolver(),

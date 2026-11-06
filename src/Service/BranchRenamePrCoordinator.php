@@ -90,8 +90,7 @@ class BranchRenamePrCoordinator
             $this->githubProvider,
             new SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
             $this->baseBranch,
-            $this->translator,
-            $this->prompt,
+            new SubmitLabelPlanner($this->gitRepository, $this->githubProvider, $this->translator, $this->prompt),
         );
     }
 

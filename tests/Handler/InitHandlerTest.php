@@ -55,7 +55,7 @@ class InitHandlerTest extends CommandTestCase
      */
     private function createHandlerWithRealLogger(SymfonyStyle $io): InitHandler
     {
-        $realLogger = new \App\Service\Logger($io, []);
+        $realLogger = new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         return $this->createInitHandler(
             $realLogger,
@@ -937,7 +937,8 @@ class InitHandlerTest extends CommandTestCase
         // Use real Logger for this test so output is actually written
         $realLogger = new \App\Service\Logger(
             $io,
-            ['text' => 'white', 'muted' => 'gray'],
+            new \App\Service\WorkflowChannelColorizer(['text' => 'white', 'muted' => 'gray']),
+            new \App\Service\OutputVerbosityGate($io),
             messageRenderer: new \App\Service\MessageRenderer($this->translationService)
         );
         $handlerWithRealLogger = $this->createInitHandler(
@@ -1185,7 +1186,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         // Use real logger so it can read from input stream
-        $realLogger = new \App\Service\Logger($io, []);
+        $realLogger = new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
         $handler = $this->createInitHandler(
             $realLogger,
             new InitPromptCollector(

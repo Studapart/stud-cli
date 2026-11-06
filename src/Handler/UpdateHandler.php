@@ -62,7 +62,7 @@ class UpdateHandler
         return new GlobalMigrationService(
             $this->fileSystem,
             $this->translator,
-            new \App\Service\Logger($io, [], true),
+            new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io, true)),
         );
     }
 

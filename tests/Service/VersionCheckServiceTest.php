@@ -3,6 +3,7 @@
 namespace App\Tests\Service;
 
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Service\GithubGitHostingAdapter;
 use App\Service\VersionCheckService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
@@ -761,7 +762,7 @@ class VersionCheckServiceTest extends TestCase
         // Create in-memory filesystem
         $adapter = new InMemoryFilesystemAdapter();
         $this->flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($this->flysystem);
+        $this->fileSystem = new FileSystem($this->flysystem, new FileSystemPathPolicy($this->flysystem));
         $this->tempCacheDir = '/test/home';
         // Cache file should be in .cache/stud/ subdirectory
         $this->tempCacheFile = $this->tempCacheDir . '/.cache/stud/last_update_check.json';

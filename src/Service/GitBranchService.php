@@ -7,7 +7,8 @@ namespace App\Service;
 class GitBranchService
 {
     public function __construct(
-        private readonly GitRepository $gitRepository
+        private readonly GitRepository $gitRepository,
+        private readonly GitBaseBranchResolver $baseBranchResolver,
     ) {
     }
 
@@ -86,15 +87,7 @@ class GitBranchService
      */
     public function getBranchCommitsBehind(string $branch, string $compareBranch): int
     {
-        $process = $this->gitRepository->runQuietly(['git', 'rev-list', '--count', $branch . '..' . $compareBranch]);
-
-        if (! $process->isSuccessful()) {
-            return 0;
-        }
-
-        $output = trim($process->getOutput());
-
-        return empty($output) ? 0 : (int) $output;
+        return $this->getBranchCommitsAhead($compareBranch, $branch);
     }
 
     /**
@@ -111,18 +104,8 @@ class GitBranchService
             return false;
         }
 
-        $output = trim($process->getOutput());
-        if (empty($output)) {
-            return false;
-        }
-
-        $mergedBranches = array_filter(
-            array_map('trim', explode("\n", $output)),
-            fn (string $line) => $line !== ''
-        );
-
         return array_find(
-            $mergedBranches,
+            $this->splitOutputLines($process->getOutput()),
             fn (string $mergedBranch): bool => ltrim($mergedBranch, '* ') === $branch
         ) !== null;
     }
@@ -178,17 +161,7 @@ class GitBranchService
             return [];
         }
 
-        $output = trim($process->getOutput());
-        if (empty($output)) {
-            return [];
-        }
-
-        $branches = array_filter(
-            array_map('trim', explode("\n", $output)),
-            fn (string $branch) => ! empty($branch)
-        );
-
-        return array_values($branches);
+        return array_values($this->splitOutputLines($process->getOutput()));
     }
 
     /**
@@ -279,14 +252,7 @@ class GitBranchService
         foreach ($prefixes as $prefix) {
             $process = $this->gitRepository->runQuietly(['git', 'branch', '--list', $prefix . '/' . $key . '-*']);
             if ($process->isSuccessful()) {
-                $output = trim($process->getOutput());
-                if (! empty($output)) {
-                    $foundBranches = array_filter(
-                        array_map('trim', explode("\n", $output)),
-                        fn (string $branch) => ! empty($branch)
-                    );
-                    $branches = array_merge($branches, $foundBranches);
-                }
+                $branches = array_merge($branches, $this->splitOutputLines($process->getOutput()));
             }
         }
 
@@ -336,28 +302,11 @@ class GitBranchService
     /**
      * Resolves the most advanced ref between local and remote counterparts of a base branch.
      *
-     * Given a configured baseBranch (e.g. "origin/develop" or "develop"), derives both
-     * the local and remote tracking refs, checks which exist, and returns whichever
-     * is more advanced (has more recent commits). If branches have diverged, prefers remote.
-     *
-     * @param string $baseBranch The configured base branch (may or may not have "origin/" prefix)
-     * @return string The ref to use as the actual starting point for new branches
+     * @see GitBaseBranchResolver::resolveLatestBaseBranch()
      */
     public function resolveLatestBaseBranch(string $baseBranch): string
     {
-        [$localRef, $remoteRef] = $this->deriveLocalAndRemoteRefs($baseBranch);
-
-        $localExists = $this->refExists($localRef);
-        $remoteExists = $this->refExists($remoteRef);
-
-        if ($localExists && ! $remoteExists) {
-            return $localRef;
-        }
-        if (! $localExists) {
-            return $remoteExists ? $remoteRef : $baseBranch;
-        }
-
-        return $this->pickMoreAdvancedRef($localRef, $remoteRef, $baseBranch);
+        return $this->baseBranchResolver->resolveLatestBaseBranch($baseBranch);
     }
 
     /**
@@ -384,44 +333,16 @@ class GitBranchService
     }
 
     /**
-     * Derives local and remote ref names from a configured base branch.
+     * Splits git output into trimmed, non-empty lines.
      *
-     * @return array{0: string, 1: string} [localRef, remoteRef]
+     * @return array<int, string>
      */
-    protected function deriveLocalAndRemoteRefs(string $baseBranch): array
+    protected function splitOutputLines(string $output): array
     {
-        if (str_starts_with($baseBranch, 'origin/')) {
-            return [substr($baseBranch, 7), $baseBranch];
-        }
-
-        return [$baseBranch, 'origin/' . $baseBranch];
-    }
-
-    /**
-     * Checks whether a git ref (branch, tag, remote tracking ref) exists locally.
-     */
-    protected function refExists(string $ref): bool
-    {
-        return $this->gitRepository->runQuietly(['git', 'rev-parse', '--verify', '--quiet', $ref])->isSuccessful();
-    }
-
-    /**
-     * Compares two existing refs and returns whichever is more advanced.
-     * If diverged, prefers remote. If identical, returns the original configured value.
-     */
-    protected function pickMoreAdvancedRef(string $localRef, string $remoteRef, string $baseBranch): string
-    {
-        $localIsAncestor = $this->gitRepository->runQuietly(['git', 'merge-base', '--is-ancestor', $localRef, $remoteRef])->isSuccessful();
-        $remoteIsAncestor = $this->gitRepository->runQuietly(['git', 'merge-base', '--is-ancestor', $remoteRef, $localRef])->isSuccessful();
-
-        if ($localIsAncestor && $remoteIsAncestor) {
-            return $baseBranch;
-        }
-        if ($localIsAncestor) {
-            return $remoteRef;
-        }
-
-        return $remoteIsAncestor ? $localRef : $remoteRef;
+        return array_filter(
+            array_map('trim', explode("\n", $output)),
+            fn (string $line): bool => $line !== ''
+        );
     }
 
     /**

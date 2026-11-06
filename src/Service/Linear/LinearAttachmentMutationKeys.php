@@ -7,7 +7,7 @@ namespace App\Service\Linear;
 /**
  * Linear GraphQL attachment write input field names (fileUpload variables, attachmentCreate input).
  *
- * Response parsing keys stay inline in {@see \App\Service\LinearApiClient} until SCI-192 query vocabulary.
+ * Response parsing keys stay inline in {@see LinearMutationClient} until SCI-192 query vocabulary.
  */
 final class LinearAttachmentMutationKeys
 {

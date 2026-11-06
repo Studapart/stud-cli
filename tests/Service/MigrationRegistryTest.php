@@ -7,6 +7,7 @@ namespace App\Tests\Service;
 use App\Migrations\MigrationInterface;
 use App\Migrations\MigrationScope;
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Service\Logger;
 use App\Service\MigrationRegistry;
 use App\Service\TranslationService;
@@ -32,7 +33,7 @@ class MigrationRegistryTest extends TestCase
     private function createRegistryWithInMemoryFilesystem(): MigrationRegistry
     {
         $flysystem = new FlysystemFilesystem(new InMemoryFilesystemAdapter());
-        $fileSystem = new FileSystem($flysystem);
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
 
         return new MigrationRegistry($this->logger, $this->translator, $fileSystem);
     }
@@ -276,7 +277,7 @@ class MigrationRegistryTest extends TestCase
         // Test that discoverMigrations skips files when getClassNameFromFile returns null
         // This covers line 108: continue when className is null
         $flysystem = new FlysystemFilesystem(new InMemoryFilesystemAdapter());
-        $fileSystem = new FileSystem($flysystem);
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
         $registry = new MigrationRegistry($this->logger, $this->translator, $fileSystem);
 
         $testDir = '/test/migrations';

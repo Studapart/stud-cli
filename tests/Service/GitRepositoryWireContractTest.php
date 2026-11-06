@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Service\GitRepository;
 use App\Service\ProcessFactory;
 use App\Tests\Support\GitRepositoryTestKit;
@@ -33,7 +34,7 @@ final class GitRepositoryWireContractTest extends TestCase
     {
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
-        $fileSystem = new FileSystem($flysystem);
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
         $factory = $this->createStub(ProcessFactory::class);
         $factory->method('create')->willReturnCallback(function (array $command): Process {
             $this->calls[] = [$command, null];
@@ -73,7 +74,7 @@ final class GitRepositoryWireContractTest extends TestCase
     {
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
-        $fileSystem = new FileSystem($flysystem);
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
         $script = null;
         $calls = [];
         $factory = $this->createStub(ProcessFactory::class);

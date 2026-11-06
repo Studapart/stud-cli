@@ -9,6 +9,7 @@ use App\DTO\MessageRef;
 use App\Migrations\AbstractMigration;
 use App\Migrations\MigrationScope;
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Service\Logger;
 use App\Service\MigrationExecutor;
 use App\Service\TranslationService;
@@ -651,7 +652,7 @@ class MigrationExecutorTest extends TestCase
         // Use in-memory filesystem instead of mocking
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($flysystem);
+        $this->fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
         $this->executor = new MigrationExecutor($this->recorder, $this->fileSystem, $this->translator);
 
         $this->testConfigPath = '/test/config.yml';

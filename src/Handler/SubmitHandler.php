@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
-use App\Config\ProjectStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\PullRequestData;
@@ -16,7 +15,6 @@ use App\Enum\ResponseMessageLevel;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
-use App\Exception\StudConfigException;
 use App\Guard\Capability\GitHosting\GithubAware;
 use App\Guard\Capability\GitHosting\GitlabAware;
 use App\Guard\Capability\GitRepositoryAware;
@@ -26,8 +24,7 @@ use App\Response\WorkflowResponse;
 use App\Service\GitHostingPort;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
-use App\Service\Prompt\PromptInterface;
-use App\Service\SubmitLabelResolver;
+use App\Service\SubmitLabelPlanner;
 use App\Service\SubmitPrBodyBuilder;
 
 class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, ProjectBaseBranchAware, JiraAware
@@ -45,8 +42,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
         private readonly ?GitHostingPort $githubProvider,
         private readonly SubmitPrBodyBuilder $prBodyBuilder,
         private readonly string $baseBranch,
-        private readonly mixed $translator,
-        private readonly PromptInterface $prompt,
+        private readonly SubmitLabelPlanner $labelPlanner,
     ) {
     }
 
@@ -78,7 +74,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
         $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('submit.using_head', ['head' => $headBranch]), WorkflowChannel::Git);
 
         $this->explicitSubmitLabels = [];
-        $plannedLabels = $this->planSubmitLabels($options);
+        $plannedLabels = $this->labelPlanner->plan($this->recorder(), $options);
         if ($plannedLabels === null) {
             return $this->finish(1);
         }
@@ -244,91 +240,6 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
             );
 
             return null;
-        }
-    }
-
-    /**
-     * Resolve labels: empty array if none; validate/process if provided and provider exists.
-     *
-     * @return array<string>|null null if user chose retry
-     */
-    protected function resolveLabels(?string $labels, bool $quiet): ?array
-    {
-        if ($labels === null || ! $this->githubProvider) {
-            return [];
-        }
-
-        return $this->validateAndProcessLabels($labels, $quiet);
-    }
-
-    /**
-     * @return array{create: array<string>, existing: array<string>}|null
-     */
-    protected function planSubmitLabels(SubmitOptions $options): ?array
-    {
-        if ($options->labels === null) {
-            return $this->planOmittedSubmitLabels($options->quiet);
-        }
-
-        $resolved = $this->resolveLabels($options->labels, $options->quiet);
-        if ($resolved === null) {
-            return null;
-        }
-
-        return ['create' => $resolved, 'existing' => $resolved];
-    }
-
-    /**
-     * @return array{create: array<string>, existing: array<string>}|null
-     */
-    protected function planOmittedSubmitLabels(bool $quiet): ?array
-    {
-        $defaults = $this->readPullRequestLabels();
-        if ($defaults === []) {
-            return ['create' => [], 'existing' => []];
-        }
-
-        $catalogError = $this->pullRequestLabelCatalogError();
-        if ($catalogError !== null) {
-            $this->recorder()->addWarning(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('submit.warning_label_default_unavailable', ['error' => $catalogError]),
-            );
-
-            return ['create' => [], 'existing' => []];
-        }
-
-        $resolved = $this->resolveLabels(implode(',', $defaults), $quiet);
-        if ($resolved === null) {
-            return null;
-        }
-
-        return ['create' => $resolved, 'existing' => []];
-    }
-
-    protected function pullRequestLabelCatalogError(): ?string
-    {
-        try {
-            $this->githubProvider?->getLabels();
-        } catch (\Exception $e) {
-            return $e->getMessage();
-        }
-
-        return null;
-    }
-
-    /**
-     * @return list<string>
-     */
-    protected function readPullRequestLabels(): array
-    {
-        try {
-            return ProjectStudConfigKeys::readLabelList(
-                $this->gitRepository->readProjectConfig(),
-                ProjectStudConfigKeys::PULL_REQUEST_LABELS,
-            );
-        } catch (\RuntimeException) {
-            return [];
         }
     }
 
@@ -500,24 +411,5 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
 
             return false;
         }
-    }
-
-    /**
-     * Validates and processes labels, handling unknown labels interactively.
-     *
-     * @return array<string>|null Array of final labels to apply, or null if user chose to retry
-     */
-    protected function validateAndProcessLabels(string $labelsInput, bool $quiet = false): ?array
-    {
-        return $this->createLabelResolver()->validateAndProcessLabels($this->recorder(), $labelsInput, $quiet);
-    }
-
-    protected function createLabelResolver(): SubmitLabelResolver
-    {
-        if (! $this->githubProvider) {
-            throw StudConfigException::gitProviderNotConfigured();
-        }
-
-        return new SubmitLabelResolver($this->githubProvider, $this->translator, $this->prompt);
     }
 }

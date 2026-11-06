@@ -6,7 +6,9 @@ namespace App\Tests\Service;
 
 use App\Service\CommandReferenceExampleBuilder;
 use App\Service\CommandReferenceGenerator;
+use App\Service\CommandReferenceTableBuilder;
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Service\TranslationService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
@@ -26,8 +28,9 @@ class CommandReferenceGeneratorTest extends TestCase
             fn (string $key): string => 'translated:' . $key
         );
 
-        $this->generator = new CommandReferenceGenerator($translator);
-        $this->fileSystem = new FileSystem(new FlysystemFilesystem(new InMemoryFilesystemAdapter()));
+        $this->generator = new CommandReferenceGenerator($translator, new CommandReferenceTableBuilder($translator));
+        $flysystem = new FlysystemFilesystem(new InMemoryFilesystemAdapter());
+        $this->fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
     }
 
     public function testGenerateBuildsReferenceWithTocDetailsAndAgentSchema(): void
@@ -139,16 +142,12 @@ class CommandReferenceGeneratorTest extends TestCase
 
     public function testProtectedRenderingHelpersCoverEdgeCases(): void
     {
-        $generator = new TestableCommandReferenceGenerator($this->translator());
+        $translator = $this->translator();
+        $generator = new TestableCommandReferenceGenerator($translator, new CommandReferenceTableBuilder($translator));
 
-        $this->assertSame(['#### Options', '', 'None.', ''], $generator->options(null, [
-            'parameters' => ['options' => []],
-        ]));
         $this->assertSame('rows: array', $generator->outputShape(['rows' => ['nested']]));
         $this->assertSame('(undescribed)', $generator->payloadShape('(undescribed)'));
         $this->assertSame('success: true', $generator->payloadShape(['success' => true]));
-        $this->assertSame('', $generator->defaultValueFor([]));
-        $this->assertSame('', $generator->defaultValueFor(['default' => fopen('php://memory', 'r')]));
     }
 
     /**
@@ -321,17 +320,6 @@ class TestableCommandReferenceExampleBuilder extends CommandReferenceExampleBuil
 
 class TestableCommandReferenceGenerator extends CommandReferenceGenerator
 {
-    /**
-     * @param array{options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>}|null $meta
-     * @param array<string, mixed> $command
-     *
-     * @return list<string>
-     */
-    public function options(?array $meta, array $command): array
-    {
-        return $this->buildOptions($meta, $command);
-    }
-
     public function outputShape(mixed $shape): string
     {
         return $this->renderOutputShape($shape);
@@ -340,13 +328,5 @@ class TestableCommandReferenceGenerator extends CommandReferenceGenerator
     public function payloadShape(mixed $shape): string
     {
         return $this->renderPayloadShape($shape);
-    }
-
-    /**
-     * @param array<string, mixed> $schema
-     */
-    public function defaultValueFor(array $schema): string
-    {
-        return $this->defaultValue($schema);
     }
 }

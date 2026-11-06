@@ -5,6 +5,7 @@ namespace App\Tests\Handler;
 use App\Handler\ReleaseHandler;
 use App\Response\WorkflowResponse;
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
@@ -27,7 +28,7 @@ class ReleaseHandlerTest extends CommandTestCase
         // Create in-memory filesystem
         $adapter = new InMemoryFilesystemAdapter();
         $this->flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($this->flysystem);
+        $this->fileSystem = new FileSystem($this->flysystem, new FileSystemPathPolicy($this->flysystem));
 
         // ReleaseHandlerTest checks output text, so use real TranslationService
         // This is acceptable since ReleaseHandler is the class under test

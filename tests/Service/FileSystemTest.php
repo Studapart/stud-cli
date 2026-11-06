@@ -3,6 +3,7 @@
 namespace App\Tests\Service;
 
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\FilesystemOperator;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
@@ -20,7 +21,7 @@ class FileSystemTest extends TestCase
         parent::setUp();
         $adapter = new InMemoryFilesystemAdapter();
         $this->flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($this->flysystem);
+        $this->fileSystem = new FileSystem($this->flysystem, new FileSystemPathPolicy($this->flysystem));
     }
 
     public function testFileExists(): void
@@ -79,7 +80,7 @@ class FileSystemTest extends TestCase
 
     public function testBackupFileIfExistsDoesNotOverwriteExistingBackup(): void
     {
-        $fileSystem = new class ($this->flysystem) extends FileSystem {
+        $fileSystem = new class ($this->flysystem, new FileSystemPathPolicy($this->flysystem)) extends FileSystem {
             public function exposedBackupPath(string $path): string
             {
                 return $this->generateBackupPath($path);
@@ -144,7 +145,7 @@ class FileSystemTest extends TestCase
             ->method('createDirectory')
             ->willThrowException(new \League\Flysystem\UnableToCreateDirectory('test'));
 
-        $fileSystem = new FileSystem($mockFilesystem);
+        $fileSystem = new FileSystem($mockFilesystem, new FileSystemPathPolicy($mockFilesystem));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Failed to create directory: test_dir');
@@ -217,7 +218,7 @@ class FileSystemTest extends TestCase
             ->method('delete')
             ->willThrowException(new \League\Flysystem\UnableToDeleteFile('test'));
 
-        $fileSystem = new FileSystem($mockFilesystem);
+        $fileSystem = new FileSystem($mockFilesystem, new FileSystemPathPolicy($mockFilesystem));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Failed to delete file: test_file');
@@ -245,7 +246,7 @@ class FileSystemTest extends TestCase
             ->method('listContents')
             ->willThrowException(new \League\Flysystem\UnableToListContents('test'));
 
-        $fileSystem = new FileSystem($mockFilesystem);
+        $fileSystem = new FileSystem($mockFilesystem, new FileSystemPathPolicy($mockFilesystem));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Failed to list directory: nonexistent');
@@ -288,7 +289,7 @@ class FileSystemTest extends TestCase
         // reflection operations to throw exceptions, which is hard to simulate.
         // The catch block is marked with @codeCoverageIgnore in FileSystem.php
         $mockFilesystem = $this->createStub(FilesystemOperator::class);
-        $fileSystem = new FileSystem($mockFilesystem);
+        $fileSystem = new FileSystem($mockFilesystem, new FileSystemPathPolicy($mockFilesystem));
 
         $result = $fileSystem->chmod('test.txt', 0755);
         $this->assertFalse($result);
@@ -303,7 +304,7 @@ class FileSystemTest extends TestCase
         // Make the filesystem throw an exception when we try to access it
         $mockFilesystem->method('fileExists')->willThrowException(new \RuntimeException('Test exception'));
 
-        $fileSystem = new FileSystem($mockFilesystem);
+        $fileSystem = new FileSystem($mockFilesystem, new FileSystemPathPolicy($mockFilesystem));
 
         $result = $fileSystem->chmod('test.txt', 0755);
         $this->assertFalse($result);
@@ -342,7 +343,7 @@ class FileSystemTest extends TestCase
         try {
             $localAdapter = new LocalFilesystemAdapter($tempDir);
             $localFilesystem = new FlysystemFilesystem($localAdapter);
-            $localFileSystem = new FileSystem($localFilesystem);
+            $localFileSystem = new FileSystem($localFilesystem, new FileSystemPathPolicy($localFilesystem));
 
             // Write the file to the filesystem so fileExists() returns true
             $localFilesystem->write('test.txt', 'test content');
@@ -370,7 +371,7 @@ class FileSystemTest extends TestCase
         try {
             $localAdapter = new LocalFilesystemAdapter($tempDir);
             $localFilesystem = new FlysystemFilesystem($localAdapter);
-            $localFileSystem = new FileSystem($localFilesystem);
+            $localFileSystem = new FileSystem($localFilesystem, new FileSystemPathPolicy($localFilesystem));
 
             $result = $localFileSystem->chmod('nonexistent.txt', 0644);
             $this->assertFalse($result);
@@ -433,7 +434,7 @@ class FileSystemTest extends TestCase
         // Create a local filesystem for this test
         $localAdapter = new LocalFilesystemAdapter($currentDir);
         $localFilesystem = new FlysystemFilesystem($localAdapter);
-        $localFileSystem = new FileSystem($localFilesystem);
+        $localFileSystem = new FileSystem($localFilesystem, new FileSystemPathPolicy($localFilesystem));
 
         // Path traversal attempt should be normalized and rejected
         $traversalPath = $currentDir . '/../' . basename($currentDir) . '/test.txt';
@@ -454,7 +455,7 @@ class FileSystemTest extends TestCase
 
         $localAdapter = new LocalFilesystemAdapter($currentDir);
         $localFilesystem = new FlysystemFilesystem($localAdapter);
-        $localFileSystem = new FileSystem($localFilesystem);
+        $localFileSystem = new FileSystem($localFilesystem, new FileSystemPathPolicy($localFilesystem));
 
         // Test with a path that might be a symlink
         // The realpath() normalization should resolve it
@@ -599,7 +600,7 @@ class FileSystemTest extends TestCase
         // Create a local filesystem
         $localAdapter = new LocalFilesystemAdapter($currentDir);
         $localFilesystem = new FlysystemFilesystem($localAdapter);
-        $localFileSystem = new FileSystem($localFilesystem);
+        $localFileSystem = new FileSystem($localFilesystem, new FileSystemPathPolicy($localFilesystem));
 
         // Use a path that's outside the filesystem root (absolute path not in cwd)
         // This will trigger shouldUseNativeOperations() to return true
@@ -622,7 +623,7 @@ class FileSystemTest extends TestCase
         // Create a local filesystem
         $localAdapter = new LocalFilesystemAdapter($currentDir);
         $localFilesystem = new FlysystemFilesystem($localAdapter);
-        $localFileSystem = new FileSystem($localFilesystem);
+        $localFileSystem = new FileSystem($localFilesystem, new FileSystemPathPolicy($localFilesystem));
 
         // Use a path that's definitely outside the current working directory
         $outsidePath = '/tmp/test-file-' . uniqid();
@@ -645,7 +646,7 @@ class FileSystemTest extends TestCase
         // Create a local filesystem
         $localAdapter = new LocalFilesystemAdapter($currentDir);
         $localFilesystem = new FlysystemFilesystem($localAdapter);
-        $localFileSystem = new FileSystem($localFilesystem);
+        $localFileSystem = new FileSystem($localFilesystem, new FileSystemPathPolicy($localFilesystem));
 
         // Use a path that's outside the filesystem root
         $outsidePath = '/tmp';
@@ -668,36 +669,13 @@ class FileSystemTest extends TestCase
         $this->fileSystem->parseFile($testYamlFile);
     }
 
-    public function testIsPathWithinRootWithRelativePath(): void
-    {
-        // Test line 212: return true when path doesn't start with '/'
-        $reflection = new \ReflectionClass($this->fileSystem);
-        $method = $reflection->getMethod('isPathWithinRoot');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->fileSystem, 'relative/path.txt');
-        $this->assertTrue($result);
-    }
-
-    public function testIsPathWithinRootWithInMemoryFilesystem(): void
-    {
-        // Test line 217: return true when not using local filesystem
-        $reflection = new \ReflectionClass($this->fileSystem);
-        $method = $reflection->getMethod('isPathWithinRoot');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        // With in-memory filesystem, should return true
-        $result = $method->invoke($this->fileSystem, '/absolute/path.txt');
-        $this->assertTrue($result);
-    }
-
     public function testDeleteThrowsWhenNativeUnlinkFails(): void
     {
         // Test line 354: RuntimeException when unlink() returns false
         // Create a local filesystem to test native operations
         $localAdapter = new LocalFilesystemAdapter(sys_get_temp_dir());
         $localFlysystem = new FlysystemFilesystem($localAdapter);
-        $localFileSystem = new FileSystem($localFlysystem);
+        $localFileSystem = new FileSystem($localFlysystem, new FileSystemPathPolicy($localFlysystem));
 
         // Try to delete a non-existent file in /tmp/ which triggers native operations
         $nonExistentFile = '/tmp/non-existent-file-' . uniqid() . '.txt';
@@ -708,13 +686,34 @@ class FileSystemTest extends TestCase
         $localFileSystem->delete($nonExistentFile);
     }
 
+    public function testNativeWriteReadDeleteRoundTripForTempFile(): void
+    {
+        $localFileSystem = FileSystem::createLocal();
+        $tempFile = sys_get_temp_dir() . '/stud-native-round-trip-' . uniqid() . '.txt';
+
+        $localFileSystem->write($tempFile, 'native content');
+        $this->assertSame('native content', $localFileSystem->read($tempFile));
+
+        $localFileSystem->delete($tempFile);
+        $this->assertFileDoesNotExist($tempFile);
+    }
+
+    public function testNativeReadThrowsWhenTempFileDoesNotExist(): void
+    {
+        $missingFile = sys_get_temp_dir() . '/stud-missing-' . uniqid() . '.txt';
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Failed to read file: {$missingFile}");
+        FileSystem::createLocal()->read($missingFile);
+    }
+
     public function testWriteThrowsWhenNativeFilePutContentsFails(): void
     {
         // Test line 408: RuntimeException when file_put_contents() returns false
         // Create a local filesystem to test native operations
         $localAdapter = new LocalFilesystemAdapter(sys_get_temp_dir());
         $localFlysystem = new FlysystemFilesystem($localAdapter);
-        $localFileSystem = new FileSystem($localFlysystem);
+        $localFileSystem = new FileSystem($localFlysystem, new FileSystemPathPolicy($localFlysystem));
 
         // Try to write to a directory (which will fail)
         $directoryPath = '/tmp/test-directory-' . uniqid();

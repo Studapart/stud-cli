@@ -73,7 +73,7 @@ class ItemListResponderTest extends CommandTestCase
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, []));
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)));
 
         $responder->respond($io, $response);
 
@@ -88,7 +88,7 @@ class ItemListResponderTest extends CommandTestCase
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, []));
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)));
 
         $responder->respond($io, $response);
 
@@ -111,7 +111,7 @@ class ItemListResponderTest extends CommandTestCase
 
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        $responder = new ItemListResponder($helper, $this->jiraConfig, new \App\Service\Logger($io, []));
+        $responder = new ItemListResponder($helper, $this->jiraConfig, new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)));
 
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
@@ -127,7 +127,7 @@ class ItemListResponderTest extends CommandTestCase
     public function testRespondShowsVerboseOutputWithProject(): void
     {
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, []));
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)));
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, 'MYPROJ');
 
@@ -227,7 +227,7 @@ class ItemListResponderTest extends CommandTestCase
         $issue = new WorkItem('1', 'SCI-1', 'Title', 'Open', 'user', 'desc', [], 'Story');
         $response = ItemListResponse::success([$issue], false, null, ['jira', 'linear'], true);
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, []));
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)));
 
         $responder->respond($io, $response);
 
@@ -239,7 +239,7 @@ class ItemListResponderTest extends CommandTestCase
         $issue = new WorkItem('1', 'ENG-1', 'Title', 'Open', 'user', 'desc', [], 'Story');
         $response = ItemListResponse::success([$issue], false, null, ['linear'], false);
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, []));
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)));
 
         $responder->respond($io, $response);
 
