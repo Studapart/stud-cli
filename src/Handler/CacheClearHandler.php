@@ -14,10 +14,8 @@ class CacheClearHandler
     private const CACHE_FILE_PATH = '~/.cache/stud/last_update_check.json';
 
     public function __construct(
-        mixed $_translator,
         private readonly FileSystem $fileSystem,
     ) {
-        unset($_translator);
     }
 
     public function handle(): CommandResponse

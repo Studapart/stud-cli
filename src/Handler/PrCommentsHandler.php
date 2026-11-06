@@ -21,9 +21,7 @@ class PrCommentsHandler implements GithubAware, GitlabAware, GitRepositoryAware
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly ?GitHostingPort $gitProvider,
-        mixed $_translator
     ) {
-        unset($_translator);
     }
 
     public function handle(bool $threaded = false): PrCommentsResponse

@@ -18,11 +18,9 @@ class ItemUpdateHandler implements JiraAware
 {
     public function __construct(
         private readonly IssueTrackerPort $provider,
-        mixed $_translator,
         private readonly FieldsParser $fieldsParser,
         ?JiraIssueFieldWriter $fieldWriter = null,
     ) {
-        unset($_translator);
         $this->fieldWriter = $fieldWriter ?? new JiraIssueFieldWriter($fieldsParser);
     }
 

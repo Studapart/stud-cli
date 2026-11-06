@@ -4,7 +4,9 @@ Use non-interactive flags and agent JSON for scripts, CI, and AI-driven workflow
 
 ## Agent Mode
 
-Commands that support `--agent` accept JSON on stdin and return structured JSON.
+Commands that support `--agent` accept JSON on stdin and return structured JSON. Send only JSON fields that differ from the command defaults.
+
+Agents implementing features in this repository follow [AGENTS.md](../../AGENTS.md).
 
 ```bash
 echo '{}' | stud help --agent
@@ -56,11 +58,6 @@ stud submit --labels "AI-Generated,RFR" --quiet
 stud branches:clean --quiet
 stud update --quiet
 ```
-
-## AI development protocol
-
-Agents implementing features in this repository must follow [AI.md](../../AI.md)
-(`--agent` first, four-phase protocol, `CONVENTIONS.md` compliance).
 
 ## CI Setup
 

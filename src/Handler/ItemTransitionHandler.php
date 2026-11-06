@@ -24,10 +24,8 @@ class ItemTransitionHandler implements GitRepositoryAware, JiraAware
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly IssueTrackerPort $provider,
-        mixed $_translator,
         private readonly PromptInterface $prompt,
     ) {
-        unset($_translator);
     }
 
     public function handle(?string $key = null): WorkflowResponse

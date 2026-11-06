@@ -21,10 +21,8 @@ class FilterListHandler implements JiraAware, LinearAware
         private readonly array $globalConfig,
         /** @var array<string, mixed> */
         private readonly array $projectConfig,
-        mixed $_translator,
         private readonly IssueTrackerProvidersQueryResolver $queryResolver = new IssueTrackerProvidersQueryResolver(),
     ) {
-        unset($_translator);
     }
 
     public function handle(?string $providerOverride = null): FilterListResponse

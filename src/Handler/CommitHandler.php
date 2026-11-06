@@ -27,10 +27,8 @@ class CommitHandler implements GitRepositoryAware, JiraAware
         private readonly GitRepository $gitRepository,
         private readonly IssueTrackerPort|\Closure $issueTracker,
         private readonly string $baseBranch,
-        mixed $_translator,
         private readonly PromptInterface $prompt
     ) {
-        unset($_translator);
     }
 
     public function handle(mixed $first, mixed $second = null, mixed $third = null, mixed $fourth = false, mixed $fifth = false): CommandResponse|int

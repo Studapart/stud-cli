@@ -40,13 +40,12 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         return new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
-            $this->createStub(TranslationService::class),
             $prompt,
             new GitTokenPromptResolver(),
             $fileSystem,
             '/tmp/global-config.yml',
             new GlobalConfigProviderResolver(),
-            $metadataPrompts ?? $this->createDefaultMetadataPrompts(),
+            $metadataPrompts ?? $this->createDefaultMetadataPrompts()
         );
     }
 
@@ -518,13 +517,12 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
-            $this->createStub(TranslationService::class),
             $prompt,
             new GitTokenPromptResolver(),
             $fileSystem,
             '/tmp/global-config.yml',
             new GlobalConfigProviderResolver(),
-            $this->createDefaultMetadataPrompts(),
+            $this->createDefaultMetadataPrompts()
         );
 
         $this->assertSame(['gitProvider' => 'github'], $collector->collect(new WorkflowRecorder()));

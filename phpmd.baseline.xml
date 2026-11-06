@@ -42,10 +42,8 @@
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Guard/Resolver/IssueTrackerProviderResolver.php" method="resolve"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Guard/Resolver/IssueTrackerProviderResolver.php" method="resolve"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/BranchCleanHandler.php" method="__construct"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/BranchListHandler.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/BranchListHandler.php" method="handle"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/BranchRenameHandler.php" method="__construct"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/CommitHandler.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/CommitHandler.php" method="handle"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/CommitHandler.php" method="normalizeHandleArguments"/>
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Handler/CommitHandler.php" method="commitWithJiraPrompt"/>
@@ -60,7 +58,6 @@
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/ConfigProjectInitPromptCollector.php" method="collect"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/ConfluencePushHandler.php" method="executeCreateWithDuplicateFallback"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/ConfluencePushHandler.php" method="tryUpdateExistingPageUnderParent"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/FilterListHandler.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/FilterListHandler.php" method="handle"/>
   <violation rule="PHPMD\Rule\CyclomaticComplexity" file="src/Handler/FilterShowHandler.php" method="handle"/>
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Handler/FilterShowHandler.php" method="handle"/>

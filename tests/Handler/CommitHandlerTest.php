@@ -1083,7 +1083,7 @@ class CommitHandlerTest extends CommandTestCase
     public function testgetCommitTypeFromIssueType(): void
     {
         $prompt = $this->createStub(PromptInterface::class);
-        $handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $this->translationService, $prompt);
+        $handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $prompt);
 
         $this->assertSame('fix', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['bug']));
         $this->assertSame('feat', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['story']));
@@ -1104,7 +1104,7 @@ class CommitHandlerTest extends CommandTestCase
 
             return $this->issueTracker;
         };
-        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->translationService, $this->prompt);
+        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->prompt);
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('M  file.txt');
         $this->gitRepository->method('hasStagedChanges')->willReturn(true);
@@ -1129,7 +1129,7 @@ class CommitHandlerTest extends CommandTestCase
 
             return $this->issueTracker;
         };
-        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->translationService, $this->prompt);
+        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->prompt);
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('M  file.txt');
         $this->gitRepository->method('findLatestLogicalSha')->willReturn('abcdef');
@@ -1155,7 +1155,7 @@ class CommitHandlerTest extends CommandTestCase
 
             return $this->issueTracker;
         };
-        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->translationService, $this->prompt);
+        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->prompt);
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('M  file.txt');
         $this->gitRepository->method('findLatestLogicalSha')->willReturn(null);
@@ -1186,6 +1186,6 @@ class CommitHandlerTest extends CommandTestCase
 
     private function bindSubject(): void
     {
-        $this->handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $this->translationService, $this->prompt);
+        $this->handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $this->prompt);
     }
 }

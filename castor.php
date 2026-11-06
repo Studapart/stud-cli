@@ -756,13 +756,12 @@ function _get_config_project_init_prompt_collector(): ConfigProjectInitPromptCol
     return new ConfigProjectInitPromptCollector(
         _get_git_repository(),
         _get_git_setup_service(),
-        _get_translation_service(),
         _get_prompt(),
         new \App\Service\GitTokenPromptResolver(),
         _get_file_system(),
         _get_config_path(),
         new \App\Service\GlobalConfigProviderResolver(),
-        _get_project_metadata_prompt_service(),
+        _get_project_metadata_prompt_service()
     );
 }
 
@@ -2110,16 +2109,16 @@ function _agent_submit_run_push_phase(array $input): \App\Response\CommandRespon
     $flatten = (bool) ($input['flatten'] ?? false);
     $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     $gitRepository = _get_git_repository();
-    $commitHandler = new CommitHandler($gitRepository, fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride), _get_base_branch(), _get_translation_service(), _get_prompt());
-    $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service());
-    $pushHandler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt(), _new_flatten_handler());
+    $commitHandler = new CommitHandler($gitRepository, fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride), _get_base_branch(), _get_prompt());
+    $pleaseHandler = new PleaseHandler($gitRepository);
+    $pushHandler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_prompt(), _new_flatten_handler());
 
     return $pushHandler->handle($isNew, $message, true, true, false, true, $pleaseFallback, $flatten);
 }
 
 function _new_flatten_handler(): FlattenHandler
 {
-    return new FlattenHandler(_get_git_repository(), _get_base_branch(), _get_translation_service());
+    return new FlattenHandler(_get_git_repository(), _get_base_branch());
 }
 
 function _with_flatten_publish_warning(CommandResponse $response): CommandResponse
@@ -2585,8 +2584,7 @@ function filters_list(
     $handler = new FilterListHandler(
         _get_issue_tracker_port_supplier(),
         _get_config(),
-        _project_config_or_empty(),
-        _get_translation_service(),
+        _project_config_or_empty()
     );
     $response = $handler->handle($providerOverride ?? $provider);
     $responder = new FilterListResponder(_get_responder_helper(), _get_logger());
@@ -2849,8 +2847,7 @@ function items_download(
         _require_issue_tracker(
             $resolvedProvider,
             is_string($key) && trim($key) !== '' ? trim($key) : null,
-        ),
-        _get_translation_service(),
+        )
     );
     $response = $handler->handle($key, $url, $path);
     $responder = new ItemDownloadResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
@@ -2925,8 +2922,7 @@ function items_upload(
     }
     $handler = new ItemUploadHandler(
         _get_file_system(),
-        _require_issue_tracker($providerOverride ?? $provider, trim($key)),
-        $translator,
+        _require_issue_tracker($providerOverride ?? $provider, trim($key))
     );
     $inputDto = new ItemUploadInput(trim($key), $files);
     $response = $handler->handle($inputDto);
@@ -3099,7 +3095,7 @@ function items_update(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('item.update.error_no_key'));
         exit(1);
     }
-    $handler = new ItemUpdateHandler(_require_issue_tracker($providerOverride ?? $provider, trim($key)), _get_translation_service(), _get_fields_parser());
+    $handler = new ItemUpdateHandler(_require_issue_tracker($providerOverride ?? $provider, trim($key)), _get_fields_parser());
     $input = new ItemUpdateInput(trim($key), $summary, $description, $descriptionFormat, $fields, $fieldsMap);
     $response = $handler->handle($input);
     $responder = new ItemUpdateResponder(_get_translation_service(), _get_logger());
@@ -3144,8 +3140,7 @@ function items_transition(
             $providerOverride ?? $provider,
             _issue_key_for_provider_resolution($explicitKey),
         ),
-        _get_translation_service(),
-        _get_prompt(),
+        _get_prompt()
     );
     $response = $handler->handle($explicitKey);
     _respond_workflow_response($response, $agent, $compact);
@@ -3183,7 +3178,7 @@ function items_start(
         exit(1);
     }
     $issueTracker = _require_issue_tracker($providerOverride ?? $provider, $key);
-    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), $issueTracker, _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_prompt(), _get_linear_type_label_resolver());
+    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), $issueTracker, _get_base_branch(), _get_jira_config(), _get_prompt(), _get_linear_type_label_resolver());
     $response = $handler->handle($key);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -3221,8 +3216,8 @@ function items_takeover(
     $gitBranchService = _get_git_branch_service();
     $prompt = _get_prompt();
     $issueTracker = _require_issue_tracker($providerOverride ?? $provider, $key);
-    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, $issueTracker, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt, _get_linear_type_label_resolver());
-    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, $issueTracker, $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, $issueTracker, $baseBranch, _get_jira_config(), $prompt, _get_linear_type_label_resolver());
+    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, $issueTracker, $itemStartHandler, $baseBranch, _get_jira_config(), $prompt);
     $response = $handler->handle($key, $quiet);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -3280,7 +3275,7 @@ function branches_list(
     $gitBranchService = _get_git_branch_service();
     $githubProvider = _get_github_provider();
     $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $githubProvider);
-    $handler = new BranchListHandler($gitRepository, $gitBranchService, $resolver, _get_configured_base_branch_or_null(), _get_translation_service());
+    $handler = new BranchListHandler($gitRepository, $gitBranchService, $resolver, _get_configured_base_branch_or_null());
     $response = $handler->handle();
     $responder = new BranchListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -3365,7 +3360,7 @@ function commit(
 
         return;
     }
-    $handler = new CommitHandler(_get_git_repository(), fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), _get_base_branch(), _get_translation_service(), _get_prompt());
+    $handler = new CommitHandler(_get_git_repository(), fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), _get_base_branch(), _get_prompt());
     $response = $handler->handle($isNew, $message, $stageAll, $quiet);
     if (is_int($response)) {
         $response = CommandResponse::fromExitCode($response, 'Commit created', 'Commit failed');
@@ -3437,9 +3432,9 @@ function push(
         return;
     }
     $gitRepository = _get_git_repository();
-    $commitHandler = new CommitHandler($gitRepository, fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), _get_base_branch(), _get_translation_service(), _get_prompt());
-    $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service());
-    $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt(), _new_flatten_handler());
+    $commitHandler = new CommitHandler($gitRepository, fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), _get_base_branch(), _get_prompt());
+    $pleaseHandler = new PleaseHandler($gitRepository);
+    $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_prompt(), _new_flatten_handler());
     $noPleaseForHandler = $agent ? false : $noPlease;
     $response = $handler->handle($isNew, $message, $stageAll, $quiet, $noPleaseForHandler, $agent, $pleaseFallback, $flatten);
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
@@ -3473,7 +3468,7 @@ function please(
         $compact = _agent_compact_enabled($input);
         $flatten = (bool) ($input['flatten'] ?? false);
     }
-    $handler = new PleaseHandler(_get_git_repository(), _get_translation_service());
+    $handler = new PleaseHandler(_get_git_repository());
     $response = _please_response($handler, $agent, $flatten);
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
@@ -3505,7 +3500,7 @@ function commit_undo(
         $compact = _agent_compact_enabled($input);
         $quiet = true;
     }
-    $handler = new \App\Handler\CommitUndoHandler(_get_git_repository(), _get_prompt(), _get_translation_service());
+    $handler = new \App\Handler\CommitUndoHandler(_get_git_repository(), _get_prompt());
     $response = $handler->handle($quiet);
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
@@ -3535,7 +3530,7 @@ function flatten(
         }
         $compact = _agent_compact_enabled($input);
     }
-    $handler = new FlattenHandler(_get_git_repository(), _get_base_branch(), _get_translation_service());
+    $handler = new FlattenHandler(_get_git_repository(), _get_base_branch());
     $response = $handler->handle();
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
@@ -3572,7 +3567,7 @@ function switch_branch(
         $quiet = true;
     }
 
-    $handler = new BranchSwitchHandler(_get_git_repository(), _get_git_branch_service(), _get_translation_service());
+    $handler = new BranchSwitchHandler(_get_git_repository(), _get_git_branch_service());
     $response = $handler->handle((string) $key, $quiet);
     if ($response->needsSelection && ! $agent) {
         $selectedBranch = _branch_switch_select_branch($response);
@@ -3580,7 +3575,7 @@ function switch_branch(
     }
 
     if ($response->isSuccess() && $sync) {
-        $syncHandler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch(), _get_translation_service());
+        $syncHandler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch());
         $syncResponse = $syncHandler->handle();
         $syncExitCode = $syncResponse->isSuccess() ? 0 : 1;
         $response = $response->withSyncResult($syncExitCode, _get_translation_service()->trans('branch.switch.error_sync_failed'));
@@ -3627,7 +3622,7 @@ function sync(
         }
         $compact = _agent_compact_enabled($input);
     }
-    $handler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch(), _get_translation_service());
+    $handler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch());
     $response = $handler->handle();
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
@@ -3656,7 +3651,7 @@ function cache_clear(
         }
         $compact = _agent_compact_enabled($input);
     }
-    $handler = new CacheClearHandler(_get_translation_service(), _get_file_system());
+    $handler = new CacheClearHandler(_get_file_system());
     $response = $handler->handle();
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
@@ -3801,7 +3796,7 @@ function pr_comment(
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_hosting();
     $request = (new PrCommentInputResolver())->resolve(is_string($message) ? $message : null, $replyTo, $resolve);
-    $handler = new PrCommentHandler($gitRepository, $gitProvider, _get_translation_service());
+    $handler = new PrCommentHandler($gitRepository, $gitProvider);
     $response = $handler->handle($request);
     $responder = new PrCommentResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -3844,7 +3839,7 @@ function pr_comments(
 
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_hosting();
-    $handler = new PrCommentsHandler($gitRepository, $gitProvider, _get_translation_service());
+    $handler = new PrCommentsHandler($gitRepository, $gitProvider);
     $response = $handler->handle($threaded);
     $responder = new PrCommentsResponder(_get_responder_helper(), _get_comment_body_parser(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format, $threaded);
@@ -3956,7 +3951,7 @@ function confluence_push(
     $baseUrl = _get_confluence_base_url($confluenceUrl);
     $wiki = _get_wiki_port($confluenceUrl);
     $converter = new \App\Service\MarkdownToAdfConverter();
-    $handler = new ConfluencePushHandler($wiki, $converter, _get_translation_service());
+    $handler = new ConfluencePushHandler($wiki, $converter);
     $inputDto = new ConfluencePushInput($content, $space, $title, $page !== null && $page !== '' ? $page : null, $parent !== null && $parent !== '' ? $parent : null, $status, $contactAccountId, $contactDisplayName);
     $response = $handler->handle($inputDto, $baseUrl);
     $responder = new ConfluencePushResponder(_get_translation_service(), _get_logger());
@@ -4057,7 +4052,7 @@ function confluence_show(
     $baseUrl = _get_confluence_base_url($baseUrlOverride);
     $wiki = _get_wiki_port($baseUrlOverride);
     $adfConverter = new \App\Service\AdfToMarkdownConverter();
-    $handler = new ConfluenceShowHandler($wiki, $adfConverter, _get_translation_service());
+    $handler = new ConfluenceShowHandler($wiki, $adfConverter);
     $inputDto = new ConfluenceShowInput($pageId, $pageUrl);
     $response = $handler->handle($inputDto, $baseUrl);
     $responder = new ConfluenceShowResponder(_get_responder_helper(), _get_logger());
@@ -4283,7 +4278,7 @@ function status(
         $compact = _agent_compact_enabled($input);
         $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     }
-    $handler = new StatusHandler(_get_git_repository(), _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), _get_translation_service());
+    $handler = new StatusHandler(_get_git_repository(), _require_issue_tracker_for_git_workflow($providerOverride ?? $provider));
     $response = $handler->handle();
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -4322,7 +4317,7 @@ function release(
         $bumpType = $input['bumpType'] ?? ($version === null ? 'patch' : null);
         $publish = (bool) ($input['publish'] ?? false);
         $quiet = true;
-        $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_prompt(), _get_file_system());
+        $handler = new ReleaseHandler(_get_git_repository(), _get_prompt(), _get_file_system());
         $response = $handler->handle($version, $publish, $bumpType, $quiet);
         _respond_workflow_response($response, true, $compact);
 
@@ -4351,7 +4346,7 @@ function release(
         exit(1);
     }
 
-    $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_prompt(), _get_file_system());
+    $handler = new ReleaseHandler(_get_git_repository(), _get_prompt(), _get_file_system());
     $response = $handler->handle($version, $publish, $bumpType, $quiet);
     _respond_workflow_response($response, false);
 }
@@ -4376,7 +4371,7 @@ function deploy(
         $compact = _agent_compact_enabled($input);
         $clean = (bool) ($input['clean'] ?? false);
     }
-    $handler = new DeployHandler(_get_git_repository(), _get_base_branch(), _get_translation_service());
+    $handler = new DeployHandler(_get_git_repository(), _get_base_branch());
     $response = $handler->handle();
 
     if ($response->isSuccess() && $clean) {

@@ -74,7 +74,7 @@ class PrCommentHandlerTest extends CommandTestCase
 
     public function testHandleFailsWhenProviderIsMissing(): void
     {
-        $handler = new PrCommentHandler($this->gitRepository, null, $this->translationService);
+        $handler = new PrCommentHandler($this->gitRepository, null);
 
         $response = $handler->handle(new PrCommentRequest('My comment'));
 
@@ -334,8 +334,7 @@ class PrCommentHandlerTest extends CommandTestCase
         TestKernel::$translationService = $this->translationService;
         $this->handler = new PrCommentHandler(
             $this->gitRepository,
-            $this->gitProvider,
-            $this->translationService,
+            $this->gitProvider
         );
     }
 }

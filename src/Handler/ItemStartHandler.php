@@ -38,12 +38,10 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Ji
         private readonly GitBranchService $gitBranchService,
         private readonly IssueTrackerPort $provider,
         private readonly string $baseBranch,
-        mixed $_translator,
         private readonly array $jiraConfig,
         private readonly PromptInterface $prompt,
         private readonly LinearTypeLabelResolver $linearTypeLabelResolver = new LinearTypeLabelResolver(),
     ) {
-        unset($_translator);
     }
 
     public function handle(string $key): WorkflowResponse

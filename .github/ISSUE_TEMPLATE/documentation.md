@@ -13,7 +13,6 @@ assignees: ""
 
 - [ ] README.md
 - [ ] CONVENTIONS.md
-- [ ] AI.md
 - [ ] documentation/ (ADRs or other)
 - [ ] In-app help (`stud help <command>`)
 - [ ] Other: ___

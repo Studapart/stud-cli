@@ -21,10 +21,8 @@ class PrCommentHandler implements GithubAware, GitlabAware, GitRepositoryAware
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly ?GitHostingPort $gitProvider,
-        mixed $_translator,
         private readonly PullRequestFeedbackTargetResolver $targetResolver = new PullRequestFeedbackTargetResolver(),
     ) {
-        unset($_translator);
     }
 
     public function handle(PrCommentRequest $request): PrCommentResponse

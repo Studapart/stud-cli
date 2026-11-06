@@ -198,7 +198,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
         $provider = $this->createStub(IssueTrackerPort::class);
         $translator = $this->createStub(TranslationService::class);
         $translator->method('trans')->willReturnArgument(0);
-        $handler = new ItemDownloadHandler($fileSystem, $provider, $translator);
+        $handler = new ItemDownloadHandler($fileSystem, $provider);
         $fileSystem->method('fileExists')->willReturn(true);
 
         $method = new \ReflectionMethod(ItemDownloadHandler::class, 'allocateFilename');
@@ -416,6 +416,6 @@ class ItemDownloadHandlerTest extends CommandTestCase
     private function bindSubject(): void
     {
 
-        $this->handler = new ItemDownloadHandler($this->fileSystem, $this->provider, $this->translator);
+        $this->handler = new ItemDownloadHandler($this->fileSystem, $this->provider);
     }
 }

@@ -17,9 +17,7 @@ class FlattenHandler implements GitRepositoryAware, ProjectBaseBranchAware
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly string $baseBranch,
-        mixed $_translator,
     ) {
-        unset($_translator);
     }
 
     /**

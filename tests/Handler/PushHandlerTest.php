@@ -31,9 +31,8 @@ class PushHandlerTest extends CommandTestCase
             $commitHandler,
             $gitRepository,
             $pleaseHandler,
-            $this->translationService,
             $prompt ?? $this->createStub(PromptInterface::class),
-            $flattenHandler ?? new FlattenHandler($gitRepository, 'origin/develop', $this->translationService),
+            $flattenHandler ?? new FlattenHandler($gitRepository, 'origin/develop'),
         );
     }
 
