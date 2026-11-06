@@ -6,11 +6,7 @@ namespace App\Service;
 
 use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
-use App\Config\GlobalStudConfigFieldMap;
-use App\Config\ProjectStudConfigFieldMap;
 use App\Config\ProjectStudConfigKeys;
-use Castor\Attribute\AsArgument;
-use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 
 /**
@@ -22,46 +18,13 @@ use Castor\Attribute\AsTask;
  */
 class AgentModeSchemaGenerator
 {
-    private const AGENT_ONLY_PARAMS = ['agent', 'inputFile'];
-
-    /** @var list<string> */
-    private const COMMANDS_WITH_PROVIDER_OVERRIDE = [
-        'items:create',
-        'items:list',
-        'items:show',
-        'items:start',
-        'items:transition',
-        'items:update',
-        'items:takeover',
-        'items:download',
-        'items:upload',
-        'items:search',
-        'filters:list',
-        'filters:show',
-        'projects:list',
-        'projects:workflow',
-        'projects:labels',
-        'commit',
-        'push',
-        'submit',
-        'status',
-        'branch:rename',
-    ];
-
     /**
      * @return list<string>
      */
     public static function commandsWithProviderOverride(): array
     {
-        return self::COMMANDS_WITH_PROVIDER_OVERRIDE;
+        return AgentModeInputSchemaBuilder::COMMANDS_WITH_PROVIDER_OVERRIDE;
     }
-
-    private const PROVIDER_OVERRIDE_INPUT_SCHEMA = [
-        'type' => 'string|null',
-        'optional' => true,
-        'default' => null,
-        'enum' => ['jira', 'linear'],
-    ];
 
     private const COMPACT_PROPERTY = [
         'type' => 'bool',
@@ -69,8 +32,10 @@ class AgentModeSchemaGenerator
         'default' => true,
     ];
 
-    public function __construct(private readonly ?TranslationService $translator = null)
-    {
+    public function __construct(
+        private readonly AgentModeInputSchemaBuilder $inputSchemaBuilder,
+        private readonly ?TranslationService $translator = null
+    ) {
     }
 
     /**
@@ -164,128 +129,17 @@ class AgentModeSchemaGenerator
         ?AgentOutput $agentOutput,
         ?AgentCommand $agentCommand,
     ): array {
-        $options = [];
-        $arguments = [];
-        $inputProperties = [];
-
-        foreach ($params as $param) {
-            $this->collectOption($param, $options, $inputProperties);
-            $this->collectArgument($param, $arguments, $inputProperties);
-        }
-
-        $this->injectExtraInputProperties($task->name, $inputProperties);
-        $inputProperties = ['compact' => self::COMPACT_PROPERTY] + $inputProperties;
-
-        $outputSchema = $this->buildOutputSchema($task->name, $agentOutput);
+        $input = $this->inputSchemaBuilder->build($task->name, $params);
 
         return [
             'name' => $task->name,
             'aliases' => $task->aliases,
             'essential' => $agentCommand instanceof AgentCommand && $agentCommand->essential,
             'description' => $task->description,
-            'parameters' => ['options' => $options, 'arguments' => $arguments],
-            'input' => ['properties' => $inputProperties],
-            'output' => $outputSchema,
+            'parameters' => ['options' => $input['options'], 'arguments' => $input['arguments']],
+            'input' => ['properties' => ['compact' => self::COMPACT_PROPERTY] + $input['properties']],
+            'output' => $this->buildOutputSchema($task->name, $agentOutput),
         ];
-    }
-
-    /**
-     * Inject agent-only input properties not represented as function parameters (e.g. confluence:push "content").
-     *
-     * @param array<string, array<string, mixed>> $inputProperties
-     */
-    private function injectExtraInputProperties(string $taskName, array &$inputProperties): void
-    {
-        if ($taskName === 'confluence:push') {
-            $inputProperties = [
-                'file' => ['type' => 'string', 'optional' => true],
-                'content' => ['type' => 'string', 'optional' => true, 'default' => ''],
-            ] + $inputProperties;
-        }
-
-        if ($taskName === 'push') {
-            unset($inputProperties['noPlease']);
-            $inputProperties = [
-                'pleaseFallback' => ['type' => 'bool', 'optional' => true, 'default' => true],
-            ] + $inputProperties;
-        }
-
-        if ($taskName === 'submit') {
-            $inputProperties = [
-                'stageAll' => ['type' => 'bool', 'optional' => true, 'default' => false],
-                'isNew' => ['type' => 'bool', 'optional' => true, 'default' => false],
-                'message' => ['type' => 'string|null', 'optional' => true, 'default' => null],
-                'pleaseFallback' => ['type' => 'bool', 'optional' => true, 'default' => true],
-            ] + $inputProperties;
-        }
-
-        if ($taskName === 'items:download') {
-            $inputProperties = [
-                'issueKey' => ['type' => 'string|null', 'optional' => true, 'default' => null],
-            ] + $inputProperties;
-        }
-
-        if ($taskName === 'items:upload') {
-            $inputProperties = [
-                'issueKey' => ['type' => 'string|null', 'optional' => true, 'default' => null],
-            ] + $inputProperties;
-        }
-
-        if ($taskName === 'help') {
-            $inputProperties = [
-                'commandName' => ['type' => 'string|null', 'optional' => true, 'default' => null],
-                'command' => ['type' => 'string|null', 'optional' => true, 'default' => null],
-                'essential' => ['type' => 'bool', 'optional' => true, 'default' => true],
-            ] + $inputProperties;
-        }
-
-        if (in_array($taskName, self::COMMANDS_WITH_PROVIDER_OVERRIDE, true)) {
-            $inputProperties['provider'] = self::PROVIDER_OVERRIDE_INPUT_SCHEMA;
-        }
-
-        if ($taskName === 'config:init') {
-            $inputProperties = $this->buildConfigInitInputProperties();
-        }
-
-        if ($taskName === 'config:project-init') {
-            $inputProperties = $this->buildConfigProjectInitInputProperties();
-        }
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    private function buildConfigInitInputProperties(): array
-    {
-        $properties = [];
-        foreach (array_keys(GlobalStudConfigFieldMap::INPUT_TO_YAML) as $key) {
-            $properties[$key] = match ($key) {
-                'gitProviders', 'issueTrackerProviders' => ['type' => 'array', 'optional' => true, 'default' => null],
-                'jiraTransitionEnabled' => ['type' => 'bool', 'optional' => true, 'default' => null],
-                default => ['type' => 'string|null', 'optional' => true, 'default' => null],
-            };
-        }
-
-        return $properties;
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    private function buildConfigProjectInitInputProperties(): array
-    {
-        $properties = [];
-        foreach (array_keys(ProjectStudConfigFieldMap::INPUT_TO_YAML) as $key) {
-            $properties[$key] = match ($key) {
-                'transitionId' => ['type' => 'int|null', 'optional' => true, 'default' => null],
-                'linearTypeBranchPrefixes' => ['type' => 'object', 'optional' => true, 'default' => null],
-                'workItemLabels', 'pullRequestLabels' => ['type' => 'array', 'optional' => true, 'default' => null],
-                default => ['type' => 'string|null', 'optional' => true, 'default' => null],
-            };
-        }
-        $properties['skipBaseBranchRemoteCheck'] = ['type' => 'bool', 'optional' => true, 'default' => false];
-
-        return $properties;
     }
 
     /**
@@ -425,76 +279,6 @@ class AgentModeSchemaGenerator
         }
 
         return $properties;
-    }
-
-    /**
-     * @param list<string> $options
-     * @param array<string, array<string, mixed>> $inputProperties
-     */
-    private function collectOption(\ReflectionParameter $param, array &$options, array &$inputProperties): void
-    {
-        foreach ($param->getAttributes(AsOption::class) as $attr) {
-            /** @var AsOption $opt */
-            $opt = $attr->newInstance();
-            $name = $opt->name ?? $param->getName();
-
-            if (in_array($name, self::AGENT_ONLY_PARAMS, true)) {
-                continue;
-            }
-
-            $shortcut = $opt->shortcut;
-            $label = is_string($shortcut) && $shortcut !== '' ? "{$name} ({$shortcut})" : $name;
-            $options[] = $label;
-
-            $inputProperties[$param->getName()] = $this->buildPropertySchema($param);
-        }
-    }
-
-    /**
-     * @param list<string> $arguments
-     * @param array<string, array<string, mixed>> $inputProperties
-     */
-    private function collectArgument(\ReflectionParameter $param, array &$arguments, array &$inputProperties): void
-    {
-        foreach ($param->getAttributes(AsArgument::class) as $attr) {
-            /** @var AsArgument $arg */
-            $arg = $attr->newInstance();
-            $name = $arg->name ?? $param->getName();
-
-            if (in_array($name, self::AGENT_ONLY_PARAMS, true)) {
-                continue;
-            }
-
-            $label = $param->isOptional() ? "{$name} (optional)" : $name;
-            $arguments[] = $label;
-
-            $inputProperties[$param->getName()] = $this->buildPropertySchema($param);
-        }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildPropertySchema(\ReflectionParameter $param): array
-    {
-        $type = $param->getType();
-        $typeName = 'mixed';
-        if ($type instanceof \ReflectionNamedType) {
-            $typeName = $type->getName();
-            if ($type->allowsNull() && $typeName !== 'mixed') {
-                $typeName .= '|null';
-            }
-        }
-
-        $schema = ['type' => $typeName];
-        if ($param->isOptional()) {
-            $schema['optional'] = true;
-            if ($param->isDefaultValueAvailable()) {
-                $schema['default'] = $param->getDefaultValue();
-            }
-        }
-
-        return $schema;
     }
 
     /**

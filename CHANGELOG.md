@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Monthly maintenance (SCI-135):** Retire `AI.md` after moving the rules that still apply, and drop the unused handler translator parameter.
 
+- **Split oversized classes (SCI-235):** Extract collaborators from the 18 classes that exceeded the 400-line class limit and drop their `phpmd.baseline.xml` rows. Linear team lookups no longer print their verbose fallback messages. Verbosity levels live on the output gate, submit label planning takes the label resolver directly, and `FileSystem` builds its path policy from the one operator it is given.
+
 ## [5.0.1] - 2026-11-05
 
 ### Fixed

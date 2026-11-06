@@ -4,68 +4,28 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use App\Config\HttpClientDefaults;
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackConversation;
 use App\DTO\PullRequestFeedbackIds;
-use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
-use Symfony\Component\HttpClient\HttpClient;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
-use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class GithubGitHostingAdapter implements GitHostingPort
 {
     private const COMMENTS_PAGE_SIZE = 50;
     private const COMMENTS_MAX_PAGES = 1;
+    private const COMMENTS_LIMIT = self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES;
     private const PROVIDER_GITHUB = 'github';
-    private const UNKNOWN_GRAPHQL_ERROR = 'Unknown GraphQL error';
+
+    private readonly string $owner;
+    private readonly string $repo;
 
     public function __construct(
-        private readonly string $token,
-        private readonly string $owner,
-        private readonly string $repo,
-        private ?HttpClientInterface $client = null,
+        private readonly GithubApiClient $apiClient,
+        private readonly GithubPullRequestCommentMapper $commentMapper = new GithubPullRequestCommentMapper(),
     ) {
-    }
-
-    /**
-     * Gets the HTTP client, creating it if it doesn't exist.
-     */
-    protected function getClient(): HttpClientInterface
-    {
-        if ($this->client === null) {
-            $this->client = HttpClient::createForBaseUri('https://api.github.com', HttpClientDefaults::withLimits([
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->token,
-                    'Accept' => 'application/vnd.github.v3+json',
-                    'Content-Type' => 'application/json',
-                ],
-            ]));
-        }
-
-        return $this->client;
-    }
-
-    /**
-     * Sends an API request and throws on non-2xx response.
-     *
-     * @param array<string, mixed> $options
-     * @throws ApiException When the response status is not 2xx
-     */
-    protected function apiRequest(string $method, string $apiUrl, string $errorMessage, array $options = []): ResponseInterface
-    {
-        $response = $this->getClient()->request($method, $apiUrl, $options);
-        if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
-            throw new ApiException(
-                $errorMessage,
-                $this->extractTechnicalDetails($response, $method, $apiUrl),
-                $response->getStatusCode()
-            );
-        }
-
-        return $response;
+        $this->owner = $apiClient->getOwner();
+        $this->repo = $apiClient->getRepo();
     }
 
     /**
@@ -82,7 +42,7 @@ class GithubGitHostingAdapter implements GitHostingPort
             'draft' => $prData->draft,
         ];
 
-        $createdPullRequest = $this->apiRequest('POST', $apiUrl, 'Failed to create pull request.', ['json' => $payload])->toArray();
+        $createdPullRequest = $this->apiClient->request('POST', $apiUrl, 'Failed to create pull request.', ['json' => $payload])->toArray();
         if ($prData->assignToAuthor) {
             try {
                 $this->assignPullRequestToAuthor($createdPullRequest);
@@ -103,7 +63,7 @@ class GithubGitHostingAdapter implements GitHostingPort
      */
     public function getAuthenticatedUser(): array
     {
-        return $this->apiRequest('GET', '/user', 'Failed to identify authenticated GitHub user.')->toArray();
+        return $this->apiClient->request('GET', '/user', 'Failed to identify authenticated GitHub user.')->toArray();
     }
 
     /**
@@ -123,7 +83,7 @@ class GithubGitHostingAdapter implements GitHostingPort
         }
 
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$number}/assignees";
-        $assignedUsers = $this->apiRequest(
+        $assignedUsers = $this->apiClient->request(
             'POST',
             $apiUrl,
             "Failed to assign pull request #{$number} to {$login}.",
@@ -156,13 +116,13 @@ class GithubGitHostingAdapter implements GitHostingPort
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/releases/latest";
 
-        return $this->apiRequest('GET', $apiUrl, 'Failed to get latest release.')->toArray();
+        return $this->apiClient->request('GET', $apiUrl, 'Failed to get latest release.')->toArray();
     }
 
     public function getChangelogContent(string $tag): string
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/contents/CHANGELOG.md?" . http_build_query(['ref' => $tag]);
-        $content = $this->apiRequest('GET', $apiUrl, 'Failed to get changelog content.')->toArray();
+        $content = $this->apiClient->request('GET', $apiUrl, 'Failed to get changelog content.')->toArray();
 
         // GitHub API returns base64 encoded content
         if (isset($content['content']) && isset($content['encoding']) && $content['encoding'] === 'base64') {
@@ -184,7 +144,7 @@ class GithubGitHostingAdapter implements GitHostingPort
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/labels";
 
-        return $this->apiRequest('GET', $apiUrl, 'Failed to get labels.')->toArray();
+        return $this->apiClient->request('GET', $apiUrl, 'Failed to get labels.')->toArray();
     }
 
     /**
@@ -198,7 +158,7 @@ class GithubGitHostingAdapter implements GitHostingPort
             $payload['description'] = $description;
         }
 
-        return $this->apiRequest('POST', $apiUrl, "Failed to create label '{$name}'.", ['json' => $payload])->toArray();
+        return $this->apiClient->request('POST', $apiUrl, "Failed to create label '{$name}'.", ['json' => $payload])->toArray();
     }
 
     /**
@@ -207,7 +167,7 @@ class GithubGitHostingAdapter implements GitHostingPort
     public function addLabelsToPullRequest(int $issueNumber, array $labels): void
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/labels";
-        $this->apiRequest('POST', $apiUrl, "Failed to add labels to pull request #{$issueNumber}.", ['json' => $labels]);
+        $this->apiClient->request('POST', $apiUrl, "Failed to add labels to pull request #{$issueNumber}.", ['json' => $labels]);
     }
 
     /**
@@ -235,7 +195,7 @@ class GithubGitHostingAdapter implements GitHostingPort
     protected function findPullRequestByBranchInternal(string $head, string $state): ?array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls?" . http_build_query(['head' => $head, 'state' => $state]);
-        $pulls = $this->apiRequest('GET', $apiUrl, 'Failed to find pull request by branch.')->toArray();
+        $pulls = $this->apiClient->request('GET', $apiUrl, 'Failed to find pull request by branch.')->toArray();
 
         return ! empty($pulls) ? $pulls[0] : null;
     }
@@ -279,40 +239,8 @@ class GithubGitHostingAdapter implements GitHostingPort
     protected function getAllPullRequestsByState(string $state): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls?" . http_build_query(['state' => $state, 'per_page' => 100]);
-        $allPrs = [];
-        $page = 1;
 
-        while (true) {
-            $pageUrl = $apiUrl . '&page=' . $page;
-            $response = $this->apiRequest('GET', $pageUrl, 'Failed to get all pull requests.');
-            $prs = $response->toArray();
-            $allPrs = array_merge($allPrs, $prs);
-
-            if (empty($prs) || ! $this->hasNextPage($response)) {
-                break;
-            }
-
-            ++$page;
-        }
-
-        return $allPrs;
-    }
-
-    /**
-     * Checks if there is a next page based on the Link header.
-     */
-    protected function hasNextPage(ResponseInterface $response): bool
-    {
-        $headers = $response->getHeaders();
-        if (! isset($headers['link']) || empty($headers['link'])) {
-            return false;
-        }
-
-        /** @var string|string[] $linkHeaderValue */
-        $linkHeaderValue = $headers['link'];
-        $linkHeader = is_array($linkHeaderValue) ? $linkHeaderValue[0] : $linkHeaderValue;
-
-        return str_contains($linkHeader, 'rel="next"');
+        return $this->apiClient->getAllPages($apiUrl, 'Failed to get all pull requests.');
     }
 
     /**
@@ -322,7 +250,7 @@ class GithubGitHostingAdapter implements GitHostingPort
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}";
 
-        return $this->apiRequest('PATCH', $apiUrl, "Failed to update pull request #{$pullNumber}.", [
+        return $this->apiClient->request('PATCH', $apiUrl, "Failed to update pull request #{$pullNumber}.", [
             'json' => ['draft' => $draft],
         ])->toArray();
     }
@@ -334,7 +262,7 @@ class GithubGitHostingAdapter implements GitHostingPort
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/comments";
 
-        return $this->apiRequest('POST', $apiUrl, "Failed to create comment on issue #{$issueNumber}.", [
+        return $this->apiClient->request('POST', $apiUrl, "Failed to create comment on issue #{$issueNumber}.", [
             'json' => ['body' => $body],
         ])->toArray();
     }
@@ -346,7 +274,7 @@ class GithubGitHostingAdapter implements GitHostingPort
     {
         $threadId = $this->githubThreadId($targetIds, 'reply');
 
-        return $this->graphqlRequest(
+        return $this->apiClient->graphql(
             'mutation ReplyToReviewThread($threadId: ID!, $body: String!) {
   addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadId, body: $body }) {
     comment { id databaseId body createdAt }
@@ -364,7 +292,7 @@ class GithubGitHostingAdapter implements GitHostingPort
     {
         $threadId = $this->githubThreadId($targetIds, 'resolve');
 
-        return $this->graphqlRequest(
+        return $this->apiClient->graphql(
             'mutation ResolveReviewThread($threadId: ID!) {
   resolveReviewThread(input: { threadId: $threadId }) {
     thread { id isResolved }
@@ -387,7 +315,7 @@ class GithubGitHostingAdapter implements GitHostingPort
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}";
 
-        return $this->apiRequest('PATCH', $apiUrl, "Failed to update pull request head for PR #{$pullNumber}.", [
+        return $this->apiClient->request('PATCH', $apiUrl, "Failed to update pull request head for PR #{$pullNumber}.", [
             'json' => ['head' => $newHead],
         ])->toArray();
     }
@@ -400,13 +328,9 @@ class GithubGitHostingAdapter implements GitHostingPort
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/comments?"
             . http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE, 'sort' => 'created', 'direction' => 'desc']);
 
-        $data = $this->apiRequest('GET', $apiUrl, "Failed to get comments for issue #{$issueNumber}.")->toArray();
-        $comments = [];
-        foreach (array_slice($data, 0, self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) as $row) {
-            $comments[] = $this->mapCommentToDto($row);
-        }
+        $data = $this->apiClient->request('GET', $apiUrl, "Failed to get comments for issue #{$issueNumber}.")->toArray();
 
-        return array_reverse($comments);
+        return $this->commentMapper->mapComments($data, self::COMMENTS_LIMIT);
     }
 
     /**
@@ -417,13 +341,9 @@ class GithubGitHostingAdapter implements GitHostingPort
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}/comments?"
             . http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
 
-        $data = $this->apiRequest('GET', $apiUrl, "Failed to get review comments for pull request #{$pullNumber}.")->toArray();
-        $comments = [];
-        foreach (array_slice($data, 0, self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) as $row) {
-            $comments[] = $this->mapCommentToDto($row);
-        }
+        $data = $this->apiClient->request('GET', $apiUrl, "Failed to get review comments for pull request #{$pullNumber}.")->toArray();
 
-        return array_reverse($comments);
+        return $this->commentMapper->mapComments($data, self::COMMENTS_LIMIT);
     }
 
     /**
@@ -434,51 +354,9 @@ class GithubGitHostingAdapter implements GitHostingPort
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}/reviews?"
             . http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
 
-        $data = $this->apiRequest('GET', $apiUrl, "Failed to get reviews for pull request #{$pullNumber}.")->toArray();
-        $reviews = [];
-        $cap = self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES;
-        foreach ($data as $row) {
-            $dto = $this->mapReviewToDto($row);
-            if ($dto !== null) {
-                $reviews[] = $dto;
-                if (count($reviews) >= $cap) {
-                    break;
-                }
-            }
-        }
+        $data = $this->apiClient->request('GET', $apiUrl, "Failed to get reviews for pull request #{$pullNumber}.")->toArray();
 
-        return array_reverse($reviews);
-    }
-
-    /**
-     * @param array<string, mixed> $row
-     */
-    protected function mapReviewToDto(array $row): ?PullRequestComment
-    {
-        $body = isset($row['body']) ? trim((string) $row['body']) : '';
-        if ($body === '') {
-            return null;
-        }
-        $user = $row['user'] ?? [];
-        $author = is_array($user) && isset($user['login']) ? (string) $user['login'] : 'unknown';
-        $date = new \DateTimeImmutable((string) ($row['submitted_at'] ?? $row['created_at'] ?? 'now'));
-
-        return new PullRequestComment($author, $date, $body, null, null);
-    }
-
-    /**
-     * @param array<string, mixed> $row
-     */
-    protected function mapCommentToDto(array $row): PullRequestComment
-    {
-        $user = $row['user'] ?? [];
-        $author = is_array($user) && isset($user['login']) ? (string) $user['login'] : 'unknown';
-        $createdAt = isset($row['created_at']) ? new \DateTimeImmutable((string) $row['created_at']) : new \DateTimeImmutable();
-        $body = isset($row['body']) ? (string) $row['body'] : '';
-        $path = isset($row['path']) ? (string) $row['path'] : null;
-        $line = isset($row['line']) ? (int) $row['line'] : null;
-
-        return new PullRequestComment($author, $createdAt, $body, $path, $line);
+        return $this->commentMapper->mapReviews($data, self::COMMENTS_LIMIT);
     }
 
     /**
@@ -489,27 +367,8 @@ class GithubGitHostingAdapter implements GitHostingPort
         return (new GithubConversationProvider(
             $this->owner,
             $this->repo,
-            \Closure::fromCallable([$this, 'apiRequest'])
+            \Closure::fromCallable([$this->apiClient, 'request'])
         ))->getPullRequestFeedbackConversations($pullNumber);
-    }
-
-    /**
-     * @param array<string, mixed> $variables
-     * @return array<string, mixed>
-     */
-    protected function graphqlRequest(string $query, array $variables, string $errorMessage): array
-    {
-        $payload = $this->apiRequest('POST', '/graphql', $errorMessage, [
-            'json' => ['query' => $query, 'variables' => $variables],
-        ])->toArray(false);
-
-        if (isset($payload['errors']) && is_array($payload['errors']) && $payload['errors'] !== []) {
-            $message = isset($payload['errors'][0]['message']) ? (string) $payload['errors'][0]['message'] : self::UNKNOWN_GRAPHQL_ERROR;
-
-            throw new \RuntimeException($errorMessage . ' ' . $message);
-        }
-
-        return $payload;
     }
 
     protected function githubThreadId(PullRequestFeedbackIds $targetIds, string $action): string
@@ -519,38 +378,5 @@ class GithubGitHostingAdapter implements GitHostingPort
         }
 
         return $targetIds->threadId;
-    }
-
-    /**
-     * Extracts technical details from an HTTP response for error reporting.
-     * Truncates response body to 500 characters to avoid overwhelming output.
-     */
-    protected function extractTechnicalDetails(ResponseInterface $response, string $method, string $apiUrl): string
-    {
-        $statusCode = $response->getStatusCode();
-        $fullUrl = "https://api.github.com{$apiUrl}";
-        $responseBody = 'No response body';
-
-        try {
-            $content = $response->getContent(false);
-            if (! empty($content)) {
-                $responseBody = mb_strlen($content) > 500
-                    ? mb_substr($content, 0, 500) . '... (truncated)'
-                    : $content;
-            }
-        } catch (\Exception $e) {
-            $responseBody = 'Unable to read response body: ' . $e->getMessage();
-        }
-
-        return sprintf(
-            "GitHub API Error (Status: %d) when calling '%s %s'.\nOwner: %s\nRepo: %s\nFull URL: %s\nResponse: %s",
-            $statusCode,
-            $method,
-            $apiUrl,
-            $this->owner,
-            $this->repo,
-            $fullUrl,
-            $responseBody
-        );
     }
 }

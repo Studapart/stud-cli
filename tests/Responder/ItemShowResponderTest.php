@@ -96,7 +96,7 @@ class ItemShowResponderTest extends CommandTestCase
         $responder = new ItemShowResponder(
             new ResponderHelper($this->translationService),
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
-            new \App\Service\Logger($io, []),
+            new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)),
             null,
         );
         $issue = new WorkItem(
@@ -430,7 +430,7 @@ class ItemShowResponderTest extends CommandTestCase
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
-            new \App\Service\Logger($io, []),
+            new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)),
             null,
         );
 
@@ -461,7 +461,7 @@ class ItemShowResponderTest extends CommandTestCase
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
-            new \App\Service\Logger($io, []),
+            new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)),
             null,
         );
 

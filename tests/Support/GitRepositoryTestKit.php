@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Service\FileSystem;
+use App\Service\GitCommandRunner;
 use App\Service\GitProjectConfigService;
 use App\Service\GitRebaseAutosquashService;
 use App\Service\GitRemoteUrlParser;
@@ -19,6 +20,6 @@ final class GitRepositoryTestKit
         $projectConfigService = new GitProjectConfigService($processFactory, $fileSystem, $remoteUrlParser);
         $rebaseAutosquashService = new GitRebaseAutosquashService($processFactory, $fileSystem);
 
-        return new GitRepository($processFactory, $projectConfigService, $remoteUrlParser, $rebaseAutosquashService);
+        return new GitRepository(new GitCommandRunner($processFactory), $projectConfigService, $remoteUrlParser, $rebaseAutosquashService);
     }
 }

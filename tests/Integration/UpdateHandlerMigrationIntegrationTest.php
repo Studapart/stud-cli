@@ -165,7 +165,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
         // Create handler with real filesystem
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         // Create test migration instance
         $testMigration = $this->createTestMigration($migrationId, $logger, $this->translationService, true);
@@ -260,7 +260,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         $testMigration1 = $this->createTestMigration($migrationId1, $logger, $this->translationService, true);
         $testMigration2 = $this->createTestMigration($migrationId2, $logger, $this->translationService, true);
@@ -348,7 +348,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
     {
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         // Create handler that can discover migrations
         $testHandler = new class (
@@ -416,7 +416,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         // Create test migration
         $testMigration = $this->createTestMigration($migrationId, $logger, $this->translationService, true);
@@ -496,7 +496,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
     {
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         // Create handler that will cause an error in loadConfigAndVersion
         // by using a filesystem that throws exceptions

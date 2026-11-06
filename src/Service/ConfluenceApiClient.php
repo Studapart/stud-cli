@@ -14,7 +14,9 @@ class ConfluenceApiClient
     private const API_PREFIX = 'api/v2';
 
     public function __construct(
-        private readonly HttpClientInterface $client
+        private readonly HttpClientInterface $client,
+        private readonly ConfluencePageMapper $pageMapper,
+        private readonly ConfluenceResponseGuard $responseGuard,
     ) {
     }
 
@@ -26,35 +28,9 @@ class ConfluenceApiClient
      */
     public function getSpaces(): array
     {
-        $list = [];
-        $url = self::API_PREFIX . '/spaces?limit=50';
+        $results = $this->fetchAllResults(self::API_PREFIX . '/spaces?limit=50', 'Failed to fetch Confluence spaces.');
 
-        do {
-            $response = $this->client->request('GET', $url);
-
-            if ($response->getStatusCode() !== 200) {
-                throw new ApiException(
-                    'Failed to fetch Confluence spaces.',
-                    $this->extractTechnicalDetails($response),
-                    $response->getStatusCode()
-                );
-            }
-
-            $data = $response->toArray();
-            $results = $data['results'] ?? [];
-
-            foreach ($results as $item) {
-                $list[] = [
-                    'id' => (string) ($item['id'] ?? ''),
-                    'key' => (string) ($item['key'] ?? ''),
-                    'name' => (string) ($item['name'] ?? ''),
-                ];
-            }
-
-            $url = $this->getNextPageUrl($response);
-        } while ($url !== null);
-
-        return $list;
+        return $this->mapSpaces($results);
     }
 
     /**
@@ -85,37 +61,9 @@ class ConfluenceApiClient
      */
     public function getDirectChildPages(string $parentPageId): array
     {
-        $list = [];
         $url = self::API_PREFIX . '/pages/' . $parentPageId . '/direct-children?limit=50';
 
-        do {
-            $response = $this->client->request('GET', $url);
-
-            if ($response->getStatusCode() !== 200) {
-                throw new ApiException(
-                    'Failed to fetch child pages.',
-                    $this->extractTechnicalDetails($response),
-                    $response->getStatusCode()
-                );
-            }
-
-            $data = $response->toArray();
-            $results = $data['results'] ?? [];
-            foreach ($results as $item) {
-                $type = (string) ($item['type'] ?? '');
-                if (strtolower($type) !== 'page') {
-                    continue;
-                }
-                $list[] = [
-                    'id' => (string) ($item['id'] ?? ''),
-                    'title' => (string) ($item['title'] ?? ''),
-                ];
-            }
-
-            $url = $this->getNextPageUrl($response);
-        } while ($url !== null);
-
-        return $list;
+        return $this->mapChildPages($this->fetchAllResults($url, 'Failed to fetch child pages.'));
     }
 
     /**
@@ -127,14 +75,7 @@ class ConfluenceApiClient
     public function getFolder(string $folderId): array
     {
         $response = $this->client->request('GET', self::API_PREFIX . '/folders/' . $folderId);
-
-        if ($response->getStatusCode() !== 200) {
-            throw new ApiException(
-                "Confluence folder \"{$folderId}\" not found.",
-                $this->extractTechnicalDetails($response),
-                $response->getStatusCode()
-            );
-        }
+        $this->responseGuard->assertStatus($response, "Confluence folder \"{$folderId}\" not found.", 200);
 
         $data = $response->toArray();
 
@@ -153,37 +94,9 @@ class ConfluenceApiClient
      */
     public function getDirectChildPagesOfFolder(string $folderId): array
     {
-        $list = [];
         $url = self::API_PREFIX . '/folders/' . $folderId . '/direct-children?limit=50';
 
-        do {
-            $response = $this->client->request('GET', $url);
-
-            if ($response->getStatusCode() !== 200) {
-                throw new ApiException(
-                    'Failed to fetch folder children.',
-                    $this->extractTechnicalDetails($response),
-                    $response->getStatusCode()
-                );
-            }
-
-            $data = $response->toArray();
-            $results = $data['results'] ?? [];
-            foreach ($results as $item) {
-                $type = (string) ($item['type'] ?? '');
-                if (strtolower($type) !== 'page') {
-                    continue;
-                }
-                $list[] = [
-                    'id' => (string) ($item['id'] ?? ''),
-                    'title' => (string) ($item['title'] ?? ''),
-                ];
-            }
-
-            $url = $this->getNextPageUrl($response);
-        } while ($url !== null);
-
-        return $list;
+        return $this->mapChildPages($this->fetchAllResults($url, 'Failed to fetch folder children.'));
     }
 
     /**
@@ -246,17 +159,8 @@ class ConfluenceApiClient
             return [];
         }
         $data = $response->toArray();
-        $results = $data['results'] ?? [];
-        $list = [];
-        foreach ($results as $item) {
-            $list[] = [
-                'id' => (string) ($item['id'] ?? ''),
-                'key' => (string) ($item['key'] ?? ''),
-                'name' => (string) ($item['name'] ?? ''),
-            ];
-        }
 
-        return $list;
+        return $this->mapSpaces($data['results'] ?? []);
     }
 
     /**
@@ -292,17 +196,9 @@ class ConfluenceApiClient
         $response = $this->client->request('POST', self::API_PREFIX . '/pages', [
             'json' => $body,
         ]);
+        $this->responseGuard->assertStatus($response, 'Could not create Confluence page.', 201, 200);
 
-        $status = $response->getStatusCode();
-        if ($status !== 201 && $status !== 200) {
-            throw new ApiException(
-                'Could not create Confluence page.',
-                $this->extractTechnicalDetails($response),
-                $status
-            );
-        }
-
-        return $this->mapPageResponse($response);
+        return $this->pageMapper->mapPage($response->toArray());
     }
 
     /**
@@ -313,26 +209,9 @@ class ConfluenceApiClient
     public function getPage(string $pageId): array
     {
         $response = $this->client->request('GET', self::API_PREFIX . '/pages/' . $pageId);
+        $this->responseGuard->assertStatus($response, "Confluence page \"{$pageId}\" not found.", 200);
 
-        if ($response->getStatusCode() !== 200) {
-            throw new ApiException(
-                "Confluence page \"{$pageId}\" not found.",
-                $this->extractTechnicalDetails($response),
-                $response->getStatusCode()
-            );
-        }
-
-        $data = $response->toArray();
-        $mapped = $this->mapPageResponseFromArray($data);
-        $mapped['version'] = [
-            'number' => (int) ($data['version']['number'] ?? 0),
-        ];
-        $mapped['spaceId'] = isset($data['spaceId']) ? (string) $data['spaceId'] : null;
-        if ($mapped['spaceId'] === null && isset($data['space']['id'])) {
-            $mapped['spaceId'] = (string) $data['space']['id'];
-        }
-
-        return $mapped;
+        return $this->pageMapper->mapPageWithVersion($response->toArray());
     }
 
     /**
@@ -345,70 +224,13 @@ class ConfluenceApiClient
     {
         $url = self::API_PREFIX . '/pages/' . $pageId . '?body-format=atlas_doc_format';
         $response = $this->client->request('GET', $url);
-
-        if ($response->getStatusCode() !== 200) {
-            throw new ApiException(
-                "Confluence page \"{$pageId}\" not found.",
-                $this->extractTechnicalDetails($response),
-                $response->getStatusCode()
-            );
-        }
+        $this->responseGuard->assertStatus($response, "Confluence page \"{$pageId}\" not found.", 200);
 
         $data = $response->toArray();
-        $mapped = $this->mapPageResponseFromArray($data);
-        $mapped['version'] = [
-            'number' => (int) ($data['version']['number'] ?? 0),
-        ];
-        $mapped['spaceId'] = isset($data['spaceId']) ? (string) $data['spaceId'] : null;
-        if ($mapped['spaceId'] === null && isset($data['space']['id'])) {
-            $mapped['spaceId'] = (string) $data['space']['id'];
-        }
-        $mapped['body'] = $this->extractBodyAdf($data);
+        $mapped = $this->pageMapper->mapPageWithVersion($data);
+        $mapped['body'] = $this->pageMapper->extractBodyAdf($data);
 
         return $mapped;
-    }
-
-    /**
-     * Extract ADF body from Confluence v2 page response (body.atlas_doc_format.value).
-     *
-     * @param array<string, mixed> $data
-     * @return array{type: string, content?: array<int, mixed>}
-     */
-    protected function extractBodyAdf(array $data): array
-    {
-        $body = $data['body'] ?? null;
-        if (! is_array($body)) {
-            return ['type' => 'doc', 'content' => []];
-        }
-        $adf = $body['atlas_doc_format'] ?? null;
-        if (! is_array($adf)) {
-            return ['type' => 'doc', 'content' => []];
-        }
-        $value = $adf['value'] ?? null;
-        if (is_string($value)) {
-            $decoded = json_decode($value, true);
-
-            return $this->normalizeBodyAdf($decoded);
-        }
-        if (is_array($value)) {
-            return $this->normalizeBodyAdf($value);
-        }
-
-        return ['type' => 'doc', 'content' => []];
-    }
-
-    /**
-     * @param mixed $adf
-     * @return array{type: string, content?: array<int, mixed>}
-     */
-    protected function normalizeBodyAdf(mixed $adf): array
-    {
-        if (! is_array($adf) || ! isset($adf['type'])) {
-            return ['type' => 'doc', 'content' => []];
-        }
-        $content = isset($adf['content']) && is_array($adf['content']) ? $adf['content'] : [];
-
-        return ['type' => (string) $adf['type'], 'content' => $content];
     }
 
     /**
@@ -471,16 +293,9 @@ class ConfluenceApiClient
                 ],
             ],
         ]);
+        $this->responseGuard->assertStatus($response, "Could not update Confluence page \"{$pageId}\".", 200);
 
-        if ($response->getStatusCode() !== 200) {
-            throw new ApiException(
-                "Could not update Confluence page \"{$pageId}\".",
-                $this->extractTechnicalDetails($response),
-                $response->getStatusCode()
-            );
-        }
-
-        return $this->mapPageResponse($response);
+        return $this->pageMapper->mapPage($response->toArray());
     }
 
     /**
@@ -504,56 +319,65 @@ class ConfluenceApiClient
             'rest/api/content/' . $pageId . '/label',
             ['json' => $body]
         );
-
-        if ($response->getStatusCode() !== 200 && $response->getStatusCode() !== 201) {
-            throw new ApiException(
-                'Could not add labels to Confluence page.',
-                $this->extractTechnicalDetails($response),
-                $response->getStatusCode()
-            );
-        }
+        $this->responseGuard->assertStatus($response, 'Could not add labels to Confluence page.', 200, 201);
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @return array{id: string, title: string, _links: array{webui: string}}
+     * GET every page of a paginated v2 collection (Link: next) and return the combined `results`.
+     *
+     * @return list<array<string, mixed>>
+     * @throws ApiException when any page request fails
      */
-    protected function mapPageResponseFromArray(array $data): array
+    private function fetchAllResults(string $url, string $errorMessage): array
     {
-        $links = $data['_links'] ?? [];
-        $webui = is_string($links['webui'] ?? null) ? $links['webui'] : '';
+        $results = [];
+        do {
+            $response = $this->client->request('GET', $url);
+            $this->responseGuard->assertStatus($response, $errorMessage, 200);
 
-        return [
-            'id' => (string) ($data['id'] ?? ''),
-            'title' => (string) ($data['title'] ?? ''),
-            '_links' => ['webui' => $webui],
-        ];
-    }
-
-    /**
-     * @return array{id: string, title: string, _links: array{webui: string}}
-     */
-    protected function mapPageResponse(ResponseInterface $response): array
-    {
-        return $this->mapPageResponseFromArray($response->toArray());
-    }
-
-    protected function extractTechnicalDetails(ResponseInterface $response): string
-    {
-        $statusCode = $response->getStatusCode();
-        $responseBody = 'No response body';
-
-        try {
-            $content = $response->getContent(false);
-            if ($content !== '') {
-                $responseBody = mb_strlen($content) > 500
-                    ? mb_substr($content, 0, 500) . '... (truncated)'
-                    : $content;
+            $data = $response->toArray();
+            foreach ($data['results'] ?? [] as $item) {
+                $results[] = $item;
             }
-        } catch (\Exception $e) {
-            $responseBody = 'Unable to read response body: ' . $e->getMessage();
+
+            $url = $this->getNextPageUrl($response);
+        } while ($url !== null);
+
+        return $results;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $results
+     * @return array<int, array{id: string, key: string, name: string}>
+     */
+    private function mapSpaces(array $results): array
+    {
+        return array_map(static fn (array $item): array => [
+            'id' => (string) ($item['id'] ?? ''),
+            'key' => (string) ($item['key'] ?? ''),
+            'name' => (string) ($item['name'] ?? ''),
+        ], array_values($results));
+    }
+
+    /**
+     * Keep only `page` children (folders, whiteboards, etc. are skipped).
+     *
+     * @param list<array<string, mixed>> $results
+     * @return array<int, array{id: string, title: string}>
+     */
+    private function mapChildPages(array $results): array
+    {
+        $pages = [];
+        foreach ($results as $item) {
+            if (strtolower((string) ($item['type'] ?? '')) !== 'page') {
+                continue;
+            }
+            $pages[] = [
+                'id' => (string) ($item['id'] ?? ''),
+                'title' => (string) ($item['title'] ?? ''),
+            ];
         }
 
-        return "HTTP {$statusCode}. {$responseBody}";
+        return $pages;
     }
 }

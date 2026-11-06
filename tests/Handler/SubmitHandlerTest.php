@@ -11,6 +11,8 @@ use App\Service\GithubGitHostingAdapter;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
+use App\Service\SubmitLabelPlanner;
+use App\Service\SubmitLabelResolver;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -966,7 +968,6 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithNoGitProviderConfigured(): void
     {
-        $logger = $this->createStub(\App\Service\Logger::class);
         $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
@@ -974,8 +975,7 @@ class SubmitHandlerTest extends CommandTestCase
             null, // No GithubGitHostingAdapter
             new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
             'origin/develop',
-            $this->translationService,
-            $logger
+            new SubmitLabelPlanner($this->gitRepository, null),
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -1192,103 +1192,6 @@ class SubmitHandlerTest extends CommandTestCase
         $this->assertSame(0, $response->exitCode);
     }
 
-    public function testValidateAndProcessLabelsAllValid(): void
-    {
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->bindSubject();
-
-        $remoteLabels = [
-            ['name' => 'bug'],
-            ['name' => 'enhancement'],
-        ];
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('getLabels')
-            ->willReturn($remoteLabels);
-
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->handler, 'bug,enhancement');
-
-        $this->assertSame(['bug', 'enhancement'], $result);
-    }
-
-    public function testValidateAndProcessLabelsEmptyInput(): void
-    {
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->handler, '');
-
-        $this->assertSame([], $result);
-    }
-
-    public function testValidateAndProcessLabelsNullInput(): void
-    {
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        // Test with whitespace-only input
-        $result = $method->invoke($this->handler, '  ,  ,  ');
-
-        $this->assertSame([], $result);
-    }
-
-    public function testValidateAndProcessLabelsRequiresGitProvider(): void
-    {
-        $handler = new SubmitHandler(
-            $this->gitRepository,
-            $this->issueTracker,
-            null,
-            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
-            'origin/develop',
-            $this->translationService,
-            $this->prompt
-        );
-
-        $reflection = new \ReflectionClass($handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $this->expectException(\App\Exception\StudConfigException::class);
-        $this->expectExceptionMessage('config.git_provider_not_configured');
-
-        $method->invoke($handler, 'bug');
-    }
-
-    public function testValidateAndProcessLabelsCaseInsensitive(): void
-    {
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->bindSubject();
-
-        $remoteLabels = [
-            ['name' => 'Bug'], // Note: capital B
-        ];
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('getLabels')
-            ->willReturn($remoteLabels);
-
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        // Request lowercase 'bug' but it should match 'Bug' from GitHub
-        $result = $method->invoke($this->handler, 'bug');
-
-        $this->assertSame(['Bug'], $result); // Should use the exact case from GitHub
-    }
-
     public function testHandleSuccessWithLabels(): void
     {
         $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
@@ -1470,211 +1373,6 @@ class SubmitHandlerTest extends CommandTestCase
         $this->assertSame(1, $response->exitCode);
     }
 
-    public function testValidateAndProcessLabelsCreateMissingLabel(): void
-    {
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->bindSubject();
-
-        $remoteLabels = [
-            ['name' => 'bug'],
-        ];
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('getLabels')
-            ->willReturn($remoteLabels);
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('createLabel')
-            ->with('new-label', $this->matchesRegularExpression('/^[0-9a-f]{6}$/i'), null)
-            ->willReturn(['name' => 'new-label']);
-
-        $this->prompt->method('choice')->willReturn('Create: Create the label on GitHub and add it to the PR');
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->handler, 'bug,new-label');
-
-        $this->assertCount(2, $result);
-        $this->assertContains('bug', $result);
-        $this->assertContains('new-label', $result);
-    }
-
-    public function testValidateAndProcessLabelsIgnoreMissingLabel(): void
-    {
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->bindSubject();
-
-        $remoteLabels = [
-            ['name' => 'bug'],
-        ];
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('getLabels')
-            ->willReturn($remoteLabels);
-
-        $this->githubProvider
-            ->expects($this->never())
-            ->method('createLabel');
-
-        $this->prompt->method('choice')->willReturn('Ignore: Skip this label and remove it from the final list');
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->handler, 'bug,typo');
-
-        $this->assertSame(['bug'], $result);
-    }
-
-    public function testValidateAndProcessLabelsRetryMissingLabel(): void
-    {
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->bindSubject();
-
-        $remoteLabels = [
-            ['name' => 'bug'],
-        ];
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('getLabels')
-            ->willReturn($remoteLabels);
-
-        $this->githubProvider
-            ->expects($this->never())
-            ->method('createLabel');
-
-        $this->prompt->method('choice')->willReturn('Retry: Abort the command and re-run with a corrected list');
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->handler, 'bug,typo');
-
-        $this->assertNull($result);
-    }
-
-    public function testValidateAndProcessLabelsQuietIgnoresUnknownLabels(): void
-    {
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->bindSubject();
-
-        $remoteLabels = [
-            ['name' => 'bug'],
-        ];
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('getLabels')
-            ->willReturn($remoteLabels);
-
-
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->handler, 'bug,unknown-label', true);
-
-        $this->assertSame(['bug'], $result);
-    }
-
-    public function testValidateAndProcessLabelsCreateLabelFails(): void
-    {
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->bindSubject();
-
-        $remoteLabels = [
-            ['name' => 'bug'],
-        ];
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('getLabels')
-            ->willReturn($remoteLabels);
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('createLabel')
-            ->willThrowException(new \Exception('API Error'));
-
-        $this->prompt->method('choice')->willReturn('Create: Create the label on GitHub and add it to the PR');
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->handler, 'bug,new-label');
-
-        $this->assertNull($result);
-    }
-
-    public function testValidateAndProcessLabelsCreateLabelFailsApiException(): void
-    {
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->bindSubject();
-
-        $remoteLabels = [
-            ['name' => 'bug'],
-        ];
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('getLabels')
-            ->willReturn($remoteLabels);
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('createLabel')
-            ->willThrowException(new \App\Exception\ApiException("Failed to create label 'new-label'.", 'HTTP 422: Validation Failed', 422));
-
-        $this->prompt->method('choice')->willReturn('Create: Create the label on GitHub and add it to the PR');
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->handler, 'bug,new-label');
-
-        $this->assertNull($result);
-    }
-
-    public function testValidateAndProcessLabelsIgnoreWithVerbose(): void
-    {
-        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
-        $this->bindSubject();
-
-        $remoteLabels = [
-            ['name' => 'bug'],
-        ];
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('getLabels')
-            ->willReturn($remoteLabels);
-
-        $output = new BufferedOutput();
-        $io = $this->createStub(SymfonyStyle::class);
-
-
-
-
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('validateAndProcessLabels');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->handler, 'bug,typo');
-
-        $this->assertSame(['bug'], $result);
-    }
-
     public function testHandleWithLabelsAddLabelsError(): void
     {
         $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
@@ -1740,7 +1438,6 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithLabelsNoProvider(): void
     {
-        $logger = $this->createStub(\App\Service\Logger::class);
         $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
@@ -1748,8 +1445,7 @@ class SubmitHandlerTest extends CommandTestCase
             null, // No GithubGitHostingAdapter
             new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
             'origin/develop',
-            $this->translationService,
-            $logger
+            new SubmitLabelPlanner($this->gitRepository, null),
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -2323,7 +2019,6 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRNoProvider(): void
     {
-        $logger = $this->createStub(\App\Service\Logger::class);
         $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
@@ -2331,8 +2026,7 @@ class SubmitHandlerTest extends CommandTestCase
             null, // No GithubGitHostingAdapter
             new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
             'origin/develop',
-            $this->translationService,
-            $logger
+            new SubmitLabelPlanner($this->gitRepository, null),
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -2442,8 +2136,7 @@ class SubmitHandlerTest extends CommandTestCase
             null,
             new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
             'origin/develop',
-            $this->translationService,
-            $this->prompt
+            new SubmitLabelPlanner($this->gitRepository, null),
         );
 
 
@@ -2773,8 +2466,10 @@ class SubmitHandlerTest extends CommandTestCase
             $this->githubProvider,
             new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
             'origin/develop',
-            $this->translationService,
-            $this->prompt
+            new SubmitLabelPlanner(
+                $this->gitRepository,
+                $this->githubProvider !== null ? new SubmitLabelResolver($this->githubProvider, $this->prompt) : null,
+            ),
         );
     }
 }

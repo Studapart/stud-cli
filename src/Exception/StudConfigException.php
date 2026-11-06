@@ -54,11 +54,6 @@ final class StudConfigException extends \RuntimeException
         return new self(MessageRef::key('config.git_token_required'));
     }
 
-    public static function gitProviderNotConfigured(): self
-    {
-        return new self(MessageRef::key('config.git_provider_not_configured'));
-    }
-
     public static function invalidJiraBaseUrl(): self
     {
         return new self(MessageRef::key('issue_tracker_provider.invalid_jira_base_url'));

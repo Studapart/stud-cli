@@ -2,8 +2,10 @@
 
 namespace App\Tests\Service;
 
+use App\DTO\GitLabProject;
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackIds;
+use App\Service\GitLabApiClient;
 use App\Service\GitLabGitHostingAdapter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -788,28 +790,6 @@ class GitLabGitHostingAdapterTest extends TestCase
         $this->assertSame('ff0000', $result);
     }
 
-    public function testMapStateToGitLab(): void
-    {
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('mapStateToGitLab');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $this->assertSame('opened', $method->invoke($this->gitlabProvider, 'open'));
-        $this->assertSame('closed', $method->invoke($this->gitlabProvider, 'closed'));
-        $this->assertSame('all', $method->invoke($this->gitlabProvider, 'all'));
-    }
-
-    public function testMapStateFromGitLab(): void
-    {
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('mapStateFromGitLab');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $this->assertSame('open', $method->invoke($this->gitlabProvider, 'opened'));
-        $this->assertSame('closed', $method->invoke($this->gitlabProvider, 'closed'));
-        $this->assertSame('closed', $method->invoke($this->gitlabProvider, 'merged'));
-    }
-
     public function testFindPullRequestByBranchWithStateClosed(): void
     {
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
@@ -1573,188 +1553,12 @@ class GitLabGitHostingAdapterTest extends TestCase
         $this->assertSame([], $result);
     }
 
-    public function testHasNextPageWithXTotalPagesHeader(): void
-    {
-        $responseMock = $this->createStub(ResponseInterface::class);
-        $responseMock->method('getHeaders')->willReturn(['x-total-pages' => ['2']]);
-
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('hasNextPage');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->gitlabProvider, $responseMock, 1);
-
-        $this->assertTrue($result);
-    }
-
-    public function testHasNextPageWithXNextPageHeader(): void
-    {
-        $responseMock = $this->createStub(ResponseInterface::class);
-        $responseMock->method('getHeaders')->willReturn(['x-next-page' => ['2']]);
-
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('hasNextPage');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->gitlabProvider, $responseMock, 1);
-
-        $this->assertTrue($result);
-    }
-
-    public function testHasNextPageReturnsFalseWhenNoNextPage(): void
-    {
-        $responseMock = $this->createStub(ResponseInterface::class);
-        $responseMock->method('getHeaders')->willReturn(['x-total-pages' => ['1']]);
-
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('hasNextPage');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->gitlabProvider, $responseMock, 1);
-
-        $this->assertFalse($result);
-    }
-
-    public function testHasNextPageReturnsFalseWhenNoHeaders(): void
-    {
-        $responseMock = $this->createStub(ResponseInterface::class);
-        $responseMock->method('getHeaders')->willReturn([]);
-
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('hasNextPage');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->gitlabProvider, $responseMock, 1);
-
-        $this->assertFalse($result);
-    }
-
-    public function testNormalizeMergeRequestData(): void
-    {
-        $gitlabMr = [
-            'iid' => 123,
-            'id' => 456,
-            'title' => 'Test MR',
-            'source_branch' => 'feature/test',
-            'target_branch' => 'develop',
-            'work_in_progress' => true,
-            'state' => 'opened',
-            'description' => 'Test description',
-            'web_url' => 'https://gitlab.com/test_owner/test_repo/-/merge_requests/123',
-        ];
-
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('normalizeMergeRequestData');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->gitlabProvider, $gitlabMr);
-
-        $this->assertSame(123, $result['number']);
-        $this->assertSame('Test MR', $result['title']);
-        $this->assertSame('feature/test', $result['head']['ref']);
-        $this->assertSame('develop', $result['base']['ref']);
-        $this->assertTrue($result['draft']);
-        $this->assertSame('open', $result['state']);
-        $this->assertSame('Test description', $result['body']);
-        $this->assertSame('https://gitlab.com/test_owner/test_repo/-/merge_requests/123', $result['html_url']);
-        $this->assertArrayHasKey('_gitlab_data', $result);
-    }
-
-    public function testExtractTechnicalDetails(): void
-    {
-        $responseMock = $this->createMock(ResponseInterface::class);
-        $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Error message');
-
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('extractTechnicalDetails');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->gitlabProvider, $responseMock, 'GET', '/test/endpoint');
-
-        $this->assertStringContainsString('GitLab API Error', $result);
-        $this->assertStringContainsString('Status: 404', $result);
-        $this->assertStringContainsString('GET', $result);
-        $this->assertStringContainsString('/test/endpoint', $result);
-        $this->assertStringContainsString('Error message', $result);
-    }
-
-    public function testExtractTechnicalDetailsWithTruncatedResponse(): void
-    {
-        $longResponse = str_repeat('A', 600);
-
-        $responseMock = $this->createMock(ResponseInterface::class);
-        $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn($longResponse);
-
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('extractTechnicalDetails');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->gitlabProvider, $responseMock, 'GET', '/test/endpoint');
-
-        $this->assertStringContainsString('... (truncated)', $result);
-    }
-
-    public function testExtractTechnicalDetailsWithException(): void
-    {
-        $responseMock = $this->createMock(ResponseInterface::class);
-        $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->expects($this->once())->method('getContent')->with(false)->willThrowException(new \Exception('Connection timeout'));
-
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('extractTechnicalDetails');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->gitlabProvider, $responseMock, 'GET', '/test/endpoint');
-
-        $this->assertStringContainsString('Unable to read response body: Connection timeout', $result);
-    }
-
-    public function testExtractTechnicalDetailsWithEmptyResponse(): void
-    {
-        $responseMock = $this->createMock(ResponseInterface::class);
-        $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('');
-
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('extractTechnicalDetails');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->gitlabProvider, $responseMock, 'GET', '/test/endpoint');
-
-        $this->assertStringContainsString('No response body', $result);
-    }
-
-    public function testExtractTechnicalDetailsIncludesOwnerRepoAndProjectPath(): void
-    {
-        $responseMock = $this->createMock(ResponseInterface::class);
-        $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not Found');
-
-        $reflection = new \ReflectionClass($this->gitlabProvider);
-        $method = $reflection->getMethod('extractTechnicalDetails');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->gitlabProvider, $responseMock, 'POST', '/projects/test_owner%2Ftest_repo/merge_requests');
-
-        $this->assertStringContainsString('Owner: test_owner', $result);
-        $this->assertStringContainsString('Repo: test_repo', $result);
-        $this->assertStringContainsString('Project Path: test_owner%2Ftest_repo', $result);
-    }
-
     public function testCreatePullRequestWithNestedGroupPath(): void
     {
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
         $this->bindSubject();
 
-        $nestedGroupProvider = new GitLabGitHostingAdapter(
-            self::GITLAB_TOKEN,
-            'group/subgroup',
-            'test_repo',
-            null,
-            $this->httpClientMock
-        );
+        $nestedGroupProvider = $this->createProvider('group/subgroup');
 
         $title = 'Test MR';
         $head = 'feature/test';
@@ -1805,13 +1609,7 @@ class GitLabGitHostingAdapterTest extends TestCase
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
         $this->bindSubject();
 
-        $deeplyNestedProvider = new GitLabGitHostingAdapter(
-            self::GITLAB_TOKEN,
-            'group/subgroup/subsubgroup',
-            'test_repo',
-            null,
-            $this->httpClientMock
-        );
+        $deeplyNestedProvider = $this->createProvider('group/subgroup/subsubgroup');
 
         $title = 'Test MR';
         $head = 'feature/test';
@@ -1847,40 +1645,17 @@ class GitLabGitHostingAdapterTest extends TestCase
         $this->assertSame(1, $result['number']);
     }
 
-    public function testGetClientCreatesClientWhenNotProvided(): void
-    {
-        // Create provider without passing a client
-        $provider = new GitLabGitHostingAdapter(
-            self::GITLAB_TOKEN,
-            self::GITLAB_OWNER,
-            self::GITLAB_REPO,
-            null,
-            null
-        );
-
-        // Use reflection to access protected getClient method
-        $reflection = new \ReflectionClass($provider);
-        $method = $reflection->getMethod('getClient');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $client = $method->invoke($provider);
-
-        // Verify client is created
-        $this->assertInstanceOf(HttpClientInterface::class, $client);
-
-        // Verify calling getClient again returns the same instance
-        $client2 = $method->invoke($provider);
-        $this->assertSame($client, $client2);
-    }
-
     private function bindSubject(): void
     {
-        $this->gitlabProvider = new GitLabGitHostingAdapter(
+        $this->gitlabProvider = $this->createProvider(self::GITLAB_OWNER);
+    }
+
+    private function createProvider(string $owner): GitLabGitHostingAdapter
+    {
+        return new GitLabGitHostingAdapter(new GitLabApiClient(
             self::GITLAB_TOKEN,
-            self::GITLAB_OWNER,
-            self::GITLAB_REPO,
-            null, // Use default gitlab.com
+            new GitLabProject($owner, self::GITLAB_REPO),
             $this->httpClientMock
-        );
+        ));
     }
 }

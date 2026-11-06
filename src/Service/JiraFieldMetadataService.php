@@ -15,6 +15,31 @@ class JiraFieldMetadataService
     }
 
     /**
+     * @return array<int, array{id: string, name: string}>
+     */
+    public function getCreateMetaIssueTypes(string $projectIdOrKey): array
+    {
+        $url = "/rest/api/3/issue/createmeta/{$projectIdOrKey}/issuetypes";
+        $response = $this->client->request('GET', $url);
+
+        if ($response->getStatusCode() !== 200) {
+            throw new ApiException(
+                "Could not fetch create metadata for project \"{$projectIdOrKey}\".",
+                $this->extractTechnicalDetails($response),
+                $response->getStatusCode()
+            );
+        }
+
+        $data = $response->toArray();
+        $values = $data['values'] ?? $data['issueTypes'] ?? [];
+
+        return array_map(static fn (array $item): array => [
+            'id' => (string) ($item['id'] ?? ''),
+            'name' => (string) ($item['name'] ?? ''),
+        ], $values);
+    }
+
+    /**
      * @return array<string, array{required: bool, name: string}>
      */
     public function getCreateMetaFields(string $projectIdOrKey, string $issueTypeId): array

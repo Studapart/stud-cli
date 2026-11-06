@@ -4,6 +4,7 @@ namespace App\Tests\Service;
 
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackIds;
+use App\Service\GithubApiClient;
 use App\Service\GithubGitHostingAdapter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -1502,40 +1503,6 @@ class GithubGitHostingAdapterTest extends TestCase
         $this->assertSame([], $result);
     }
 
-    public function testHasNextPageWithNonArrayLinkHeader(): void
-    {
-        // Test hasNextPage when link header is a string, not an array
-        $responseMock = $this->createStub(ResponseInterface::class);
-        $responseMock->method('getHeaders')->willReturn([
-            'link' => '<https://api.github.com/repos/test_owner/test_repo/pulls?state=open&per_page=100&page=2>; rel="next"',
-        ]);
-
-        $reflection = new \ReflectionClass($this->githubProvider);
-        $method = $reflection->getMethod('hasNextPage');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->githubProvider, $responseMock);
-
-        $this->assertTrue($result);
-    }
-
-    public function testHasNextPageWithEmptyLinkArray(): void
-    {
-        // Test hasNextPage when link header exists but is empty array
-        $responseMock = $this->createStub(ResponseInterface::class);
-        $responseMock->method('getHeaders')->willReturn([
-            'link' => [],
-        ]);
-
-        $reflection = new \ReflectionClass($this->githubProvider);
-        $method = $reflection->getMethod('hasNextPage');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->githubProvider, $responseMock);
-
-        $this->assertFalse($result);
-    }
-
     public function testGetPullRequestCommentsSuccess(): void
     {
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
@@ -1958,48 +1925,6 @@ class GithubGitHostingAdapterTest extends TestCase
         $this->assertNull($result[0]->line);
     }
 
-    public function testGetClientCreatesClientWhenNotProvided(): void
-    {
-        // Create provider without passing a client
-        $provider = new GithubGitHostingAdapter(
-            self::GITHUB_TOKEN,
-            self::GITHUB_OWNER,
-            self::GITHUB_REPO,
-            null
-        );
-
-        // Use reflection to access protected getClient method
-        $reflection = new \ReflectionClass($provider);
-        $method = $reflection->getMethod('getClient');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $client = $method->invoke($provider);
-
-        // Verify client is created
-        $this->assertInstanceOf(HttpClientInterface::class, $client);
-
-        // Verify calling getClient again returns the same instance
-        $client2 = $method->invoke($provider);
-        $this->assertSame($client, $client2);
-    }
-
-    public function testExtractTechnicalDetailsIncludesOwnerRepo(): void
-    {
-        $responseMock = $this->createMock(ResponseInterface::class);
-        $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('Not Found');
-
-        $reflection = new \ReflectionClass($this->githubProvider);
-        $method = $reflection->getMethod('extractTechnicalDetails');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->githubProvider, $responseMock, 'POST', '/repos/test_owner/test_repo/pulls');
-
-        $this->assertStringContainsString('Owner: test_owner', $result);
-        $this->assertStringContainsString('Repo: test_repo', $result);
-        $this->assertStringContainsString('Full URL: https://api.github.com/repos/test_owner/test_repo/pulls', $result);
-    }
-
     /**
      * @param array<int, array<string, mixed>> $nodes
      */
@@ -2025,11 +1950,11 @@ class GithubGitHostingAdapterTest extends TestCase
 
     private function bindSubject(): void
     {
-        $this->githubProvider = new GithubGitHostingAdapter(
+        $this->githubProvider = new GithubGitHostingAdapter(new GithubApiClient(
             self::GITHUB_TOKEN,
             self::GITHUB_OWNER,
             self::GITHUB_REPO,
-            $this->httpClientMock // Inject the mock client
-        );
+            $this->httpClientMock
+        ));
     }
 }

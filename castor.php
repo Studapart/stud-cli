@@ -461,7 +461,12 @@ function _get_linear_api_client(): ?\App\Service\LinearApiClient
         return null;
     }
 
-    return new \App\Service\LinearApiClient($graphqlClient, _get_logger());
+    return new \App\Service\LinearApiClient(
+        new \App\Service\Linear\LinearTeamMetadataClient($graphqlClient),
+        new \App\Service\Linear\LinearWorkspaceClient($graphqlClient),
+        new \App\Service\Linear\LinearIssueQueryClient($graphqlClient),
+        new \App\Service\Linear\LinearMutationClient($graphqlClient),
+    );
 }
 
 function _get_linear_type_label_resolver(): \App\Service\LinearTypeLabelResolver
@@ -573,7 +578,7 @@ function _get_confluence_api_client(?string $urlOverride = null): ConfluenceApiC
         ],
     ]));
 
-    return new ConfluenceApiClient($client);
+    return new ConfluenceApiClient($client, new \App\Service\ConfluencePageMapper(), new \App\Service\ConfluenceResponseGuard());
 }
 
 function _get_wiki_port(?string $urlOverride = null): WikiPort
@@ -611,7 +616,7 @@ function _get_git_repository(): GitRepository
     $projectConfigService = new GitProjectConfigService($processFactory, $fileSystem, $remoteUrlParser);
     $rebaseAutosquashService = new GitRebaseAutosquashService($processFactory, $fileSystem);
 
-    return new GitRepository($processFactory, $projectConfigService, $remoteUrlParser, $rebaseAutosquashService);
+    return new GitRepository(new \App\Service\GitCommandRunner($processFactory), $projectConfigService, $remoteUrlParser, $rebaseAutosquashService);
 }
 
 function _get_git_branch_service(): GitBranchService
@@ -620,7 +625,9 @@ function _get_git_branch_service(): GitBranchService
         return \App\Tests\TestKernel::$gitBranchService;
     }
 
-    return new GitBranchService(_get_git_repository());
+    $gitRepository = _get_git_repository();
+
+    return new GitBranchService($gitRepository, new \App\Service\GitBaseBranchResolver($gitRepository));
 }
 
 function _get_branch_deletion_eligibility_resolver(): BranchDeletionEligibilityResolver
@@ -668,7 +675,7 @@ function _get_item_create_handler(?string $providerOverride = null): ItemCreateH
         _get_issue_field_resolver(),
         _get_fields_parser(),
         $prompt,
-        $workItemLabels,
+        new \App\Service\ItemCreateFieldsOptionApplier(_get_fields_parser(), $workItemLabels),
     );
 }
 
@@ -690,7 +697,6 @@ function _get_branch_rename_handler(?string $providerOverride = null): BranchRen
             _get_git_hosting(),
             _get_jira_config(),
             _get_base_branch(),
-            _get_translation_service(),
             $prompt,
             _get_html_converter(),
         ),
@@ -753,11 +759,13 @@ function _get_project_metadata_prompt_service(): ProjectMetadataPromptService
 
 function _get_config_project_init_prompt_collector(): ConfigProjectInitPromptCollector
 {
+    $gitRepository = _get_git_repository();
+    $prompt = _get_prompt();
+
     return new ConfigProjectInitPromptCollector(
-        _get_git_repository(),
-        _get_git_setup_service(),
-        _get_prompt(),
-        new \App\Service\GitTokenPromptResolver(),
+        $gitRepository,
+        new \App\Handler\ProjectGitPrompts($gitRepository, _get_git_setup_service(), $prompt, new \App\Service\GitTokenPromptResolver()),
+        $prompt,
         _get_file_system(),
         _get_config_path(),
         new \App\Service\GlobalConfigProviderResolver(),
@@ -858,11 +866,7 @@ function _get_git_hosting(bool $quiet = false): ?\App\Service\GitHostingPort
         $token = is_string($token) ? trim($token) : '';
 
         if ($providerType === 'github') {
-            return new GithubGitHostingAdapter(
-                $token,
-                $repoOwner,
-                $repoName
-            );
+            return new GithubGitHostingAdapter(new \App\Service\GithubApiClient($token, $repoOwner, $repoName));
         }
 
         // GitLab provider
@@ -870,10 +874,7 @@ function _get_git_hosting(bool $quiet = false): ?\App\Service\GitHostingPort
         $instanceUrl = $projectConfig['gitlabInstanceUrl'] ?? $globalConfig['GITLAB_INSTANCE_URL'] ?? null;
 
         return new \App\Service\GitLabGitHostingAdapter(
-            $token,
-            $repoOwner,
-            $repoName,
-            $instanceUrl
+            new \App\Service\GitLabApiClient($token, new \App\DTO\GitLabProject($repoOwner, $repoName, $instanceUrl)),
         );
     } catch (\Exception $e) {
         // Config might not exist or provider not configured
@@ -1122,7 +1123,7 @@ function _get_logger(): Logger
 {
     $colors = _get_colour_config();
 
-    return new Logger(io(), $colors, _is_agent_mode_request(), _get_message_renderer());
+    return new Logger(io(), new \App\Service\WorkflowChannelColorizer($colors), new \App\Service\OutputVerbosityGate(io(), _is_agent_mode_request()), _get_message_renderer());
 }
 
 function _get_prompt(): PromptInterface
@@ -1465,7 +1466,7 @@ function _config_check_listener(ConsoleCommandEvent $event): void
     }
 
     $io = new SymfonyStyle($event->getInput(), $event->getOutput());
-    $logger = new Logger($io, _get_colour_config(), _is_agent_mode_request($event->getInput()), _get_message_renderer());
+    $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer(_get_colour_config()), new \App\Service\OutputVerbosityGate($io, _is_agent_mode_request($event->getInput())), _get_message_renderer());
 
     $logger->warning(Logger::VERBOSITY_NORMAL, $setupMessage);
     $logger->text(Logger::VERBOSITY_NORMAL, $initMessage);
@@ -1538,7 +1539,7 @@ function _php_extension_check_listener(ConsoleCommandEvent $event): void
     // Get translation service (works without config, defaults to 'en')
     $translator = _get_translation_service();
     $io = new SymfonyStyle($event->getInput(), $event->getOutput());
-    $logger = new Logger($io, _get_colour_config(), _is_agent_mode_request($event->getInput()), _get_message_renderer());
+    $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer(_get_colour_config()), new \App\Service\OutputVerbosityGate($io, _is_agent_mode_request($event->getInput())), _get_message_renderer());
 
     $errorMessages = [
         'Required PHP extension is missing: ' . implode(', ', $missingExtensions),
@@ -1617,7 +1618,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
 
     try {
         $io = new SymfonyStyle($event->getInput(), $event->getOutput());
-        $logger = new Logger($io, _get_colour_config(), _is_agent_mode_request($event->getInput()), _get_message_renderer());
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer(_get_colour_config()), new \App\Service\OutputVerbosityGate($io, _is_agent_mode_request($event->getInput())), _get_message_renderer());
         $translator = _get_translation_service();
         $fileSystem = _get_file_system();
 
@@ -1781,7 +1782,7 @@ function _version_check_listener(ConsoleTerminateEvent $event): void
     }
 
     $io = new SymfonyStyle($event->getInput(), $output);
-    $logger = new Logger($io, _get_colour_config(), _is_agent_mode_request($event->getInput()), _get_message_renderer());
+    $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer(_get_colour_config()), new \App\Service\OutputVerbosityGate($io, _is_agent_mode_request($event->getInput())), _get_message_renderer());
     $logger->warning(Logger::VERBOSITY_NORMAL, sprintf(
         "A new version (v%s) is available. Run 'stud up' to update.",
         $latestVersion
@@ -2333,7 +2334,7 @@ function _config_validate_git_smoke_hosting(string $provider, array $globalConfi
             return null;
         }
 
-        return new \App\Service\GithubGitHostingAdapter(trim($token), '_', '_');
+        return new \App\Service\GithubGitHostingAdapter(new \App\Service\GithubApiClient(trim($token), '_', '_'));
     }
 
     if ($provider === 'gitlab') {
@@ -2344,10 +2345,7 @@ function _config_validate_git_smoke_hosting(string $provider, array $globalConfi
         $instanceUrl = $globalConfig['GITLAB_INSTANCE_URL'] ?? null;
 
         return new \App\Service\GitLabGitHostingAdapter(
-            trim($token),
-            '_',
-            '_',
-            is_string($instanceUrl) ? $instanceUrl : null,
+            new \App\Service\GitLabApiClient(trim($token), new \App\DTO\GitLabProject('_', '_', is_string($instanceUrl) ? $instanceUrl : null)),
         );
     }
 
@@ -3355,7 +3353,7 @@ function commit(
         $quiet = true;
     }
     if (! $agent && $help) {
-        $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
+        $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system(), new \App\Service\CommandHelpFormatter(_get_translation_service()));
         $helpService->displayCommandHelp(_get_logger(), 'commit');
 
         return;
@@ -3426,7 +3424,7 @@ function push(
         }
     }
     if (! $agent && $help) {
-        $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
+        $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system(), new \App\Service\CommandHelpFormatter(_get_translation_service()));
         $helpService->displayCommandHelp(_get_logger(), 'push');
 
         return;
@@ -3755,7 +3753,7 @@ function submit(
         ];
     }
 
-    $handler = new SubmitHandler($gitRepository, _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), $gitProvider, new \App\Service\SubmitPrBodyBuilder(_get_jira_config(), _get_html_converter()), _get_base_branch($quiet), _get_translation_service(), _get_prompt());
+    $handler = new SubmitHandler($gitRepository, _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), $gitProvider, new \App\Service\SubmitPrBodyBuilder(_get_jira_config(), _get_html_converter()), _get_base_branch($quiet), new \App\Service\SubmitLabelPlanner($gitRepository, new \App\Service\SubmitLabelResolver($gitProvider, _get_prompt())));
     $response = $handler->handle(new SubmitOptions(
         $draft,
         is_string($labels) ? $labels : null,
@@ -4083,7 +4081,7 @@ function help(
         if ($input === null) {
             return;
         }
-        $generator = new \App\Service\AgentModeSchemaGenerator(_get_translation_service());
+        $generator = new \App\Service\AgentModeSchemaGenerator(new \App\Service\AgentModeInputSchemaBuilder(), _get_translation_service());
         $projectConfig = _project_config_or_empty();
         $filterCommand = $input['commandName'] ?? $input['command'] ?? null;
         if ($filterCommand !== null) {
@@ -4116,7 +4114,7 @@ function help(
 
     // If a command is provided, show help for that specific command
     if ($commandName !== null) {
-        $helpService = new \App\Service\HelpService($translator, _get_file_system());
+        $helpService = new \App\Service\HelpService($translator, _get_file_system(), new \App\Service\CommandHelpFormatter($translator));
 
         $aliasMap = CommandMap::aliasLookupMap();
         $mappedCommandName = $aliasMap[$commandName] ?? $commandName;
@@ -4159,7 +4157,7 @@ function help(
     $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
     $logger->section(Logger::VERBOSITY_NORMAL, $sectionTitle);
     $logger->writeln(Logger::VERBOSITY_NORMAL, '  <info>stud</info> [command|alias] [-options] [arguments]');
-    $helpService = new \App\Service\HelpService($translator, _get_file_system());
+    $helpService = new \App\Service\HelpService($translator, _get_file_system(), new \App\Service\CommandHelpFormatter($translator));
     $commands = $helpService->getGeneralHelpCommandGroups();
 
     foreach ($commands as $category => $commandList) {
@@ -4202,8 +4200,8 @@ function docs_generate(
 ): void {
     _load_constants();
 
-    $schema = (new AgentModeSchemaGenerator())->generate();
-    $reference = new CommandReferenceGenerator(_get_translation_service());
+    $schema = (new AgentModeSchemaGenerator(new \App\Service\AgentModeInputSchemaBuilder()))->generate();
+    $reference = new CommandReferenceGenerator(_get_translation_service(), new \App\Service\CommandReferenceTableBuilder(_get_translation_service()));
     $reference->write(_get_file_system(), $schema);
 
     $message = 'Generated ' . CommandReferenceGenerator::OUTPUT_PATH;
@@ -4228,8 +4226,8 @@ function docs_check(
     _load_constants();
 
     $path = CommandReferenceGenerator::OUTPUT_PATH;
-    $schema = (new AgentModeSchemaGenerator())->generate();
-    $reference = new CommandReferenceGenerator(_get_translation_service());
+    $schema = (new AgentModeSchemaGenerator(new \App\Service\AgentModeInputSchemaBuilder()))->generate();
+    $reference = new CommandReferenceGenerator(_get_translation_service(), new \App\Service\CommandReferenceTableBuilder(_get_translation_service()));
 
     if (! $reference->isCurrent(_get_file_system(), $schema)) {
         $message = $path . ' is stale. Run stud docs:generate.';

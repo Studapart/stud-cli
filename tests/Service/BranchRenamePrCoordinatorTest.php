@@ -30,7 +30,6 @@ class BranchRenamePrCoordinatorTest extends TestCase
             $this->githubProvider,
             ['JIRA_URL' => 'https://jira.example.com'],
             'origin/develop',
-            $this->createStub(\App\Service\TranslationService::class),
             $this->createStub(PromptInterface::class),
             $this->createStub(CanConvertToMarkdownInterface::class),
         );
