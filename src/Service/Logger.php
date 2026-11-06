@@ -21,14 +21,10 @@ class Logger extends CommandOutputBuffer implements PromptInterface
     public const VERBOSITY_VERY_VERBOSE = 2;
     public const VERBOSITY_DEBUG = 3;
 
-    /**
-     * @param array<string, string> $colors Color configuration (for future use in color formatting)
-     */
     public function __construct(
         private readonly SymfonyStyle $io,
-        /** @phpstan-ignore-next-line - Colors property reserved for future color formatting implementation */
-        private readonly array $colors,
-        private readonly bool $suppressOutput = false,
+        private readonly WorkflowChannelColorizer $channelColorizer,
+        private readonly OutputVerbosityGate $verbosityGate,
         private readonly ?MessageRenderer $messageRenderer = null,
     ) {
     }
@@ -51,10 +47,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function error(int $verbosity, MessageRef|string|array $message): void
     {
-        if ($this->suppressOutput) {
-            return;
-        }
-        if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allowsEssential($verbosity)) {
             $this->io->error($this->renderLogMessage($message));
         }
     }
@@ -69,10 +62,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function errorWithDetails(int $verbosity, MessageRef|string $userMessage, string $technicalDetails): void
     {
-        if ($this->suppressOutput) {
-            return;
-        }
-        if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allowsEssential($verbosity)) {
             $this->io->error((string) $userMessage);
             if (! empty(trim($technicalDetails))) {
                 $this->io->text(['', ' Technical details: ' . $technicalDetails]);
@@ -89,10 +79,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function warning(int $verbosity, MessageRef|string|array $message): void
     {
-        if ($this->suppressOutput) {
-            return;
-        }
-        if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allowsEssential($verbosity)) {
             $this->io->warning($this->renderLogMessage($message));
         }
     }
@@ -105,7 +92,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function note(int $verbosity, MessageRef|string|array $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->note($this->renderLogMessage($message));
         }
     }
@@ -119,10 +106,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function success(int $verbosity, MessageRef|string|array $message): void
     {
-        if ($this->suppressOutput) {
-            return;
-        }
-        if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allowsEssential($verbosity)) {
             $this->io->success($this->renderLogMessage($message));
         }
     }
@@ -134,20 +118,8 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function text(int $verbosity, MessageRef|string|array $message, WorkflowChannel $channel = WorkflowChannel::Default): void
     {
-        match ($channel) {
-            WorkflowChannel::Jira => $this->jiraText($verbosity, $this->renderLogMessage($message)),
-            WorkflowChannel::Git => $this->gitText($verbosity, $this->renderLogMessage($message)),
-            WorkflowChannel::Default => $this->renderDefaultText($verbosity, $message),
-        };
-    }
-
-    /**
-     * @param MessageRef|string|array<MessageRef|string> $message
-     */
-    private function renderDefaultText(int $verbosity, MessageRef|string|array $message): void
-    {
-        if ($this->shouldDisplay($verbosity)) {
-            $this->io->text($this->renderLogMessage($message));
+        if ($this->verbosityGate->allows($verbosity)) {
+            $this->io->text($this->channelColorizer->colorize($channel, $this->renderLogMessage($message)));
         }
     }
 
@@ -159,10 +131,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function rawValue(string $message): void
     {
-        if ($this->suppressOutput) {
-            return;
-        }
-        if ($this->io->isQuiet() || $this->shouldDisplay(self::VERBOSITY_NORMAL)) {
+        if ($this->verbosityGate->allowsEssential(self::VERBOSITY_NORMAL)) {
             $this->io->writeln($message, OutputInterface::VERBOSITY_QUIET | OutputInterface::OUTPUT_RAW);
         }
     }
@@ -172,46 +141,25 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function writeln(int $verbosity, MessageRef|string $message, WorkflowChannel $channel = WorkflowChannel::Default): void
     {
-        match ($channel) {
-            WorkflowChannel::Jira => $this->jiraWriteln($verbosity, $message),
-            WorkflowChannel::Git => $this->gitWriteln($verbosity, $message),
-            WorkflowChannel::Default => $this->renderDefaultWriteln($verbosity, $message),
-        };
-    }
-
-    private function renderDefaultWriteln(int $verbosity, MessageRef|string $message): void
-    {
-        if ($this->shouldDisplay($verbosity)) {
-            $this->io->writeln((string) $message);
+        if ($this->verbosityGate->allows($verbosity)) {
+            $this->io->writeln($this->channelColorizer->colorize($channel, (string) $message));
         }
     }
 
     /**
      * Logs a Jira-related informational message with jira_message color.
-     *
-     * @param int $verbosity Minimum verbosity level to display
-     * @param MessageRef|string $message Message to display
      */
     public function jiraWriteln(int $verbosity, MessageRef|string $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
-            $jiraColor = $this->colors['jira_message'] ?? 'blue';
-            $this->io->writeln("<fg={$jiraColor}>{$message}</>");
-        }
+        $this->writeln($verbosity, $message, WorkflowChannel::Jira);
     }
 
     /**
      * Logs a Git-related informational message with git_message color.
-     *
-     * @param int $verbosity Minimum verbosity level to display
-     * @param MessageRef|string $message Message to display
      */
     public function gitWriteln(int $verbosity, MessageRef|string $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
-            $gitColor = $this->colors['git_message'] ?? 'yellow';
-            $this->io->writeln("<fg={$gitColor}>{$message}</>");
-        }
+        $this->writeln($verbosity, $message, WorkflowChannel::Git);
     }
 
     /**
@@ -222,14 +170,8 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function jiraText(int $verbosity, string|array $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
-            $jiraColor = $this->colors['jira_message'] ?? 'blue';
-            if (is_array($message)) {
-                $colored = array_map(fn ($line) => "<fg={$jiraColor}>{$line}</>", $message);
-                $this->io->text($colored);
-            } else {
-                $this->io->text("<fg={$jiraColor}>{$message}</>");
-            }
+        if ($this->verbosityGate->allows($verbosity)) {
+            $this->io->text($this->channelColorizer->colorize(WorkflowChannel::Jira, $message));
         }
     }
 
@@ -241,14 +183,8 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function gitText(int $verbosity, string|array $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
-            $gitColor = $this->colors['git_message'] ?? 'yellow';
-            if (is_array($message)) {
-                $colored = array_map(fn ($line) => "<fg={$gitColor}>{$line}</>", $message);
-                $this->io->text($colored);
-            } else {
-                $this->io->text("<fg={$gitColor}>{$message}</>");
-            }
+        if ($this->verbosityGate->allows($verbosity)) {
+            $this->io->text($this->channelColorizer->colorize(WorkflowChannel::Git, $message));
         }
     }
 
@@ -260,7 +196,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function section(int $verbosity, MessageRef|string $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->section((string) $message);
         }
     }
@@ -273,7 +209,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function title(int $verbosity, MessageRef|string $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->title((string) $message);
         }
     }
@@ -286,7 +222,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function listing(int $verbosity, array $elements): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->listing($elements);
         }
     }
@@ -299,7 +235,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function comment(int $verbosity, string|array $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->comment($message);
         }
     }
@@ -312,7 +248,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function info(int $verbosity, string|array $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->info($message);
         }
     }
@@ -325,7 +261,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function caution(int $verbosity, string|array $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->caution($message);
         }
     }
@@ -339,7 +275,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function table(int $verbosity, array $headers, array $rows): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->table($headers, $rows);
         }
     }
@@ -353,7 +289,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function horizontalTable(int $verbosity, array $headers, array $rows): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->horizontalTable($headers, $rows);
         }
     }
@@ -366,7 +302,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function definitionList(int $verbosity, string|array|\Symfony\Component\Console\Helper\TableSeparator ...$list): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->definitionList(...$list);
         }
     }
@@ -379,7 +315,7 @@ class Logger extends CommandOutputBuffer implements PromptInterface
      */
     public function newLine(int $verbosity, int $count = 1): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->verbosityGate->allows($verbosity)) {
             $this->io->newLine($count);
         }
     }
@@ -451,45 +387,5 @@ class Logger extends CommandOutputBuffer implements PromptInterface
     public function choice(MessageRef|string $question, array $choices, mixed $default = null, bool $multiSelect = false): mixed
     {
         return $this->io->choice($this->renderLogString($question), $choices, $default, $multiSelect);
-    }
-
-    /**
-     * Checks if message should be displayed based on current verbosity level.
-     * When output is quiet (--quiet), suppresses only non-essential output (informational messages).
-     * Errors, warnings, and success are handled by their methods and always shown when quiet.
-     */
-    protected function shouldDisplay(int $verbosity): bool
-    {
-        if ($this->suppressOutput) {
-            return false;
-        }
-
-        if ($this->io->isQuiet()) {
-            return false;
-        }
-
-        $currentVerbosity = $this->getCurrentVerbosity();
-
-        return $currentVerbosity >= $verbosity;
-    }
-
-    /**
-     * Gets current verbosity level from SymfonyStyle.
-     */
-    protected function getCurrentVerbosity(): int
-    {
-        if ($this->io->isDebug()) {
-            return self::VERBOSITY_DEBUG;
-        }
-
-        if ($this->io->isVeryVerbose()) {
-            return self::VERBOSITY_VERY_VERBOSE;
-        }
-
-        if ($this->io->isVerbose()) {
-            return self::VERBOSITY_VERBOSE;
-        }
-
-        return self::VERBOSITY_NORMAL;
     }
 }

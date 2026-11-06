@@ -42,7 +42,7 @@ class UpdateHandlerIntegrationTest extends TestCase
         // Use in-memory filesystem for integration tests
         $adapter = new \League\Flysystem\InMemory\InMemoryFilesystemAdapter();
         $flysystem = new \League\Flysystem\Filesystem($adapter);
-        $this->fileSystem = new FileSystem($flysystem);
+        $this->fileSystem = new FileSystem($flysystem, new \App\Service\FileSystemPathPolicy($flysystem));
 
         // Create real services (not mocks) for integration testing
         $translationsPath = __DIR__ . '/../../src/resources/translations';
@@ -50,7 +50,8 @@ class UpdateHandlerIntegrationTest extends TestCase
 
         $this->httpClient = $this->createMock(HttpClientInterface::class);
         $this->tempBinaryPath = sys_get_temp_dir() . '/stud-test.phar';
-        $this->prompt = new Logger(new SymfonyStyle(new ArrayInput([]), new BufferedOutput()), []);
+        $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
+        $this->prompt = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         // Create handler with real services but mocked HTTP client
         $this->handler = UpdateHandlerTestKit::create(

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Service\GitProjectConfigService;
 use App\Service\GitRemoteUrlParser;
 use App\Service\ProcessFactory;
@@ -135,7 +136,7 @@ class GitProjectConfigServiceTest extends TestCase
     {
         $adapter = new InMemoryFilesystemAdapter();
         $this->flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($this->flysystem);
+        $this->fileSystem = new FileSystem($this->flysystem, new FileSystemPathPolicy($this->flysystem));
         $this->service = new GitProjectConfigService($this->processFactory, $this->fileSystem, $this->remoteUrlParser);
     }
 }

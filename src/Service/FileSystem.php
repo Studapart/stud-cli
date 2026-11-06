@@ -10,14 +10,10 @@ use League\Flysystem\Local\LocalFilesystemAdapter;
 
 class FileSystem
 {
-    private readonly bool $isLocalFilesystem;
-    private readonly ?string $cachedCwd;
-
     public function __construct(
-        private readonly FilesystemOperator $filesystem
+        private readonly FilesystemOperator $filesystem,
+        private readonly FileSystemPathPolicy $pathPolicy,
     ) {
-        $this->isLocalFilesystem = $this->determineIfLocalFilesystem();
-        $this->cachedCwd = getcwd() ?: null;
     }
 
     /**
@@ -27,9 +23,9 @@ class FileSystem
     // @codeCoverageIgnoreStart
     public static function createLocal(): self
     {
-        $adapter = new LocalFilesystemAdapter(getcwd() ?: '/');
+        $filesystem = new FlysystemFilesystem(new LocalFilesystemAdapter(getcwd() ?: '/'));
 
-        return new self(new FlysystemFilesystem($adapter));
+        return new self($filesystem, new FileSystemPathPolicy($filesystem));
     }
     // @codeCoverageIgnoreEnd
 
@@ -42,10 +38,10 @@ class FileSystem
      */
     public function fileExists(string $path): bool
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
 
         // Use native operations for temp files or paths outside root
-        if ($this->shouldUseNativeOperations($path)) {
+        if ($this->pathPolicy->shouldUseNativeOperations($path)) {
             return @file_exists($path);
         }
 
@@ -62,7 +58,7 @@ class FileSystem
      */
     public function parseFile(string $path): array
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
 
         // Use read() method which handles paths outside Flysystem root
         $content = $this->read($path);
@@ -86,7 +82,7 @@ class FileSystem
      */
     public function dumpFile(string $path, array $data): void
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
         $yamlContent = \Symfony\Component\Yaml\Yaml::dump($data);
         $this->write($path, $yamlContent);
     }
@@ -100,7 +96,7 @@ class FileSystem
      */
     public function backupFileIfExists(string $path): ?string
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
         if (! $this->fileExists($path)) {
             return null;
         }
@@ -139,10 +135,10 @@ class FileSystem
      */
     public function isDir(string $path): bool
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
 
         // Use native operations for paths outside root
-        if ($this->shouldUseNativeOperations($path)) {
+        if ($this->pathPolicy->shouldUseNativeOperations($path)) {
             return is_dir($path);
         }
 
@@ -163,11 +159,11 @@ class FileSystem
      */
     public function mkdir(string $path, int $mode = 0777, bool $recursive = false): void
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
 
         // Use native mkdir for absolute paths outside Flysystem root (e.g. ~/.config/stud when cwd is elsewhere).
         // Otherwise the directory would be created under getcwd() and config write would fail on macOS/Linux.
-        if ($this->shouldUseNativeOperations($path)) {
+        if ($this->pathPolicy->shouldUseNativeOperations($path)) {
             if (! @mkdir($path, $mode, true) && ! is_dir($path)) {
                 throw new \RuntimeException("Failed to create directory: {$path}");
             }
@@ -192,175 +188,8 @@ class FileSystem
      */
     public function filePutContents(string $path, string $contents): void
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
         $this->write($path, $contents);
-    }
-
-    /**
-     * Validates that a path does not contain dangerous characters.
-     *
-     * @param string $path The path to validate
-     * @throws \InvalidArgumentException If path contains invalid characters
-     */
-    private function validatePath(string $path): void
-    {
-        // Reject paths with null bytes (potential security issue)
-        if (str_contains($path, "\0")) {
-            throw new \InvalidArgumentException('Path contains null byte');
-        }
-
-        // Reject paths with control characters (except newline/tab which might be valid in some contexts)
-        // But for filesystem paths, we should be strict
-        if (preg_match('/[\x00-\x08\x0B-\x0C\x0E-\x1F]/', $path)) {
-            throw new \InvalidArgumentException('Path contains invalid control characters');
-        }
-    }
-
-    /**
-     * Determines if a path should use native file operations instead of Flysystem.
-     * This is used for temp files (/tmp/) that are outside the filesystem root.
-     *
-     * @param string $path The path to check
-     * @return bool True if native operations should be used, false if Flysystem should be used
-     */
-    private function shouldUseNativeOperations(string $path): bool
-    {
-        // For temp files, use native operations if:
-        // 1. Using in-memory filesystem (temp files need native ops)
-        // 2. Using local filesystem but path is outside root
-        if ($this->isUnderSystemTempDir($path)) {
-            $isLocal = $this->isLocalFilesystem();
-
-            return ! $isLocal || ! $this->isPathWithinRoot($path);
-        }
-
-        // Real absolute paths (e.g. /Users/foo/.config/stud/config.yml) must always use native PHP.
-        // When running from a PHAR on macOS, getcwd() can be phar:///.../stud.phar, so Flysystem root
-        // is inside the archive; using Flysystem would write the config inside the PHAR.
-        if ($path !== '' && $path[0] === '/' && ! str_starts_with($path, 'phar://') && $this->isLocalFilesystem()) {
-            return true;
-        }
-
-        return false;
-    }
-
-    private function isUnderSystemTempDir(string $path): bool
-    {
-        if ($path === '' || $path[0] !== '/') {
-            return false;
-        }
-
-        $normalizedPath = str_replace('\\', '/', $path);
-        $candidates = array_unique([
-            rtrim(str_replace('\\', '/', sys_get_temp_dir()), '/'),
-            '/tmp',
-            '/private/tmp',
-        ]);
-
-        foreach ($candidates as $tempDir) {
-            if (str_starts_with($normalizedPath, $tempDir . '/')
-                || $normalizedPath === $tempDir) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks if a path is within the filesystem root.
-     * For LocalFilesystemAdapter, this checks if the path is within getcwd().
-     * Uses realpath() for proper path normalization to prevent path traversal attacks.
-     *
-     * @param string $path The path to check
-     * @return bool True if path is within root, false otherwise
-     */
-    private function isPathWithinRoot(string $path): bool
-    {
-        if (! str_starts_with($path, '/')) {
-            return true;
-        }
-
-        // If using in-memory filesystem, always use filesystem methods (don't use native file ops)
-        if (! $this->isLocalFilesystem()) {
-            return true;
-        }
-
-        // @codeCoverageIgnoreStart
-        // This case occurs when getcwd() returns false (e.g., when CWD is deleted)
-        // It's extremely difficult to simulate in tests as it requires manipulating the process's
-        // working directory in a way that makes getcwd() fail, which is not feasible in PHPUnit
-        if ($this->cachedCwd === null) {
-            return false;
-        }
-        // @codeCoverageIgnoreEnd
-
-        // Normalize paths using realpath() to prevent path traversal attacks
-        // This resolves symlinks and normalizes .. sequences
-        $normalizedPath = realpath($path);
-        $normalizedCwd = realpath($this->cachedCwd);
-
-        // If realpath() fails, fall back to string comparison but log a warning
-        // @codeCoverageIgnoreStart
-        // realpath() failure is extremely rare (only occurs with invalid paths or filesystem errors)
-        // and is difficult to simulate in tests without manipulating the filesystem
-        if ($normalizedPath === false) {
-            $normalizedPath = $path;
-        }
-        if ($normalizedCwd === false) {
-            $normalizedCwd = $this->cachedCwd;
-        }
-        // @codeCoverageIgnoreEnd
-
-        // Check if normalized path starts with normalized current working directory
-        return str_starts_with($normalizedPath, $normalizedCwd . DIRECTORY_SEPARATOR)
-            || $normalizedPath === $normalizedCwd;
-    }
-
-    /**
-     * Determines if the filesystem is using a LocalFilesystemAdapter.
-     * This is determined at construction time to avoid reflection-based detection.
-     *
-     * @return bool True if using LocalFilesystemAdapter, false otherwise
-     */
-    private function determineIfLocalFilesystem(): bool
-    {
-        if (! $this->filesystem instanceof FlysystemFilesystem) {
-            return false;
-        }
-
-        // Use a more robust approach: check if we can access the adapter through
-        // Flysystem's public API or by checking the filesystem's behavior
-        // Since Flysystem doesn't expose adapter type directly, we use a type-safe approach
-        // by checking if the filesystem root matches a local path pattern
-        try {
-            // Attempt to determine adapter type by checking filesystem capabilities
-            // LocalFilesystemAdapter supports certain operations that in-memory doesn't
-            // We can infer the type by checking if getcwd() matches expected patterns
-            // However, the most reliable way is to check the adapter through reflection
-            // but only once at construction time, not on every call
-            $reflection = new \ReflectionClass($this->filesystem);
-            $adapterProperty = $reflection->getProperty('adapter');
-            $adapter = $adapterProperty->getValue($this->filesystem);
-
-            return $adapter instanceof LocalFilesystemAdapter;
-        } catch (\ReflectionException $e) { // @codeCoverageIgnore
-            // ReflectionException is extremely rare and difficult to simulate in tests
-            // It would only occur if the Flysystem adapter structure changes unexpectedly
-            // If reflection fails, assume it's not local (safer to use filesystem methods)
-            return false; // @codeCoverageIgnore
-        }
-    }
-
-    /**
-     * Checks if the filesystem is using a LocalFilesystemAdapter.
-     * Uses cached value determined at construction time.
-     *
-     * @return bool True if using LocalFilesystemAdapter, false otherwise
-     */
-    private function isLocalFilesystem(): bool
-    {
-        return $this->isLocalFilesystem;
     }
 
     /**
@@ -372,7 +201,7 @@ class FileSystem
      */
     public function dirname(string $path): string
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
 
         return dirname($path);
     }
@@ -387,10 +216,10 @@ class FileSystem
      */
     public function read(string $path): string
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
 
         // Use native operations for temp files or paths outside root
-        if ($this->shouldUseNativeOperations($path)) {
+        if ($this->pathPolicy->shouldUseNativeOperations($path)) {
             $content = @file_get_contents($path);
             if ($content === false) {
                 throw new \RuntimeException("Failed to read file: {$path}");
@@ -416,10 +245,10 @@ class FileSystem
      */
     public function delete(string $path): void
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
 
         // Use native operations for temp files or paths outside root
-        if ($this->shouldUseNativeOperations($path)) {
+        if ($this->pathPolicy->shouldUseNativeOperations($path)) {
             $result = @unlink($path);
             if ($result === false) {
                 throw new \RuntimeException("Failed to delete file: {$path}");
@@ -445,7 +274,7 @@ class FileSystem
      */
     public function listDirectory(string $path): array
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
 
         try {
             $listing = $this->filesystem->listContents($path, false);
@@ -470,10 +299,10 @@ class FileSystem
      */
     public function write(string $path, string $contents): void
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
 
         // Use native operations for temp files or paths outside root
-        if ($this->shouldUseNativeOperations($path)) {
+        if ($this->pathPolicy->shouldUseNativeOperations($path)) {
             $result = @file_put_contents($path, $contents);
             if ($result === false) {
                 throw new \RuntimeException("Failed to write file: {$path}");
@@ -497,60 +326,25 @@ class FileSystem
      */
     public function chmod(string $path, int $mode): bool
     {
-        $this->validatePath($path);
+        $this->pathPolicy->validate($path);
 
-        if ($this->shouldUseNativeOperations($path)) {
+        if ($this->pathPolicy->shouldUseNativeOperations($path)) {
             // @codeCoverageIgnoreStart
             return @chmod($path, $mode);
             // @codeCoverageIgnoreEnd
         }
 
-        if (! $this->isLocalFilesystem()) {
+        if (! $this->pathPolicy->isLocalFilesystem()) {
             return false;
         }
 
-        $realPath = $this->resolveLocalFilePath($path);
+        $realPath = $this->pathPolicy->resolveLocalFilePath($path);
         if ($realPath === null || ! $this->filesystem->fileExists($path)) {
             return false;
         }
 
         // @codeCoverageIgnoreStart
         return @chmod($realPath, $mode);
-        // @codeCoverageIgnoreEnd
-    }
-
-    /**
-     * Resolves a relative Flysystem path to an absolute local filesystem path
-     * using reflection to access the adapter's root location.
-     *
-     * @param string $path The relative Flysystem path
-     * @return string|null The absolute local path, or null if resolution fails
-     */
-    private function resolveLocalFilePath(string $path): ?string
-    {
-        // Only caller (chmod) already guards isLocalFilesystem
-        // @codeCoverageIgnoreStart
-        if (! $this->filesystem instanceof FlysystemFilesystem) {
-            return null;
-        }
-
-        try {
-            $reflection = new \ReflectionClass($this->filesystem);
-            $adapterProperty = $reflection->getProperty('adapter');
-            $adapter = $adapterProperty->getValue($this->filesystem);
-
-            if (! $adapter instanceof LocalFilesystemAdapter) {
-                return null;
-            }
-
-            $adapterReflection = new \ReflectionClass($adapter);
-            $rootLocationProperty = $adapterReflection->getProperty('rootLocation');
-            $rootLocation = $rootLocationProperty->getValue($adapter);
-
-            return $rootLocation . '/' . ltrim($path, '/');
-        } catch (\ReflectionException $e) {
-            return null;
-        }
         // @codeCoverageIgnoreEnd
     }
 }

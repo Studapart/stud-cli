@@ -46,7 +46,7 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
         // Create a local filesystem adapter with the temp directory as root
         $adapter = new LocalFilesystemAdapter($this->tempDir);
         $flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($flysystem);
+        $this->fileSystem = new FileSystem($flysystem, new \App\Service\FileSystemPathPolicy($flysystem));
 
         // Use real translation service
         $translationsPath = __DIR__ . '/../../src/resources/translations';
@@ -101,7 +101,7 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle($input, $output);
 
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
         $handler = new InitHandler(
             $this->fileSystem,
             $this->configPath,

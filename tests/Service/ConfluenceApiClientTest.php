@@ -6,6 +6,8 @@ namespace App\Tests\Service;
 
 use App\Exception\ApiException;
 use App\Service\ConfluenceApiClient;
+use App\Service\ConfluencePageMapper;
+use App\Service\ConfluenceResponseGuard;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -1189,6 +1191,10 @@ class ConfluenceApiClientTest extends TestCase
 
     private function bindSubject(): void
     {
-        $this->confluenceService = new ConfluenceApiClient($this->httpClientMock);
+        $this->confluenceService = new ConfluenceApiClient(
+            $this->httpClientMock,
+            new ConfluencePageMapper(),
+            new ConfluenceResponseGuard(),
+        );
     }
 }

@@ -4,6 +4,7 @@ namespace App\Tests\Handler;
 
 use App\Handler\CacheClearHandler;
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
@@ -23,7 +24,7 @@ class CacheClearHandlerTest extends CommandTestCase
 
         $adapter = new InMemoryFilesystemAdapter();
         $this->flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($this->flysystem);
+        $this->fileSystem = new FileSystem($this->flysystem, new FileSystemPathPolicy($this->flysystem));
 
         TestKernel::$translationService = $this->translationService;
         $this->handler = new CacheClearHandler($this->fileSystem);

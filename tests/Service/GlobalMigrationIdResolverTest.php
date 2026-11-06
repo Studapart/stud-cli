@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Service\GlobalMigrationIdResolver;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
@@ -18,7 +19,7 @@ class GlobalMigrationIdResolverTest extends TestCase
         $projectRoot = dirname(__DIR__, 2);
         $adapter = new LocalFilesystemAdapter($projectRoot);
         $flysystem = new FlysystemFilesystem($adapter);
-        $fileSystem = new FileSystem($flysystem);
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
 
         $resolver = new GlobalMigrationIdResolver($fileSystem);
 
@@ -28,7 +29,8 @@ class GlobalMigrationIdResolverTest extends TestCase
     public function testResolveLatestIdReturnsNullWhenDirectoryMissing(): void
     {
         $adapter = new \League\Flysystem\InMemory\InMemoryFilesystemAdapter();
-        $fileSystem = new FileSystem(new FlysystemFilesystem($adapter));
+        $flysystem = new FlysystemFilesystem($adapter);
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
 
         $resolver = new GlobalMigrationIdResolver($fileSystem);
 
@@ -50,7 +52,8 @@ class GlobalMigrationIdResolverTest extends TestCase
     public function testResolveLatestIdIgnoresNonMigrationFiles(): void
     {
         $adapter = new \League\Flysystem\InMemory\InMemoryFilesystemAdapter();
-        $fileSystem = new FileSystem(new FlysystemFilesystem($adapter));
+        $flysystem = new FlysystemFilesystem($adapter);
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
         $fileSystem->write('src/Migrations/GlobalMigrations/README.md', '');
         $fileSystem->write('src/Migrations/GlobalMigrations/Migration002_Newer.php', '');
         $fileSystem->write('src/Migrations/GlobalMigrations/Migration001_Older.php', '');
@@ -62,7 +65,8 @@ class GlobalMigrationIdResolverTest extends TestCase
 
     public function testResolvePathReturnsAbsolutePathWhenOutsideWorkingDirectory(): void
     {
-        $fileSystem = new FileSystem(new FlysystemFilesystem(new \League\Flysystem\InMemory\InMemoryFilesystemAdapter()));
+        $flysystem = new FlysystemFilesystem(new \League\Flysystem\InMemory\InMemoryFilesystemAdapter());
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
         $resolver = new class ($fileSystem) extends GlobalMigrationIdResolver {
             public function resolvePathForTest(string $path): string
             {
@@ -84,7 +88,8 @@ class GlobalMigrationIdResolverTest extends TestCase
 
     public function testResolvePathReturnsInputWhenWorkingDirectoryUnavailable(): void
     {
-        $fileSystem = new FileSystem(new FlysystemFilesystem(new \League\Flysystem\InMemory\InMemoryFilesystemAdapter()));
+        $flysystem = new FlysystemFilesystem(new \League\Flysystem\InMemory\InMemoryFilesystemAdapter());
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
         $resolver = new class ($fileSystem) extends GlobalMigrationIdResolver {
             protected function readWorkingDirectory(): string|false
             {

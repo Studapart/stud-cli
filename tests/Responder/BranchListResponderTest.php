@@ -69,7 +69,7 @@ class BranchListResponderTest extends CommandTestCase
         $row = new BranchListRow('main', 'Active', 'No', '✓', '✗');
         $response = BranchListResponse::success([$row]);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
         $responder = new BranchListResponder(new ResponderHelper($this->translationService, null), $logger);
 
         $responder->respond($io, $response);
@@ -92,7 +92,7 @@ class BranchListResponderTest extends CommandTestCase
 
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
         $responder = new BranchListResponder($helper, $logger);
         $row = new BranchListRow('main', 'Active', 'No', '✓', '✗');
         $response = BranchListResponse::success([$row]);

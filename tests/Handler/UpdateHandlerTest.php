@@ -8,6 +8,7 @@ use App\Handler\UpdateHandler;
 use App\Response\WorkflowResponse;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Service\GlobalMigrationService;
 use App\Service\TestEnvironmentDetector;
 use App\Service\UpdateFileService;
@@ -41,7 +42,7 @@ class UpdateHandlerTest extends CommandTestCase
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
 
-        return new FileSystem($flysystem);
+        return new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
     }
 
     /**
@@ -2735,7 +2736,7 @@ CHANGELOG;
         // Create in-memory filesystem for test
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
-        $inMemoryFileSystem = new FileSystem($flysystem);
+        $inMemoryFileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
 
         $testHandler = new class (
             'studapart',
@@ -2800,7 +2801,7 @@ CHANGELOG;
         // Create in-memory filesystem with invalid YAML
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
-        $inMemoryFileSystem = new FileSystem($flysystem);
+        $inMemoryFileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
 
         // Write invalid YAML to in-memory filesystem
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
@@ -2919,7 +2920,7 @@ CHANGELOG;
         // Create in-memory filesystem with invalid YAML
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
-        $inMemoryFileSystem = new FileSystem($flysystem);
+        $inMemoryFileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
 
         // Write invalid YAML to in-memory filesystem
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
@@ -3086,7 +3087,7 @@ CHANGELOG;
         $testConfigPath = '/test/config.yml';
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
-        $inMemoryFileSystem = new FileSystem($flysystem);
+        $inMemoryFileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
 
         $config = [
             'migration_version' => '0', // Any version works since there are no prerequisite migrations
@@ -3162,7 +3163,7 @@ CHANGELOG;
 
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
-        $fileSystem = new FileSystem($flysystem);
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
 
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -3196,7 +3197,7 @@ CHANGELOG;
 
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
-        $fileSystem = new FileSystem($flysystem);
+        $fileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
 
         $handler = UpdateHandlerTestKit::create(
             'studapart',
@@ -3268,7 +3269,7 @@ CHANGELOG;
         $testConfigPath = '/test/config.yml';
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
-        $inMemoryFileSystem = new FileSystem($flysystem);
+        $inMemoryFileSystem = new FileSystem($flysystem, new FileSystemPathPolicy($flysystem));
 
         // Write invalid YAML to trigger exception in parseFile
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");

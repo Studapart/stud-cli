@@ -164,14 +164,14 @@ abstract class CommandTestCase extends TestCase
     protected function createLogger(SymfonyStyle $io, int $verbosity = OutputInterface::VERBOSITY_NORMAL): Logger
     {
         if (! $io instanceof Stub) {
-            return new Logger($io, [], messageRenderer: new MessageRenderer($this->translationService));
+            return new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io), messageRenderer: new MessageRenderer($this->translationService));
         }
         $io->method('isQuiet')->willReturn(false);
         $io->method('isVerbose')->willReturn($verbosity >= OutputInterface::VERBOSITY_VERBOSE);
         $io->method('isVeryVerbose')->willReturn($verbosity >= OutputInterface::VERBOSITY_VERY_VERBOSE);
         $io->method('isDebug')->willReturn($verbosity >= OutputInterface::VERBOSITY_DEBUG);
 
-        return new Logger($io, [], messageRenderer: new MessageRenderer($this->translationService));
+        return new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io), messageRenderer: new MessageRenderer($this->translationService));
     }
 
     protected function createSymfonyStyle(int $verbosity = OutputInterface::VERBOSITY_NORMAL): SymfonyStyle

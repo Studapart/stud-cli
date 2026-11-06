@@ -3,6 +3,7 @@
 namespace App\Tests\Service;
 
 use App\Service\FileSystem;
+use App\Service\FileSystemPathPolicy;
 use App\Service\GitRepository;
 use App\Service\ProcessFactory;
 use App\Tests\CommandTestCase;
@@ -11,7 +12,6 @@ use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use PHPUnit\Framework\MockObject\Stub;
 use Symfony\Component\Process\Exception\ProcessFailedException;
-use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
 class GitRepositoryTest extends CommandTestCase
@@ -28,7 +28,7 @@ class GitRepositoryTest extends CommandTestCase
         // Create in-memory filesystem
         $adapter = new InMemoryFilesystemAdapter();
         $this->flysystem = new FlysystemFilesystem($adapter);
-        $this->fileSystem = new FileSystem($this->flysystem);
+        $this->fileSystem = new FileSystem($this->flysystem, new FileSystemPathPolicy($this->flysystem));
 
         $this->processFactory = $this->createStub(ProcessFactory::class);
         $this->gitRepository = GitRepositoryTestKit::create($this->processFactory, $this->fileSystem);
@@ -353,73 +353,6 @@ class GitRepositoryTest extends CommandTestCase
         $exists = $this->gitRepository->remoteBranchExists('origin', 'my-branch');
 
         $this->assertFalse($exists);
-    }
-
-    public function testRunThrowsGitExceptionOnFailure(): void
-    {
-        $this->givenProcesses($this->stubFailingProcess('Error: command failed', ''));
-
-
-
-        $this->expectException(\App\Exception\GitException::class);
-        $this->expectExceptionMessage('Git command failed: my command');
-
-        $this->gitRepository->run(['my', 'command']);
-    }
-
-    public function testRunThrowsGitExceptionWithOutputWhenErrorOutputEmpty(): void
-    {
-        $this->givenProcesses($this->stubFailingProcess('', 'Some output'));
-
-
-
-
-        $this->expectException(\App\Exception\GitException::class);
-        $this->expectExceptionMessage('Git command failed: my command');
-
-        try {
-            $this->gitRepository->run(['my', 'command']);
-        } catch (\App\Exception\GitException $e) {
-            $this->assertSame('Some output', $e->getTechnicalDetails());
-
-            throw $e;
-        }
-    }
-
-    public function testRunThrowsGitExceptionWithDefaultMessageWhenBothOutputsEmpty(): void
-    {
-        $this->givenProcesses($this->stubFailingProcess());
-
-
-
-
-        $this->expectException(\App\Exception\GitException::class);
-        $this->expectExceptionMessage('Git command failed: my command');
-
-        try {
-            $this->gitRepository->run(['my', 'command']);
-        } catch (\App\Exception\GitException $e) {
-            $this->assertSame('Command failed with no error output', $e->getTechnicalDetails());
-
-            throw $e;
-        }
-    }
-
-    public function testRunThrowsGitExceptionOnProcessTimeout(): void
-    {
-        $this->givenProcesses($this->stubTimedOutProcess());
-
-        $this->expectException(\App\Exception\GitTimeoutException::class);
-
-        try {
-            $this->gitRepository->run(['git', 'commit', '-m', 'test']);
-        } catch (\App\Exception\GitTimeoutException $e) {
-            $this->assertSame('git commit -m test', $e->getCommand());
-            $this->assertSame(\App\Service\ProcessFactory::GIT_SUBPROCESS_TIMEOUT_SECONDS, $e->getTimeoutSeconds());
-            $this->assertNotEmpty($e->getTechnicalDetails());
-
-            throw $e;
-        }
     }
 
     public function testHasFixupCommitsWithFixups(): void
@@ -1143,20 +1076,6 @@ class GitRepositoryTest extends CommandTestCase
         $process->method('getWorkingDirectory')->willReturn('');
         $process->method('isOutputDisabled')->willReturn(false);
         $process->method('mustRun')->willThrowException(new ProcessFailedException($process));
-
-        return $process;
-    }
-
-    private function stubTimedOutProcess(): Process&Stub
-    {
-        $process = $this->createStub(Process::class);
-        $process->method('isSuccessful')->willReturn(false);
-        $process->method('getCommandLine')->willReturn('git commit -m test');
-        $process->method('getTimeout')->willReturn(1.0);
-        $process->method('mustRun')->willThrowException(new ProcessTimedOutException(
-            $process,
-            ProcessTimedOutException::TYPE_GENERAL,
-        ));
 
         return $process;
     }

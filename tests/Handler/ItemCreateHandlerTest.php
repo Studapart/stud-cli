@@ -16,6 +16,7 @@ use App\Service\GitRepository;
 use App\Service\IssueFieldResolver;
 use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\IssueTrackerPort;
+use App\Service\ItemCreateFieldsOptionApplier;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
 use App\Service\Jira\JiraIssueTrackerCapable;
@@ -54,7 +55,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->fieldResolver,
             $this->fieldsParser,
             $this->prompt,
-            $defaultWorkItemLabels,
+            new ItemCreateFieldsOptionApplier($this->fieldsParser, $defaultWorkItemLabels),
         );
     }
 
@@ -1839,6 +1840,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->fieldResolver,
             $this->fieldsParser,
             $this->prompt,
+            new ItemCreateFieldsOptionApplier($this->fieldsParser),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Linear issue', null));
@@ -1869,6 +1871,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->fieldResolver,
             $this->fieldsParser,
             $this->prompt,
+            new ItemCreateFieldsOptionApplier($this->fieldsParser),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Summary', null));
@@ -1906,6 +1909,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->fieldResolver,
             $this->fieldsParser,
             $this->prompt,
+            new ItemCreateFieldsOptionApplier($this->fieldsParser),
         );
 
         $response = $handler->handle(
@@ -1937,6 +1941,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->fieldResolver,
             $this->fieldsParser,
             $this->prompt,
+            new ItemCreateFieldsOptionApplier($this->fieldsParser),
         );
 
         /** @var \App\DTO\IssueCreationState $state */
@@ -1961,6 +1966,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->fieldResolver,
             $this->fieldsParser,
             $this->prompt,
+            new ItemCreateFieldsOptionApplier($this->fieldsParser),
         );
 
         /** @var \App\DTO\IssueCreationState $state */
@@ -2102,6 +2108,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->fieldResolver,
             $this->fieldsParser,
             $this->prompt,
+            new ItemCreateFieldsOptionApplier($this->fieldsParser),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
@@ -2127,7 +2134,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->fieldResolver,
             $this->fieldsParser,
             $this->prompt,
-            ['AI-Generated'],
+            new ItemCreateFieldsOptionApplier($this->fieldsParser, ['AI-Generated']),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
