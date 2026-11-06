@@ -22,9 +22,7 @@ class StatusHandler implements GitRepositoryAware, JiraAware
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly IssueTrackerPort $provider,
-        mixed $_translator,
     ) {
-        unset($_translator);
     }
 
     public function handle(): WorkflowResponse

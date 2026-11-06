@@ -16,9 +16,7 @@ class CommitUndoHandler implements GitRepositoryAware
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly PromptInterface $prompt,
-        mixed $_translator
     ) {
-        unset($_translator);
     }
 
     public function handle(mixed $quiet = false, mixed $legacyQuiet = false): CommandResponse

@@ -17,9 +17,7 @@ class ConfluencePushHandler implements ConfluenceAware
     public function __construct(
         private readonly WikiPort $wiki,
         private readonly MarkdownToAdfConverter $converter,
-        mixed $_translator
     ) {
-        unset($_translator);
     }
 
     public function handle(ConfluencePushInput $input, string $baseUrl): ConfluencePushResponse

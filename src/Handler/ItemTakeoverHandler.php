@@ -32,12 +32,10 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
         private readonly IssueTrackerPort $provider,
         private readonly ItemStartHandler $itemStartHandler,
         private readonly string $baseBranch,
-        mixed $_translator,
         /** @phpstan-ignore-next-line */
         private readonly array $jiraConfig,
         private readonly PromptInterface $prompt,
     ) {
-        unset($_translator);
         // $jiraConfig is kept for potential future use (e.g., transition handling)
     }
 

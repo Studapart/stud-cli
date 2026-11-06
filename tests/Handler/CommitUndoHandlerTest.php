@@ -166,6 +166,6 @@ class CommitUndoHandlerTest extends CommandTestCase
 
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new CommitUndoHandler($this->gitRepository, $this->logger, $this->translationService);
+        $this->handler = new CommitUndoHandler($this->gitRepository, $this->logger);
     }
 }

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Monthly maintenance (SCI-135):** Retire `AI.md` after moving the rules that still apply, and drop the unused handler translator parameter.
+
 ## [5.0.1] - 2026-11-05
 
 ### Fixed

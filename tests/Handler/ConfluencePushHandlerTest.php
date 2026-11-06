@@ -28,8 +28,7 @@ class ConfluencePushHandlerTest extends CommandTestCase
     {
         return new ConfluencePushHandler(
             $this->wiki,
-            $this->converter,
-            $this->translationService
+            $this->converter
         );
     }
 

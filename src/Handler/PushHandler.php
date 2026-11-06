@@ -17,11 +17,9 @@ class PushHandler implements GitRepositoryAware
         private readonly CommitHandler $commitHandler,
         private readonly GitRepository $gitRepository,
         private readonly PleaseHandler $pleaseHandler,
-        mixed $_translator,
         private readonly PromptInterface $prompt,
         private readonly FlattenHandler $flattenHandler,
     ) {
-        unset($_translator);
     }
 
     /**

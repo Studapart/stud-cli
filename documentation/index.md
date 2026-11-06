@@ -24,7 +24,6 @@ Central map for `stud-cli` documentation.
 - [Packaging and Castor agent detection](development/packaging-and-castor-agent-detection.md) (SCI-208)
 - [Migrating 3.x → 4.x](setup/migrating-3x-to-4x.md)
 - [Engineering conventions](../CONVENTIONS.md)
-- [AI development protocol](../AI.md)
 - [Contributing](../CONTRIBUTING.md)
 
 ## Architecture Decision Records

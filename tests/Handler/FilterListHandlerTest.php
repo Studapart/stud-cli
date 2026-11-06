@@ -104,7 +104,7 @@ class FilterListHandlerTest extends CommandTestCase
         $portSupplier = $this->createStub(\App\Service\IssueTrackerPortSupplier::class);
         $portSupplier->method('resolve')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
         $portSupplier->method('resolveForProvider')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
-        $handler = new FilterListHandler($portSupplier, [], [], $this->translationService);
+        $handler = new FilterListHandler($portSupplier, [], []);
 
         $this->issueTracker->expects($this->once())->method('listFiltersOrViews')->willReturn([]);
 
@@ -120,7 +120,7 @@ class FilterListHandlerTest extends CommandTestCase
             'ok' => false,
             'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured'),
         ]);
-        $handler = new FilterListHandler($portSupplier, [], [], $this->translationService);
+        $handler = new FilterListHandler($portSupplier, [], []);
 
         $response = $handler->handle(null);
 
@@ -166,8 +166,7 @@ class FilterListHandlerTest extends CommandTestCase
         $handler = new FilterListHandler(
             $supplier,
             $this->dualGlobalConfig(),
-            $this->dualProjectConfig(),
-            $this->translationService,
+            $this->dualProjectConfig()
         );
 
         $response = $handler->handle(null);
@@ -198,7 +197,7 @@ class FilterListHandlerTest extends CommandTestCase
             'ok' => false,
             'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured'),
         ]);
-        $handler = new FilterListHandler($supplier, [], [], $this->translationService);
+        $handler = new FilterListHandler($supplier, [], []);
 
         $response = $handler->handle('jira');
 
@@ -226,8 +225,7 @@ class FilterListHandlerTest extends CommandTestCase
         $handler = new FilterListHandler(
             $supplier,
             $this->dualGlobalConfig(),
-            $this->dualProjectConfig(),
-            $this->translationService,
+            $this->dualProjectConfig()
         );
 
         $response = $handler->handle(null);
@@ -272,8 +270,7 @@ class FilterListHandlerTest extends CommandTestCase
         $this->handler = new FilterListHandler(
             $portSupplier,
             ['ISSUE_TRACKER_PROVIDERS' => ['jira']],
-            ['issueTrackerProvider' => 'jira'],
-            $this->translationService,
+            ['issueTrackerProvider' => 'jira']
         );
     }
 }

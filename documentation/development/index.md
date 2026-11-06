@@ -61,7 +61,6 @@ The 4.x line runs on PHP 8.4. Current `develop` is stud-cli **5.x** and runs on 
 
 ## AI and agent workflows
 
-- [AI development protocol](../../AI.md)
 - [Automation and agent mode](../features/automation.md)
 - [Documentation index](../index.md)
 

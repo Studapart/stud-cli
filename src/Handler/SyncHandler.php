@@ -18,9 +18,7 @@ class SyncHandler implements GitRepositoryAware, ProjectBaseBranchAware
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
         private readonly string $baseBranch,
-        mixed $_translator,
     ) {
-        unset($_translator);
     }
 
     /**

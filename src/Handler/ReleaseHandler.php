@@ -22,14 +22,12 @@ class ReleaseHandler implements GitRepositoryAware, ProjectBaseBranchAware
     // @codeCoverageIgnoreStart
     public function __construct(
         private readonly GitRepository $gitRepository,
-        mixed $_translator,
         private readonly PromptInterface $prompt,
         private readonly FileSystem $fileSystem,
         private readonly string $composerJsonPath = 'composer.json',
         private readonly string $changelogPath = 'CHANGELOG.md',
         private readonly string $readmePath = 'README.md'
     ) {
-        unset($_translator);
     }
     // @codeCoverageIgnoreEnd
 

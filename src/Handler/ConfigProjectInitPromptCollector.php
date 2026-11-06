@@ -27,7 +27,6 @@ class ConfigProjectInitPromptCollector
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitSetupService $gitSetupService,
-        mixed $_translator,
         private readonly PromptInterface $prompt,
         private readonly GitTokenPromptResolver $gitTokenPromptResolver,
         private readonly FileSystem $fileSystem,
@@ -36,7 +35,6 @@ class ConfigProjectInitPromptCollector
         private readonly ProjectMetadataPromptService $metadataPrompts,
         private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
     ) {
-        unset($_translator);
     }
 
     /**

@@ -17,9 +17,7 @@ class ConfluenceShowHandler implements ConfluenceAware
     public function __construct(
         private readonly WikiPort $wiki,
         private readonly AdfToMarkdownConverter $adfConverter,
-        mixed $_translator
     ) {
-        unset($_translator);
     }
 
     public function handle(ConfluenceShowInput $input, string $baseUrl): ConfluenceShowResponse

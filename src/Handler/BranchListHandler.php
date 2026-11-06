@@ -18,9 +18,7 @@ class BranchListHandler implements GitRepositoryAware
         private readonly GitBranchService $gitBranchService,
         private readonly BranchDeletionEligibilityResolver $eligibilityResolver,
         private readonly ?string $configuredBaseBranch,
-        mixed $_translator
     ) {
-        unset($_translator);
     }
 
     public function handle(): BranchListResponse

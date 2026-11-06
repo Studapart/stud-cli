@@ -119,6 +119,6 @@ class PleaseHandlerTest extends CommandTestCase
 
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new PleaseHandler($this->gitRepository, $this->translationService);
+        $this->handler = new PleaseHandler($this->gitRepository);
     }
 }

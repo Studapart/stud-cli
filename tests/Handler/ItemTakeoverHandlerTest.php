@@ -53,7 +53,6 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             $this->issueTracker,
             $this->itemStartHandler,
             'origin/develop',
-            $this->translationService,
             [],
             $prompt
         );
@@ -125,7 +124,6 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             $this->issueTracker,
             $this->itemStartHandler,
             'origin/develop',
-            $this->translationService,
             [],
             $this->prompt
         );
@@ -282,7 +280,6 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             $this->issueTracker,
             $this->itemStartHandler,
             'origin/develop',
-            $this->translationService,
             [],
             $this->prompt
         );
@@ -1331,7 +1328,6 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             $this->issueTracker,
             $this->itemStartHandler,
             'origin/develop',
-            $this->translationService,
             [],
             $this->prompt
         );

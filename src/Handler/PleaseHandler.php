@@ -15,9 +15,7 @@ class PleaseHandler implements GitRepositoryAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        mixed $_translator,
     ) {
-        unset($_translator);
     }
 
     /**

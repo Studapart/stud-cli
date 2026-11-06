@@ -18,7 +18,7 @@ class StatusHandlerTest extends CommandTestCase
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$issueTracker = $this->issueTracker;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new StatusHandler($this->gitRepository, $this->issueTracker, $this->translationService);
+        $this->handler = new StatusHandler($this->gitRepository, $this->issueTracker);
     }
 
     public function testHandle(): void

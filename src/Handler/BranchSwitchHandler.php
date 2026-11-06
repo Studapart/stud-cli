@@ -15,9 +15,7 @@ class BranchSwitchHandler implements GitRepositoryAware
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
-        mixed $_translator
     ) {
-        unset($_translator);
     }
 
     /**

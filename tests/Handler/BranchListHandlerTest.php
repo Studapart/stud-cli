@@ -24,8 +24,7 @@ class BranchListHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->gitBranchService,
             $resolver,
-            'origin/develop',
-            $this->translationService
+            'origin/develop'
         );
     }
 
@@ -98,7 +97,7 @@ class BranchListHandlerTest extends CommandTestCase
     public function testHandleWithUnresolvedBaseUsesManualAutoClean(): void
     {
         $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, null);
-        $handler = new BranchListHandler($this->gitRepository, $this->gitBranchService, $resolver, null, $this->translationService);
+        $handler = new BranchListHandler($this->gitRepository, $this->gitBranchService, $resolver, null);
 
         $branches = ['feat/PROJ-123'];
         $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);

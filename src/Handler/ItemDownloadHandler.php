@@ -19,9 +19,7 @@ class ItemDownloadHandler implements JiraAware, LinearAware
     public function __construct(
         private readonly FileSystem $fileSystem,
         private readonly IssueTrackerPort $provider,
-        mixed $_translator
     ) {
-        unset($_translator);
     }
 
     /**
