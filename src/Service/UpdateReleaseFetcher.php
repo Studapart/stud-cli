@@ -41,7 +41,7 @@ class UpdateReleaseFetcher
             'headers' => $headers,
         ]));
 
-        return new GithubGitHostingAdapter($this->gitToken ?? '', $this->repoOwner, $this->repoName, $client);
+        return new GithubGitHostingAdapter(new GithubApiClient($this->gitToken ?? '', $this->repoOwner, $this->repoName, $client));
     }
 
     /**

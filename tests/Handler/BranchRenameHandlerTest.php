@@ -53,7 +53,6 @@ class BranchRenameHandlerTest extends CommandTestCase
                 $githubProvider,
                 ['JIRA_URL' => 'https://jira.example.com'],
                 'origin/develop',
-                $this->translationService,
                 $prompt,
                 $htmlConverter,
             ),

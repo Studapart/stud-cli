@@ -68,7 +68,7 @@ class FilterShowResponderTest extends CommandTestCase
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
         $responder = new FilterShowResponder(new ResponderHelper($this->translationService, null), [
             'JIRA_URL' => 'https://jira.example.com',
-        ], new \App\Service\Logger($io, []));
+        ], new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)));
 
         $responder->respond($io, $response);
 
@@ -84,7 +84,7 @@ class FilterShowResponderTest extends CommandTestCase
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
         $responder = new FilterShowResponder(new ResponderHelper($this->translationService, null), [
             'JIRA_URL' => 'https://jira.example.com',
-        ], new \App\Service\Logger($io, []));
+        ], new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)));
 
         $responder->respond($io, $response);
 
@@ -108,7 +108,7 @@ class FilterShowResponderTest extends CommandTestCase
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
         $responder = new FilterShowResponder($helper, [
             'JIRA_URL' => 'https://jira.example.com',
-        ], new \App\Service\Logger($io, []));
+        ], new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io)));
 
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = FilterShowResponse::success([$issue], 'My Filter');

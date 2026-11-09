@@ -101,7 +101,7 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle($input, $output);
 
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
         $handler = new InitHandler(
             $this->fileSystem,
             $this->configPath,

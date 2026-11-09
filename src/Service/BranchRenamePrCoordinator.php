@@ -22,7 +22,6 @@ class BranchRenamePrCoordinator
         private readonly ?GitHostingPort $githubProvider,
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
-        private readonly mixed $translator,
         private readonly PromptInterface $prompt,
         private readonly CanConvertToMarkdownInterface $htmlConverter,
     ) {
@@ -90,8 +89,10 @@ class BranchRenamePrCoordinator
             $this->githubProvider,
             new SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
             $this->baseBranch,
-            $this->translator,
-            $this->prompt,
+            new SubmitLabelPlanner(
+                $this->gitRepository,
+                $this->githubProvider !== null ? new SubmitLabelResolver($this->githubProvider, $this->prompt) : null,
+            ),
         );
     }
 

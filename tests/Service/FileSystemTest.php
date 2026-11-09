@@ -668,29 +668,6 @@ class FileSystemTest extends TestCase
         $this->fileSystem->parseFile($testYamlFile);
     }
 
-    public function testIsPathWithinRootWithRelativePath(): void
-    {
-        // Test line 212: return true when path doesn't start with '/'
-        $reflection = new \ReflectionClass($this->fileSystem);
-        $method = $reflection->getMethod('isPathWithinRoot');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->fileSystem, 'relative/path.txt');
-        $this->assertTrue($result);
-    }
-
-    public function testIsPathWithinRootWithInMemoryFilesystem(): void
-    {
-        // Test line 217: return true when not using local filesystem
-        $reflection = new \ReflectionClass($this->fileSystem);
-        $method = $reflection->getMethod('isPathWithinRoot');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        // With in-memory filesystem, should return true
-        $result = $method->invoke($this->fileSystem, '/absolute/path.txt');
-        $this->assertTrue($result);
-    }
-
     public function testDeleteThrowsWhenNativeUnlinkFails(): void
     {
         // Test line 354: RuntimeException when unlink() returns false
@@ -706,6 +683,27 @@ class FileSystemTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Failed to delete file: {$nonExistentFile}");
         $localFileSystem->delete($nonExistentFile);
+    }
+
+    public function testNativeWriteReadDeleteRoundTripForTempFile(): void
+    {
+        $localFileSystem = FileSystem::createLocal();
+        $tempFile = sys_get_temp_dir() . '/stud-native-round-trip-' . uniqid() . '.txt';
+
+        $localFileSystem->write($tempFile, 'native content');
+        $this->assertSame('native content', $localFileSystem->read($tempFile));
+
+        $localFileSystem->delete($tempFile);
+        $this->assertFileDoesNotExist($tempFile);
+    }
+
+    public function testNativeReadThrowsWhenTempFileDoesNotExist(): void
+    {
+        $missingFile = sys_get_temp_dir() . '/stud-missing-' . uniqid() . '.txt';
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Failed to read file: {$missingFile}");
+        FileSystem::createLocal()->read($missingFile);
     }
 
     public function testWriteThrowsWhenNativeFilePutContentsFails(): void

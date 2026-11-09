@@ -15,6 +15,7 @@ class IssueTrackerFactory
 {
     public function __construct(
         private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),
+        private readonly IssueKeyPrefixMatcher $issueKeyPrefixMatcher = new IssueKeyPrefixMatcher(),
     ) {
     }
 
@@ -154,30 +155,12 @@ class IssueTrackerFactory
      */
     public function providerClaimingIssueKey(string $issueKey, array $projectConfig): ?IssueTrackerProvider
     {
-        $prefix = $this->issueKeyPrefixOrNull($issueKey);
-        if ($prefix === null) {
-            return null;
-        }
-
-        try {
-            return $this->resolveProviderForPrefix($prefix, $projectConfig);
-        } catch (IssueTrackerResolutionException) {
-            return null;
-        }
+        return $this->issueKeyPrefixMatcher->providerClaimingIssueKey($issueKey, $projectConfig);
     }
 
     public function issueKeyPrefixOrNull(string $issueKey): ?string
     {
-        $trimmedKey = trim($issueKey);
-        if ($trimmedKey === '') {
-            return null;
-        }
-
-        try {
-            return GitProjectConfigService::extractIssueKeyPrefix($trimmedKey);
-        } catch (\RuntimeException) {
-            return null;
-        }
+        return $this->issueKeyPrefixMatcher->prefixOrNull($issueKey);
     }
 
     /**
@@ -189,54 +172,10 @@ class IssueTrackerFactory
         array $projectConfig,
         ?string $issueKey,
     ): string {
-        $trimmedKey = $issueKey !== null ? trim($issueKey) : '';
-        if ($trimmedKey === '') {
-            throw IssueTrackerResolutionException::autoRequiresIssueKey();
-        }
-
-        try {
-            $prefix = GitProjectConfigService::extractIssueKeyPrefix($trimmedKey);
-        } catch (\RuntimeException) {
-            throw IssueTrackerResolutionException::unknownPrefix(
-                $trimmedKey,
-                $this->formatConfiguredKeyPrefixes($projectConfig),
-            );
-        }
-
-        $provider = $this->resolveProviderForPrefix($prefix, $projectConfig);
-        if ($provider === null) {
-            throw IssueTrackerResolutionException::unknownPrefix(
-                $prefix,
-                $this->formatConfiguredKeyPrefixes($projectConfig),
-            );
-        }
-
+        $provider = $this->issueKeyPrefixMatcher->providerForIssueKey($issueKey, $projectConfig);
         $this->assertCredentials($provider->vendorSlug(), $globalConfig);
 
         return $provider->vendorSlug();
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    private function resolveProviderForPrefix(string $prefix, array $projectConfig): ?IssueTrackerProvider
-    {
-        $matchesJira = $this->prefixMatchesJira($prefix, $projectConfig);
-        $matchesLinear = $this->prefixMatchesLinear($prefix, $projectConfig);
-
-        if ($matchesJira && $matchesLinear) {
-            throw IssueTrackerResolutionException::ambiguousPrefix($prefix);
-        }
-
-        if ($matchesJira) {
-            return IssueTrackerProvider::Jira;
-        }
-
-        if ($matchesLinear) {
-            return IssueTrackerProvider::Linear;
-        }
-
-        return null;
     }
 
     /**
@@ -378,71 +317,5 @@ class IssueTrackerFactory
         }
 
         return $projectSetting === IssueTrackerProvider::Auto->value;
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    private function prefixMatchesJira(string $prefix, array $projectConfig): bool
-    {
-        foreach ($this->jiraKeyPrefixes($projectConfig) as $configuredPrefix) {
-            if (strcasecmp($prefix, $configuredPrefix) === 0) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    private function prefixMatchesLinear(string $prefix, array $projectConfig): bool
-    {
-        $linearTeamKey = $projectConfig[ProjectStudConfigKeys::LINEAR_TEAM_KEY] ?? null;
-        if (! is_string($linearTeamKey) || trim($linearTeamKey) === '') {
-            return false;
-        }
-
-        return strcasecmp($prefix, trim($linearTeamKey)) === 0;
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     * @return list<string>
-     */
-    private function jiraKeyPrefixes(array $projectConfig): array
-    {
-        $prefixes = [];
-        foreach ([ProjectStudConfigKeys::PROJECT_KEY, ProjectStudConfigKeys::JIRA_DEFAULT_PROJECT] as $key) {
-            $value = $projectConfig[$key] ?? null;
-            if (is_string($value) && trim($value) !== '') {
-                $prefixes[] = strtoupper(trim($value));
-            }
-        }
-
-        return array_values(array_unique($prefixes));
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    private function formatConfiguredKeyPrefixes(array $projectConfig): string
-    {
-        $parts = [];
-        foreach ($this->jiraKeyPrefixes($projectConfig) as $prefix) {
-            $parts[] = $prefix . ' (' . IssueTrackerProvider::Jira->value . ')';
-        }
-
-        $linearTeamKey = $projectConfig[ProjectStudConfigKeys::LINEAR_TEAM_KEY] ?? null;
-        if (is_string($linearTeamKey) && trim($linearTeamKey) !== '') {
-            $parts[] = strtoupper(trim($linearTeamKey)) . ' (' . IssueTrackerProvider::Linear->value . ')';
-        }
-
-        if ($parts === []) {
-            return '(none)';
-        }
-
-        return implode(', ', $parts);
     }
 }

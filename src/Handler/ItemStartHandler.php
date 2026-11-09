@@ -41,6 +41,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Ji
         private readonly array $jiraConfig,
         private readonly PromptInterface $prompt,
         private readonly LinearTypeLabelResolver $linearTypeLabelResolver = new LinearTypeLabelResolver(),
+        private readonly BranchActionResolver $branchActionResolver = new BranchActionResolver(),
     ) {
     }
 
@@ -86,7 +87,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Ji
 
         // Check for existing branches before creating
         $existingBranches = $this->gitBranchService->findBranchesByIssueKey($key);
-        $branchAction = $this->determineBranchAction($branchName, $existingBranches);
+        $branchAction = $this->branchActionResolver->resolve($branchName, $existingBranches);
 
         $this->executeBranchAction($branchAction, $branchName);
 
@@ -390,41 +391,5 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Ji
         $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.creating_branch', ['branch' => $defaultBranchName]), WorkflowChannel::Git);
         $this->gitRepository->createBranch($defaultBranchName, $resolvedBase);
         $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.success', ['branch' => $defaultBranchName, 'base' => $resolvedBase]));
-    }
-
-    /**
-     * Determines what action to take based on existing branches.
-     *
-     * @param string $generatedBranchName The generated branch name
-     * @param array{local: array<string>, remote: array<string>} $existingBranches Existing branches found
-     * @return array{action: string, branch: string} Action to take and branch name
-     */
-    protected function determineBranchAction(string $generatedBranchName, array $existingBranches): array
-    {
-        $localBranches = $existingBranches['local'];
-        $remoteBranches = $existingBranches['remote'];
-
-        // Check if local branch exists
-        if (in_array($generatedBranchName, $localBranches, true)) {
-            return ['action' => BranchAction::SWITCH_LOCAL, 'branch' => $generatedBranchName];
-        }
-
-        // Check if remote branch exists
-        if (in_array($generatedBranchName, $remoteBranches, true)) {
-            return ['action' => BranchAction::SWITCH_REMOTE, 'branch' => $generatedBranchName];
-        }
-
-        // If any local branch exists, switch to first one
-        if (! empty($localBranches)) {
-            return ['action' => BranchAction::SWITCH_LOCAL, 'branch' => $localBranches[0]];
-        }
-
-        // If any remote branch exists, switch to first one
-        if (! empty($remoteBranches)) {
-            return ['action' => BranchAction::SWITCH_REMOTE, 'branch' => $remoteBranches[0]];
-        }
-
-        // No existing branches, create new one
-        return ['action' => BranchAction::CREATE, 'branch' => $generatedBranchName];
     }
 }
