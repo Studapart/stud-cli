@@ -7,6 +7,7 @@ namespace App\Handler;
 use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
+use App\DTO\ItemListConfigs;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\DTO\WorkItem;
@@ -22,10 +23,7 @@ class ItemListHandler implements JiraAware, LinearAware
 {
     public function __construct(
         private readonly IssueTrackerPortSupplier $portSupplier,
-        /** @var array<string, mixed> */
-        private readonly array $globalConfig,
-        /** @var array<string, mixed> */
-        private readonly array $projectConfig,
+        private readonly ItemListConfigs $configs,
         private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
         private readonly GlobalConfigProviderResolver $globalProviderResolver = new GlobalConfigProviderResolver(),
     ) {
@@ -36,7 +34,7 @@ class ItemListHandler implements JiraAware, LinearAware
         $onlyMine = ! $all;
         $providers = $this->resolveProvidersToQuery($project, $providerOverride);
         if ($providers === []) {
-            $resolution = $this->portSupplier->resolve($this->globalConfig, $this->projectConfig);
+            $resolution = $this->portSupplier->resolve($this->configs->global, $this->configs->project);
             if (! $resolution['ok']) {
                 return ItemListResponse::error($resolution['error']);
             }
@@ -58,7 +56,7 @@ class ItemListHandler implements JiraAware, LinearAware
         $seenKeys = [];
 
         foreach ($providers as $providerSlug) {
-            $resolution = $this->portSupplier->resolveForProvider($providerSlug, $this->globalConfig, $this->projectConfig);
+            $resolution = $this->portSupplier->resolveForProvider($providerSlug, $this->configs->global, $this->configs->project);
             if (! $resolution['ok']) {
                 if (count($providers) === 1) {
                     return ItemListResponse::error($resolution['error']);
@@ -135,7 +133,7 @@ class ItemListHandler implements JiraAware, LinearAware
             return [$providerOverride];
         }
 
-        $explicit = ProjectStudConfigKeys::readIssueTrackerProvider($this->projectConfig);
+        $explicit = ProjectStudConfigKeys::readIssueTrackerProvider($this->configs->project);
         if ($explicit !== null && $explicit !== IssueTrackerProvider::Auto->value) {
             return [$explicit];
         }
@@ -157,8 +155,8 @@ class ItemListHandler implements JiraAware, LinearAware
     private function resolveProvidersForProjectScope(string $project): array
     {
         $scope = strtoupper($project);
-        $matchJira = $this->scopeKeyResolver->scopeMatchesJira($scope, $this->projectConfig);
-        $matchLinear = $this->scopeKeyResolver->scopeMatchesLinear($scope, $this->projectConfig);
+        $matchJira = $this->scopeKeyResolver->scopeMatchesJira($scope, $this->configs->project);
+        $matchLinear = $this->scopeKeyResolver->scopeMatchesLinear($scope, $this->configs->project);
 
         if ($matchJira && ! $matchLinear) {
             return [IssueTrackerProvider::Jira->value];
@@ -177,13 +175,13 @@ class ItemListHandler implements JiraAware, LinearAware
 
     private function shouldDualAutoAggregate(): bool
     {
-        $stored = ProjectStudConfigKeys::readIssueTrackerProvider($this->projectConfig);
+        $stored = ProjectStudConfigKeys::readIssueTrackerProvider($this->configs->project);
         $isAuto = $stored === null || $stored === IssueTrackerProvider::Auto->value;
         if (! $isAuto) {
             return false;
         }
 
-        $credentials = (new EffectiveIssueTrackerCredentials())->overlay($this->globalConfig, $this->projectConfig);
+        $credentials = (new EffectiveIssueTrackerCredentials())->overlay($this->configs->global, $this->configs->project);
         $providers = $this->globalProviderResolver->resolveIssueTrackerProviders($credentials);
         if (! $this->globalProviderResolver->collectsJira($providers)
             || ! $this->globalProviderResolver->collectsLinear($providers)) {
@@ -201,10 +199,10 @@ class ItemListHandler implements JiraAware, LinearAware
         }
 
         if ($provider === IssueTrackerProvider::Jira->value) {
-            return $this->scopeKeyResolver->resolveJiraProjectKey($this->projectConfig);
+            return $this->scopeKeyResolver->resolveJiraProjectKey($this->configs->project);
         }
 
-        return $this->scopeKeyResolver->resolveLinearTeamKey($this->projectConfig);
+        return $this->scopeKeyResolver->resolveLinearTeamKey($this->configs->project);
     }
 
     /**

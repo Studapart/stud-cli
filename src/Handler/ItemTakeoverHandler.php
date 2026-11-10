@@ -14,29 +14,18 @@ use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\WorkflowResponse;
-use App\Service\GitBranchService;
-use App\Service\GitRepository;
-use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 
 class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware, JiraAware, LinearAware
 {
     private WorkflowEntryRecorder $recorder;
 
-    /**
-     * @param array<string, mixed> $jiraConfig
-     */
     public function __construct(
-        private readonly GitRepository $gitRepository,
-        private readonly GitBranchService $gitBranchService,
-        private readonly IssueTrackerPort $provider,
+        private readonly ItemBranchWorkspace $branches,
+        private readonly ItemStartWorkflows $workflows,
         private readonly ItemStartHandler $itemStartHandler,
-        private readonly string $baseBranch,
-        /** @phpstan-ignore-next-line */
-        private readonly array $jiraConfig,
         private readonly PromptInterface $prompt,
     ) {
-        // $jiraConfig is kept for potential future use (e.g., transition handling)
     }
 
     public function handle(string $key, bool $quiet = false): WorkflowResponse
@@ -52,7 +41,7 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
 
         // Step 2: Fetch issue from Jira
         try {
-            $issue = $this->provider->getIssue($key);
+            $this->workflows->fetchIssue($key);
         } catch (ApiException $e) {
             $this->recorder->addErrorWithDetails(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,
@@ -68,11 +57,11 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
 
         // Step 4: Fetch from remote
         $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.fetching'), WorkflowChannel::Git);
-        $this->gitRepository->fetch();
+        $this->branches->fetch();
 
         // Step 5: Search for branches
         $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.searching_branches'), WorkflowChannel::Git);
-        $branches = $this->gitBranchService->findBranchesByIssueKey($key);
+        $branches = $this->branches->findBranches($key);
 
         // Step 6: Handle branches
         if (empty($branches['local']) && empty($branches['remote'])) {
@@ -84,7 +73,7 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
 
     protected function checkWorkingDirectory(): bool
     {
-        $status = $this->gitRepository->getPorcelainStatus();
+        $status = $this->branches->porcelainStatus();
         if (! empty(trim($status))) {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.error_dirty_working'));
 
@@ -96,15 +85,7 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
 
     protected function assignIssueToCurrentUser(string $key): void
     {
-        try {
-            $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.takeover.assigning', ['key' => $key]), WorkflowChannel::Jira);
-            $this->provider->assign($key);
-        } catch (ApiException $e) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.assign_warning', ['error' => $e->getMessage()]));
-            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
-        } catch (\Exception $e) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.assign_warning', ['error' => $e->getMessage()]));
-        }
+        $this->workflows->assign($this->recorder, $key, 'item.takeover.assigning', 'item.takeover.assign_warning');
     }
 
     protected function handleNoBranches(string $key, bool $quiet = false): WorkflowResponse
@@ -141,7 +122,7 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
             return $this->recorder->toResponse(0);
         }
 
-        $currentBranch = $this->gitRepository->getCurrentBranchName();
+        $currentBranch = $this->branches->currentBranchName();
 
         // Check if already on target branch
         if ($currentBranch === $selectedBranch) {
@@ -152,19 +133,19 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
 
         // Get branch status
         $remoteBranch = $this->getRemoteBranchName($selectedBranch, $branches);
-        $status = $this->gitBranchService->getBranchStatus($selectedBranch, $this->baseBranch, $remoteBranch);
+        $status = $this->branches->branchStatus($selectedBranch, $remoteBranch);
 
         // Check if branch is based on correct base
-        $isBasedOnCorrectBase = $this->gitBranchService->isBranchBasedOn($selectedBranch, $this->baseBranch);
+        $isBasedOnCorrectBase = $this->branches->isBasedOnConfiguredBase($selectedBranch);
         if (! $isBasedOnCorrectBase) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.warning_wrong_base', ['base' => $this->baseBranch]));
+            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.warning_wrong_base', ['base' => $this->branches->baseBranch()]));
         }
 
         // Handle branch synchronization
         $this->handleBranchSynchronization($selectedBranch, $status, $remoteBranch);
 
         // Show success message
-        $this->showSuccessMessage($key, $selectedBranch, $status, $this->baseBranch);
+        $this->showSuccessMessage($key, $selectedBranch, $status, $this->branches->baseBranch());
 
         return $this->recorder->toResponse(0);
     }
@@ -281,9 +262,9 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
         $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.switching', ['branch' => $branchName]), WorkflowChannel::Git);
 
         if (in_array($branchName, $branches['local'], true)) {
-            $this->gitBranchService->switchBranch($branchName);
+            $this->branches->switchLocal($branchName);
         } elseif (in_array($branchName, $branches['remote'], true)) {
-            $this->gitBranchService->switchToRemoteBranch($branchName);
+            $this->branches->switchRemote($branchName);
         }
     }
 
@@ -315,7 +296,7 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
                 $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.warning_diverged'));
             } else {
                 $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.pulling'), WorkflowChannel::Git);
-                $this->gitRepository->pullWithRebase('origin', $branchName);
+                $this->branches->pullWithRebase($branchName);
             }
         }
     }

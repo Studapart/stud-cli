@@ -10,6 +10,8 @@ use App\DTO\WorkflowRecorder;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\ConfigProjectInitPromptCollector;
 use App\Handler\ProjectGitPrompts;
+use App\Handler\ProjectInitGlobalConfig;
+use App\Handler\ProjectInitPromptContext;
 use App\Service\FileSystem;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
@@ -42,10 +44,10 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $gitRepository,
             new ProjectGitPrompts($gitRepository, $gitSetup, $prompt, new GitTokenPromptResolver()),
             $prompt,
-            $fileSystem,
-            '/tmp/global-config.yml',
-            new GlobalConfigProviderResolver(),
-            $metadataPrompts ?? $this->createDefaultMetadataPrompts()
+            new ProjectInitPromptContext(
+                new ProjectInitGlobalConfig($fileSystem, '/tmp/global-config.yml', new GlobalConfigProviderResolver()),
+                $metadataPrompts ?? $this->createDefaultMetadataPrompts(),
+            ),
         );
     }
 
@@ -518,10 +520,10 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $gitRepository,
             new ProjectGitPrompts($gitRepository, $gitSetup, $prompt, new GitTokenPromptResolver()),
             $prompt,
-            $fileSystem,
-            '/tmp/global-config.yml',
-            new GlobalConfigProviderResolver(),
-            $this->createDefaultMetadataPrompts()
+            new ProjectInitPromptContext(
+                new ProjectInitGlobalConfig($fileSystem, '/tmp/global-config.yml', new GlobalConfigProviderResolver()),
+                $this->createDefaultMetadataPrompts(),
+            ),
         );
 
         $this->assertSame(['gitProvider' => 'github'], $collector->collect(new WorkflowRecorder()));

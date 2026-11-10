@@ -9,7 +9,7 @@ use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Exception\StudConfigException;
 use App\Response\WorkflowResponse;
-use App\Service\FileSystem;
+use App\Service\GlobalConfigStore;
 use App\Service\GlobalMigrationIdResolver;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\Yaml\Yaml;
@@ -21,13 +21,12 @@ class InitHandler
     private readonly GlobalMigrationIdResolver $globalMigrationIdResolver;
 
     public function __construct(
-        private readonly FileSystem $fileSystem,
-        private readonly string $configPath,
+        private readonly GlobalConfigStore $configStore,
         private readonly PromptInterface $prompt,
         private readonly InitPromptCollector $promptCollector,
         ?GlobalMigrationIdResolver $globalMigrationIdResolver = null,
     ) {
-        $this->globalMigrationIdResolver = $globalMigrationIdResolver ?? new GlobalMigrationIdResolver($fileSystem);
+        $this->globalMigrationIdResolver = $globalMigrationIdResolver ?? new GlobalMigrationIdResolver($this->configStore->fileSystem);
     }
 
     /**
@@ -39,7 +38,7 @@ class InitHandler
         $existingConfig = $this->loadExistingConfig();
 
         $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.wizard.title'));
-        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.wizard.description', ['path' => $this->configPath]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.wizard.description', ['path' => $this->configStore->path]));
 
         try {
             $config = $this->promptCollector->buildGlobalConfig($existingConfig, $rawAgentInput, $isAgent, $this->recorder);
@@ -61,9 +60,7 @@ class InitHandler
      */
     protected function loadExistingConfig(): array
     {
-        return $this->fileSystem->fileExists($this->configPath)
-            ? $this->fileSystem->parseFile($this->configPath)
-            : [];
+        return $this->configStore->load();
     }
 
     /**
@@ -90,18 +87,8 @@ class InitHandler
      */
     protected function saveConfig(array $config): void
     {
-        $configDir = $this->fileSystem->dirname($this->configPath);
-        if (! $this->fileSystem->isDir($configDir)) {
-            try {
-                $this->fileSystem->mkdir($configDir, 0700, true);
-            } catch (\RuntimeException $e) {
-                throw new \RuntimeException("Failed to create config directory: {$configDir}", 0, $e);
-            }
-        }
-
         $filteredConfig = array_filter($config, [$this, 'filterEmptyStrings']);
-        $this->fileSystem->backupFileIfExists($this->configPath);
-        $this->fileSystem->filePutContents($this->configPath, Yaml::dump($filteredConfig));
+        $this->configStore->write(Yaml::dump($filteredConfig));
         $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.success'));
     }
 

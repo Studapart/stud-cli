@@ -969,13 +969,14 @@ class SubmitHandlerTest extends CommandTestCase
     public function testHandleWithNoGitProviderConfigured(): void
     {
         $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
-        $this->handler = new SubmitHandler(
-            $this->gitRepository,
+        $this->handler = \App\Tests\Support\ConstructorFixtures::submitHandler(
+            new \App\Service\SubmitGit($this->gitRepository, 'origin/develop'),
             $this->issueTracker,
-            null, // No GithubGitHostingAdapter
-            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
-            'origin/develop',
-            new SubmitLabelPlanner($this->gitRepository, null),
+            null,
+            new \App\Service\SubmitAssembly(
+                new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
+                new SubmitLabelPlanner($this->gitRepository, null),
+            ),
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -1439,13 +1440,14 @@ class SubmitHandlerTest extends CommandTestCase
     public function testHandleWithLabelsNoProvider(): void
     {
         $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
-        $this->handler = new SubmitHandler(
-            $this->gitRepository,
+        $this->handler = \App\Tests\Support\ConstructorFixtures::submitHandler(
+            new \App\Service\SubmitGit($this->gitRepository, 'origin/develop'),
             $this->issueTracker,
-            null, // No GithubGitHostingAdapter
-            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
-            'origin/develop',
-            new SubmitLabelPlanner($this->gitRepository, null),
+            null,
+            new \App\Service\SubmitAssembly(
+                new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
+                new SubmitLabelPlanner($this->gitRepository, null),
+            ),
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -2020,13 +2022,14 @@ class SubmitHandlerTest extends CommandTestCase
     public function testHandleWithExistingPRNoProvider(): void
     {
         $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
-        $this->handler = new SubmitHandler(
-            $this->gitRepository,
+        $this->handler = \App\Tests\Support\ConstructorFixtures::submitHandler(
+            new \App\Service\SubmitGit($this->gitRepository, 'origin/develop'),
             $this->issueTracker,
-            null, // No GithubGitHostingAdapter
-            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
-            'origin/develop',
-            new SubmitLabelPlanner($this->gitRepository, null),
+            null,
+            new \App\Service\SubmitAssembly(
+                new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
+                new SubmitLabelPlanner($this->gitRepository, null),
+            ),
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -2130,13 +2133,11 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleExistingPrWithNoProviderLogsSuccessAndReturns(): void
     {
-        $handler = new SubmitHandler(
-            $this->gitRepository,
+        $handler = \App\Tests\Support\ConstructorFixtures::submitHandler(
+            new \App\Service\SubmitGit($this->gitRepository, 'origin/develop'),
             $this->issueTracker,
             null,
-            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
-            'origin/develop',
-            new SubmitLabelPlanner($this->gitRepository, null),
+            new \App\Service\SubmitAssembly(new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter), new SubmitLabelPlanner($this->gitRepository, null)),
         );
 
 
@@ -2460,16 +2461,14 @@ class SubmitHandlerTest extends CommandTestCase
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$issueTracker = $this->issueTracker;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new SubmitHandler(
-            $this->gitRepository,
+        $this->handler = \App\Tests\Support\ConstructorFixtures::submitHandler(
+            new \App\Service\SubmitGit($this->gitRepository, 'origin/develop'),
             $this->issueTracker,
             $this->githubProvider,
-            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
-            'origin/develop',
-            new SubmitLabelPlanner(
+            new \App\Service\SubmitAssembly(new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter), new SubmitLabelPlanner(
                 $this->gitRepository,
                 $this->githubProvider !== null ? new SubmitLabelResolver($this->githubProvider, $this->prompt) : null,
-            ),
+            )),
         );
     }
 }

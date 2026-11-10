@@ -48,14 +48,11 @@ class ItemCreateHandlerTest extends CommandTestCase
      */
     private function createHandler(array $defaultWorkItemLabels = []): ItemCreateHandler
     {
-        return new ItemCreateHandler(
+        return \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $this->issueTracker,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
-            new ItemCreateFieldsOptionApplier($this->fieldsParser, $defaultWorkItemLabels),
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser, $defaultWorkItemLabels), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
     }
 
@@ -1833,14 +1830,11 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('issueCreate')
             ->willReturn(['identifier' => 'SCI-42', 'url' => 'https://linear.app/SCI-42']);
 
-        $handler = new ItemCreateHandler(
-            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, $linearApiClient),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
+            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, new \App\Service\ItemCreateLinearLookup($linearApiClient)),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $linearProvider,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
-            new ItemCreateFieldsOptionApplier($this->fieldsParser),
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Linear issue', null));
@@ -1864,14 +1858,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
         $this->jiraApiClient->expects($this->once())->method('getProject')->willReturn(new Project('SCI', 'Stud'));
 
-        $handler = new ItemCreateHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $linearProvider,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
-            new ItemCreateFieldsOptionApplier($this->fieldsParser),
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Summary', null));
@@ -1902,14 +1893,11 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['identifier' => 'SCI-43', 'url' => 'https://linear.app/SCI-43']);
 
-        $handler = new ItemCreateHandler(
-            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, $linearApiClient),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
+            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, new \App\Service\ItemCreateLinearLookup($linearApiClient)),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $linearProvider,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
-            new ItemCreateFieldsOptionApplier($this->fieldsParser),
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         $response = $handler->handle(
@@ -1934,14 +1922,11 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('ENG', 'Story')
             ->willReturn([]);
 
-        $handler = new ItemCreateHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $linearProvider,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
-            new ItemCreateFieldsOptionApplier($this->fieldsParser),
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         /** @var \App\DTO\IssueCreationState $state */
@@ -1959,14 +1944,11 @@ class ItemCreateHandlerTest extends CommandTestCase
     {
         $linearProvider = new LinearIssueTrackerAdapter($this->createStub(LinearApiClient::class));
 
-        $handler = new ItemCreateHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $linearProvider,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
-            new ItemCreateFieldsOptionApplier($this->fieldsParser),
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         /** @var \App\DTO\IssueCreationState $state */
@@ -2101,14 +2083,11 @@ class ItemCreateHandlerTest extends CommandTestCase
         $port = new JiraCapableIssueTrackerStub();
         $this->jiraApiClient->method('getProject')->willReturn(new Project('PROJ', 'Project'));
         $this->jiraApiClient->method('getCreateMetaIssueTypes')->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $handler = new ItemCreateHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $port,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
-            new ItemCreateFieldsOptionApplier($this->fieldsParser),
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
@@ -2127,14 +2106,11 @@ class ItemCreateHandlerTest extends CommandTestCase
         $port = new DeferringJiraIssueTrackerStub();
         $this->jiraApiClient->method('getProject')->willReturn(new Project('PROJ', 'Project'));
         $this->jiraApiClient->method('getCreateMetaIssueTypes')->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $handler = new ItemCreateHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $port,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
-            new ItemCreateFieldsOptionApplier($this->fieldsParser, ['AI-Generated']),
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser, ['AI-Generated']), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));

@@ -11,9 +11,9 @@ use App\Response\ConfigProjectInitResponse;
 use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
 use App\Service\InitProjectConfigFollowUpService;
+use App\Service\ProjectInitChain;
 use App\Service\ProjectStudConfigAdequacyChecker;
 use App\Service\Prompt\PromptInterface;
-use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -141,17 +141,13 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
         ?PromptInterface $prompt = null,
         ?ConfigProjectInitResponder $responder = null,
     ): InitProjectConfigFollowUpService {
-        $translationsPath = __DIR__ . '/../../src/resources/translations';
-        $translator = new TranslationService('en', $translationsPath);
         $prompt ??= $this->createStub(PromptInterface::class);
         $responder ??= $this->createStub(ConfigProjectInitResponder::class);
 
         return new InitProjectConfigFollowUpService(
             $git,
             new ProjectStudConfigAdequacyChecker(),
-            $handler,
-            $responder,
-            $translator,
+            new ProjectInitChain($handler, $responder),
             $prompt,
         );
     }

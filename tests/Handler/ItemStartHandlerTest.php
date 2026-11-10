@@ -3,10 +3,13 @@
 namespace App\Tests\Handler;
 
 use App\DTO\StateChange;
+use App\DTO\WorkflowRecorder;
 use App\DTO\WorkItem;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\ItemStartHandler;
+use App\Handler\ItemTrackerGateway;
 use App\Response\WorkflowResponse;
+use App\Service\BranchNameGenerator;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
@@ -14,6 +17,7 @@ use App\Service\Prompt\NonInteractivePromptService;
 use App\Service\Prompt\PromptInterface;
 use App\Service\Prompt\SymfonyPromptService;
 use App\Tests\CommandTestCase;
+use App\Tests\Support\ItemStartHandlerTestKit;
 use App\Tests\TestKernel;
 use PHPUnit\Framework\MockObject\Stub;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -97,7 +101,12 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('getIssue')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', [], $this->prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            []
+        );
 
         $response = $handler->handle('TPW-35');
 
@@ -135,12 +144,12 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testGetBranchPrefixFromIssueType(): void
     {
-        $this->assertSame('fix', $this->callPrivateMethod($this->handler, 'getBranchPrefixFromIssueType', ['bug']));
-        $this->assertSame('feat', $this->callPrivateMethod($this->handler, 'getBranchPrefixFromIssueType', ['story']));
-        $this->assertSame('feat', $this->callPrivateMethod($this->handler, 'getBranchPrefixFromIssueType', ['epic']));
-        $this->assertSame('chore', $this->callPrivateMethod($this->handler, 'getBranchPrefixFromIssueType', ['task']));
-        $this->assertSame('chore', $this->callPrivateMethod($this->handler, 'getBranchPrefixFromIssueType', ['sub-task']));
-        $this->assertSame('feat', $this->callPrivateMethod($this->handler, 'getBranchPrefixFromIssueType', ['unknown']));
+        $this->assertSame('fix', BranchNameGenerator::prefixForIssueType('bug'));
+        $this->assertSame('feat', BranchNameGenerator::prefixForIssueType('story'));
+        $this->assertSame('feat', BranchNameGenerator::prefixForIssueType('epic'));
+        $this->assertSame('chore', BranchNameGenerator::prefixForIssueType('task'));
+        $this->assertSame('chore', BranchNameGenerator::prefixForIssueType('sub-task'));
+        $this->assertSame('feat', BranchNameGenerator::prefixForIssueType('unknown'));
     }
 
     public function testHandleWithTransitionEnabledAndCachedTransition(): void
@@ -175,7 +184,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -237,7 +251,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -301,7 +320,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -376,7 +400,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -457,7 +486,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -517,7 +551,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -576,7 +615,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -635,7 +679,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -693,7 +742,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -738,7 +792,12 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $this->prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -784,7 +843,12 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $this->prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -829,7 +893,12 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $this->prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -874,7 +943,12 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $this->prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -931,7 +1005,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -1012,7 +1091,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -1098,7 +1182,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -1185,7 +1274,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
+        );
 
         $this->issueTracker
             ->method('getIssue')
@@ -1240,47 +1334,26 @@ class ItemStartHandlerTest extends CommandTestCase
     {
         // Test the error path when preg_match fails to extract transition ID
         // The exception is caught and a warning is shown, then the method returns 0
-        $workItem = new WorkItem(
-            id: '10001',
-            key: 'TPW-35',
-            title: 'My awesome feature',
-            status: 'To Do',
-            assignee: 'John Doe',
-            description: 'A description',
-            labels: [],
-            issueType: 'story',
-            components: ['api'],
-        );
-
-        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
-
         $prompt = $this->createStub(PromptInterface::class);
         $prompt
             ->method('choice')
             ->willReturn('Invalid Selection Without ID Pattern');
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $jiraConfig, $prompt);
-
-        $reflection = new \ReflectionClass($handler);
-        $property = $reflection->getProperty('recorder');
-        \App\Util\ReflectionAccessor::ensureAccessible($property);
-        $property->setValue($handler, new \App\DTO\WorkflowRecorder());
-
         $this->gitRepository
             ->method('getProjectKeyFromIssueKey')
             ->willReturn('TPW');
 
-        $transitions = [
-            new StateChange('11', 'Start Progress', 'In Progress'),
-        ];
-
         $this->issueTracker
             ->method('listItemStateChanges')
-            ->willReturn($transitions);
+            ->willReturn([
+                new StateChange('11', 'Start Progress', 'In Progress'),
+            ]);
 
-        $this->callPrivateMethod($handler, 'handleTransition', ['TPW-35', $workItem, []]);
+        $recorder = new WorkflowRecorder();
+        ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt)
+            ->transition($recorder, 'TPW-35', []);
 
-        $response = $property->getValue($handler)->toResponse(0);
+        $response = $recorder->toResponse(0);
         $this->assertMessageRef($response->getWarnings()[0]->message, 'item.start.transition_error');
     }
 
@@ -1518,7 +1591,12 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'develop');
 
-        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->issueTracker, 'origin/develop', [], $this->prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($gitRepository, $gitBranchService, 'origin/develop'),
+            []
+        );
 
         $response = $handler->handle('TPW-35');
 
@@ -1557,7 +1635,12 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
-        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->issueTracker, 'origin/develop', [], $this->prompt);
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($gitRepository, $gitBranchService, 'origin/develop'),
+            []
+        );
 
         $response = $handler->handle('TPW-35');
 
@@ -1715,13 +1798,11 @@ class ItemStartHandlerTest extends CommandTestCase
         );
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
-        $handler = new ItemStartHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
-            'origin/develop',
-            $jiraConfig,
-            $this->prompt
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
         );
 
         $this->issueTracker
@@ -1774,13 +1855,11 @@ class ItemStartHandlerTest extends CommandTestCase
         );
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
-        $handler = new ItemStartHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
-            'origin/develop',
-            $jiraConfig,
-            $this->prompt
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
         );
 
         $this->issueTracker
@@ -1834,13 +1913,11 @@ class ItemStartHandlerTest extends CommandTestCase
         );
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
-        $handler = new ItemStartHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
-            'origin/develop',
-            $jiraConfig,
-            $this->prompt
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
         );
 
         $this->issueTracker
@@ -1879,30 +1956,16 @@ class ItemStartHandlerTest extends CommandTestCase
     public function testUsesLinearStartWorkflowForPinnedJiraAndEmptyLinearTeam(): void
     {
         $this->gitRepository = $this->createMock(GitRepository::class);
-        $this->bindSubject();
-
         $this->gitRepository->expects($this->never())->method('getProjectKeyFromIssueKey');
 
-        $this->assertFalse($this->callPrivateMethod(
-            $this->handler,
-            'usesLinearStartWorkflow',
-            ['SCI-1', ['issueTrackerProvider' => IssueTrackerProvider::Jira->value]],
-        ));
+        $workflows = ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt);
 
-        $this->assertFalse($this->callPrivateMethod(
-            $this->handler,
-            'usesLinearStartWorkflow',
-            ['SCIL-1', [
-                'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
-                'linearTeamKey' => '   ',
-            ]],
-        ));
-
-        $this->assertFalse($this->callPrivateMethod(
-            $this->handler,
-            'issueKeyMatchesLinearTeam',
-            ['SCIL-1', ['linearTeamKey' => '']],
-        ));
+        $this->assertFalse($workflows->usesLinear('SCI-1', ['issueTrackerProvider' => IssueTrackerProvider::Jira->value]));
+        $this->assertFalse($workflows->usesLinear('SCIL-1', [
+            'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
+            'linearTeamKey' => '   ',
+        ]));
+        $this->assertFalse($workflows->issueKeyMatchesLinearTeam('SCIL-1', ['linearTeamKey' => '']));
     }
 
     public function testHandleLinearAgentModeSkipsTransitionWithoutCachedState(): void
@@ -1923,13 +1986,11 @@ class ItemStartHandlerTest extends CommandTestCase
         );
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
-        $handler = new ItemStartHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
-            'origin/develop',
-            $jiraConfig,
-            new NonInteractivePromptService()
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, new NonInteractivePromptService()),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
         );
 
         $this->issueTracker
@@ -1980,13 +2041,11 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $prompt = new SymfonyPromptService(new SymfonyStyle($input, $output));
-        $handler = new ItemStartHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
-            'origin/develop',
-            $jiraConfig,
-            $prompt
+        $handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            $jiraConfig
         );
 
         $this->issueTracker
@@ -2024,24 +2083,9 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testPromptForLinearStartStateIdReturnsNullWhenSelectionInvalid(): void
     {
-        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
         $this->prompt
             ->method('choice')
             ->willReturn('Invalid option without ID');
-
-        $handler = new ItemStartHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
-            'origin/develop',
-            $jiraConfig,
-            $this->prompt
-        );
-
-        $reflection = new \ReflectionClass($handler);
-        $property = $reflection->getProperty('recorder');
-        \App\Util\ReflectionAccessor::ensureAccessible($property);
-        $property->setValue($handler, new \App\DTO\WorkflowRecorder());
 
         $this->issueTracker
             ->method('listItemStateChanges')
@@ -2049,97 +2093,58 @@ class ItemStartHandlerTest extends CommandTestCase
                 new StateChange(id: 'state-1', name: 'Todo', type: 'unstarted'),
             ]);
 
-        $stateId = $this->callPrivateMethod($handler, 'promptForLinearStartStateId', ['SCI-38']);
+        $recorder = new WorkflowRecorder();
+        $stateId = ItemStartHandlerTestKit::linear($this->gitRepository, $this->issueTracker, $this->prompt)
+            ->promptForStartStateId($recorder, 'SCI-38');
 
         $this->assertNull($stateId);
-        $response = $property->getValue($handler)->toResponse(0);
+        $response = $recorder->toResponse(0);
         $this->assertMessageRef($response->getWarnings()[0]->message, 'item.start.transition_error');
     }
 
     public function testPromptForLinearStartStateIdReturnsNullWhenNoStates(): void
     {
-        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
-        $handler = new ItemStartHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
-            'origin/develop',
-            $jiraConfig,
-            $this->prompt
-        );
-
-        $reflection = new \ReflectionClass($handler);
-        $property = $reflection->getProperty('recorder');
-        \App\Util\ReflectionAccessor::ensureAccessible($property);
-        $property->setValue($handler, new \App\DTO\WorkflowRecorder());
-
         $this->issueTracker
             ->method('listItemStateChanges')
             ->willReturn([]);
 
-        $stateId = $this->callPrivateMethod($handler, 'promptForLinearStartStateId', ['SCI-39']);
+        $recorder = new WorkflowRecorder();
+        $stateId = ItemStartHandlerTestKit::linear($this->gitRepository, $this->issueTracker, $this->prompt)
+            ->promptForStartStateId($recorder, 'SCI-39');
 
         $this->assertNull($stateId);
-        $response = $property->getValue($handler)->toResponse(0);
+        $response = $recorder->toResponse(0);
         $this->assertMessageRef($response->getWarnings()[0]->message, 'item.start.no_linear_states', ['key' => 'SCI-39']);
     }
 
     public function testPromptForLinearStartStateIdReturnsNullOnApiException(): void
     {
-        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
-        $handler = new ItemStartHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
-            'origin/develop',
-            $jiraConfig,
-            $this->prompt
-        );
-
-        $reflection = new \ReflectionClass($handler);
-        $property = $reflection->getProperty('recorder');
-        \App\Util\ReflectionAccessor::ensureAccessible($property);
-        $property->setValue($handler, new \App\DTO\WorkflowRecorder());
-
         $this->issueTracker
             ->method('listItemStateChanges')
             ->willThrowException(new \App\Exception\ApiException('Failed', 'HTTP 500', 500));
 
-        $stateId = $this->callPrivateMethod($handler, 'promptForLinearStartStateId', ['SCI-40']);
+        $recorder = new WorkflowRecorder();
+        $stateId = ItemStartHandlerTestKit::linear($this->gitRepository, $this->issueTracker, $this->prompt)
+            ->promptForStartStateId($recorder, 'SCI-40');
 
         $this->assertNull($stateId);
-        $response = $property->getValue($handler)->toResponse(0);
+        $response = $recorder->toResponse(0);
         $this->assertMessageRef($response->getWarnings()[0]->message, 'item.start.transition_error');
     }
 
     public function testExecuteStateChangeWithLoggingHandlesGenericException(): void
     {
         $this->issueTracker = $this->createMock(IssueTrackerPort::class);
-        $this->bindSubject();
-
-        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
-        $handler = new ItemStartHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
-            'origin/develop',
-            $jiraConfig,
-            $this->prompt
-        );
-
-        $reflection = new \ReflectionClass($handler);
-        $property = $reflection->getProperty('recorder');
-        \App\Util\ReflectionAccessor::ensureAccessible($property);
-        $property->setValue($handler, new \App\DTO\WorkflowRecorder());
 
         $this->issueTracker->expects($this->once())
             ->method('applyStateChange')
             ->with('SCI-41', 'state-1')
             ->willThrowException(new \RuntimeException('boom'));
 
-        $this->callPrivateMethod($handler, 'executeStateChangeWithLogging', ['SCI-41', 'state-1']);
+        $recorder = new WorkflowRecorder();
+        (new ItemTrackerGateway($this->issueTracker))->applyStateChange($recorder, 'SCI-41', 'state-1');
 
-        $response = $property->getValue($handler)->toResponse(0);
+        $response = $recorder->toResponse(0);
         $this->assertMessageRef($response->getWarnings()[0]->message, 'item.start.transition_exec_error');
     }
 
@@ -2154,6 +2159,11 @@ class ItemStartHandlerTest extends CommandTestCase
         TestKernel::$issueTracker = $this->issueTracker;
         TestKernel::$translationService = $this->translationService;
         // Default config with transition disabled for existing tests
-        $this->handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', [], $this->prompt);
+        $this->handler = ItemStartHandlerTestKit::create(
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
+            new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            []
+        );
     }
 }

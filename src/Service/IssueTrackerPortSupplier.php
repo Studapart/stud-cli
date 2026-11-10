@@ -22,12 +22,8 @@ class IssueTrackerPortSupplier
     public function __construct(
         private readonly IssueTrackerFactory $factory,
         private readonly IssueTrackerResolver $resolver,
-        private readonly ?JiraApiClient $jiraApiClient,
-        private readonly ?JiraAttachmentService $attachmentService,
-        private readonly ?LinearApiClient $linearApiClient,
-        private readonly ?LinearAttachmentService $linearAttachmentService = null,
-        private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
-        private readonly GlobalConfigProviderResolver $globalProviderResolver = new GlobalConfigProviderResolver(),
+        private readonly IssueTrackerClients $clients,
+        private readonly IssueTrackerScopeResolvers $scopes = new IssueTrackerScopeResolvers(),
     ) {
     }
 
@@ -84,7 +80,7 @@ class IssueTrackerPortSupplier
 
         $effectiveConfig = $this->withProjectCredentials($globalConfig, $projectConfig);
         if ($this->shouldInferProviderFromScope($effectiveConfig, $projectConfig)) {
-            $inferred = $this->scopeKeyResolver->resolveProviderForDiscoveryScope($scopeKey, $projectConfig);
+            $inferred = $this->scopes->scope->resolveProviderForDiscoveryScope($scopeKey, $projectConfig);
             if (! $inferred['ok']) {
                 return $inferred;
             }
@@ -122,10 +118,10 @@ class IssueTrackerPortSupplier
                 'provider' => $providerSlug,
                 'port' => $this->factory->createForProvider(
                     $providerSlug,
-                    $this->jiraApiClient,
-                    $this->attachmentService,
-                    $this->linearApiClient,
-                    linearAttachmentService: $this->linearAttachmentService,
+                    $this->clients->jira,
+                    $this->clients->jiraAttachments,
+                    $this->clients->linear,
+                    linearAttachmentService: $this->clients->linearAttachments,
                 ),
             ];
         } catch (IssueTrackerException $e) {
@@ -170,9 +166,9 @@ class IssueTrackerPortSupplier
      */
     private function isDualPmConfigured(array $globalConfig): bool
     {
-        $providers = $this->globalProviderResolver->resolveIssueTrackerProviders($globalConfig);
-        if (! $this->globalProviderResolver->collectsJira($providers)
-            || ! $this->globalProviderResolver->collectsLinear($providers)) {
+        $providers = $this->scopes->global->resolveIssueTrackerProviders($globalConfig);
+        if (! $this->scopes->global->collectsJira($providers)
+            || ! $this->scopes->global->collectsLinear($providers)) {
             return false;
         }
 

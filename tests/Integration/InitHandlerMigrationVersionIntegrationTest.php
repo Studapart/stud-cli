@@ -139,15 +139,15 @@ class InitHandlerMigrationVersionIntegrationTest extends TestCase
 
         // Create handler with the IO that has the input stream
         $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
+        $providerResolver = new GlobalConfigProviderResolver();
         $handler = new InitHandler(
-            $this->fileSystem,
-            'config.yml',
+            new \App\Service\GlobalConfigStore($this->fileSystem, 'config.yml'),
             $logger,
             new InitPromptCollector(
                 $logger,
-                new GitTokenPromptResolver(),
                 new MessageRenderer($this->translationService),
-                new GlobalConfigProviderResolver(),
+                $providerResolver,
+                \App\Handler\GlobalInit\InitPromptCollectors::defaults($logger, new GitTokenPromptResolver(), $providerResolver),
             ),
         );
 

@@ -13,40 +13,20 @@ use App\Exception\LinearTypeLabelException;
 use App\Exception\StudConfigException;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\ItemCreateResponse;
-use App\Service\FieldsParser;
-use App\Service\IssueFieldResolver;
 use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\IssueTrackerPort;
-use App\Service\ItemCreateFieldsOptionApplier;
 use App\Service\ItemCreateProjectResolver;
-use App\Service\ItemCreatePromptService;
-use App\Service\Jira\JiraCreateDeferErrorParser;
-use App\Service\Jira\JiraCreateDeferralCoordinator;
-use App\Service\Jira\JiraIssueFieldWriter;
-use App\Service\Jira\JiraIssueTrackerResolver;
-use App\Service\Prompt\PromptInterface;
 use App\Service\StudIssueKeys;
 
 class ItemCreateHandler implements JiraAware
 {
     public function __construct(
         private readonly ItemCreateProjectResolver $projectResolver,
-        private readonly ItemCreatePromptService $promptService,
+        private readonly ItemCreatePrompts $prompts,
         private readonly IssueTrackerPort $provider,
-        private readonly IssueFieldResolver $fieldResolver,
-        FieldsParser $fieldsParser,
-        private readonly PromptInterface $prompt,
-        private readonly ItemCreateFieldsOptionApplier $fieldsOptionApplier,
-        private readonly JiraIssueTrackerResolver $jiraResolver = new JiraIssueTrackerResolver(),
-        ?JiraCreateDeferralCoordinator $deferralCoordinator = null,
+        private readonly ItemCreateFieldFlow $fieldFlow,
     ) {
-        $this->deferralCoordinator = $deferralCoordinator ?? new JiraCreateDeferralCoordinator(
-            new JiraCreateDeferErrorParser(),
-            new JiraIssueFieldWriter($fieldsParser),
-        );
     }
-
-    private readonly JiraCreateDeferralCoordinator $deferralCoordinator;
 
     public function handle(bool $interactive, ItemCreateInput $input): ItemCreateResponse
     {
@@ -55,7 +35,7 @@ class ItemCreateHandler implements JiraAware
             return $projectKeyOrError;
         }
         $projectKey = $projectKeyOrError;
-        $type = $this->fieldResolver->resolveIssueTypeName($input->type, $input->parentKey);
+        $type = $this->fieldFlow->fields->resolveIssueTypeName($input->type, $input->parentKey);
 
         $summary = $this->resolveSummary($interactive, $input->summary);
         if ($summary === null || $summary === '') {
@@ -72,7 +52,7 @@ class ItemCreateHandler implements JiraAware
             return $extraError;
         }
 
-        $skippedOptionalFields = $this->fieldsOptionApplier->apply($stateOrError, $input);
+        $skippedOptionalFields = $this->fieldFlow->options->apply($stateOrError, $input);
 
         return $this->createIssueAndReturnResponse($stateOrError->fields, $skippedOptionalFields, $stateOrError);
     }
@@ -87,7 +67,7 @@ class ItemCreateHandler implements JiraAware
             return $this->resolveLabelGroupsCapableCreateMetadata($projectKey, $type, $summary, $input);
         }
 
-        $issueTypeId = $this->fieldResolver->resolveIssueTypeId($projectKey, $type);
+        $issueTypeId = $this->fieldFlow->fields->resolveIssueTypeId($projectKey, $type);
         if ($issueTypeId === null) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => "Issue type \"{$type}\" not found for project \"{$projectKey}\""]));
         }
@@ -99,8 +79,8 @@ class ItemCreateHandler implements JiraAware
         }
 
         $description = $this->getDescription($input->descriptionOption);
-        $requiredFieldIds = $this->fieldResolver->getRequiredFieldIdsFromMeta($allFieldsMeta);
-        $fields = $this->fieldResolver->buildBaseFields($projectKey, $issueTypeId, $summary, $description, $input->descriptionFormat, $input->parentKey);
+        $requiredFieldIds = $this->fieldFlow->fields->getRequiredFieldIdsFromMeta($allFieldsMeta);
+        $fields = $this->fieldFlow->fields->buildBaseFields($projectKey, $issueTypeId, $summary, $description, $input->descriptionFormat, $input->parentKey);
 
         return new IssueCreationState($projectKey, $issueTypeId, $allFieldsMeta, $requiredFieldIds, $fields);
     }
@@ -159,14 +139,14 @@ class ItemCreateHandler implements JiraAware
             'parentKey' => $parentKeyTrimmed,
         ];
         $fillIssueType = $typeExplicitlyProvided || ! $interactive;
-        $extraRequired = $this->fieldResolver->resolveStandardFieldsAndExtraRequired(
+        $extraRequired = $this->fieldFlow->fields->resolveStandardFieldsAndExtraRequired(
             $state->requiredFieldIds,
             $state->allFieldsMeta,
             $state->fields,
             $fieldValues,
             $fillIssueType
         );
-        $this->fieldResolver->defaultAssigneeWhenFieldPresent($state->allFieldsMeta, $state->fields, null);
+        $this->fieldFlow->fields->defaultAssigneeWhenFieldPresent($state->allFieldsMeta, $state->fields, null);
 
         if ($extraRequired === []) {
             return null;
@@ -202,7 +182,7 @@ class ItemCreateHandler implements JiraAware
             $extraRequired
         );
         if ($prompted === null) {
-            $fieldsList = $this->fieldResolver->getExtraRequiredFieldsList(
+            $fieldsList = $this->fieldFlow->fields->getExtraRequiredFieldsList(
                 $state->projectKey,
                 $state->issueTypeId,
                 $extraRequired
@@ -211,7 +191,7 @@ class ItemCreateHandler implements JiraAware
             return ItemCreateResponse::error(MessageRef::key('item.create.error_extra_required', ['fields' => $fieldsList]));
         }
         foreach ($prompted as $fieldId => $value) {
-            $state->fields[$this->fieldResolver->getCreatePayloadFieldKey((string) $fieldId)] = $value;
+            $state->fields[$this->fieldFlow->fields->getCreatePayloadFieldKey((string) $fieldId)] = $value;
         }
 
         return null;
@@ -227,8 +207,8 @@ class ItemCreateHandler implements JiraAware
         IssueCreationState $state,
     ): ItemCreateResponse {
         if (! $this->provider instanceof IssueTrackerLabelGroupsCapable
-            && $this->jiraResolver->isJiraBacked($this->provider)) {
-            return $this->deferralCoordinator->create(
+            && $this->fieldFlow->jira->isJiraBacked($this->provider)) {
+            return $this->fieldFlow->deferral->create(
                 $this->provider,
                 $fields,
                 $state->fieldInputsForUpdate,
@@ -294,7 +274,7 @@ class ItemCreateHandler implements JiraAware
             return null;
         }
 
-        return $this->prompt->ask(MessageRef::key('item.create.prompt_summary'));
+        return $this->prompts->prompt->ask(MessageRef::key('item.create.prompt_summary'));
     }
 
     protected function getDescription(?string $descriptionOption): ?string
@@ -354,7 +334,7 @@ class ItemCreateHandler implements JiraAware
         ?array $descriptionAdf,
         array $extraRequiredFieldIds
     ): ?array {
-        return $this->promptService->promptForExtraRequiredFields(
+        return $this->prompts->service->promptForExtraRequiredFields(
             $interactive,
             $projectKey,
             $issueTypeId,
@@ -376,12 +356,12 @@ class ItemCreateHandler implements JiraAware
         bool $typeExplicitlyProvided,
         array $allFields,
     ): ?array {
-        return $this->promptService->promptIssueTypeValue($projectKey, $issueTypeId, $typeExplicitlyProvided, $allFields);
+        return $this->prompts->service->promptIssueTypeValue($projectKey, $issueTypeId, $typeExplicitlyProvided, $allFields);
     }
 
     protected function chooseIssueTypeInteractively(string $projectKey): ?string
     {
-        return $this->promptService->chooseIssueTypeInteractively($projectKey);
+        return $this->prompts->service->chooseIssueTypeInteractively($projectKey);
     }
 
     /**
@@ -391,6 +371,6 @@ class ItemCreateHandler implements JiraAware
      */
     protected function promptDescriptionValue(?array $descriptionAdf): array|string|null
     {
-        return $this->promptService->promptDescriptionValue($descriptionAdf);
+        return $this->prompts->service->promptDescriptionValue($descriptionAdf);
     }
 }

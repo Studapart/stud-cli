@@ -60,7 +60,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
         $response = $handler->handle($version, false, null);
 
         $this->assertSuccessfulReleaseResponse($response, 11);
@@ -94,7 +94,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
         $response = $handler->handle($version, true, null);
 
         $this->assertSuccessfulReleaseResponse($response, 12);
@@ -128,7 +128,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
         $response = $handler->handle($version, false, null);
 
         $this->assertSuccessfulReleaseResponse($response, 12);
@@ -162,7 +162,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
         $response = $handler->handle($version, false, null);
 
         $this->assertSuccessfulReleaseResponse($response, 11);
@@ -198,7 +198,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $prompt->confirm(Argument::any(), false)->willReturn(false);
         $gitRepository->pushToOrigin($releaseBranch)->shouldNotBeCalled();
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
         $response = $handler->handle($version, false, null);
 
         $this->assertSuccessfulReleaseResponse($response, 11);
@@ -221,7 +221,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $version = '1.2.3';
         $composerJsonPath = '/nonexistent/composer.json';
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, 'CHANGELOG.md'));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read composer.json');
@@ -238,7 +238,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = '/composer.json';
         $this->flysystem->write($composerJsonPath, 'invalid json');
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, 'CHANGELOG.md'));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Invalid composer.json format');
@@ -257,7 +257,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read CHANGELOG.md');
@@ -273,7 +273,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $content = "<!-- release-version:start -->Download stud-3.4.1.phar and stud-3.4.1.phar again.<!-- release-version:end -->\n";
         $this->flysystem->write($readmePath, $content);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths('/composer.json', '/CHANGELOG.md', $readmePath));
         $this->callPrivateMethod($handler, 'updateReadme', ['3.5.0']);
 
         $updated = $this->flysystem->read($readmePath);
@@ -288,7 +288,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $content = "<!-- release-version:start -->https://github.com/Studapart/stud-cli/releases/download/v2.1.0/stud-2.1.0.phar<!-- release-version:end -->\n";
         $this->flysystem->write($readmePath, $content);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths('/composer.json', '/CHANGELOG.md', $readmePath));
         $this->callPrivateMethod($handler, 'updateReadme', ['3.0.0']);
 
         $updated = $this->flysystem->read($readmePath);
@@ -303,7 +303,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $content = "https://github.com/Studapart/stud-cli/releases/download/v2.1.0/stud-2.1.0.phar\n";
         $this->flysystem->write($readmePath, $content);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths('/composer.json', '/CHANGELOG.md', $readmePath));
         $this->callPrivateMethod($handler, 'updateReadme', ['3.0.0']);
 
         $this->assertSame($content, $this->flysystem->read($readmePath));
@@ -317,7 +317,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $content = "Some text without version patterns. stud-1.2.phar invalid.\n";
         $this->flysystem->write($readmePath, $content);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths('/composer.json', '/CHANGELOG.md', $readmePath));
         $this->callPrivateMethod($handler, 'updateReadme', ['2.0.0']);
 
         $updated = $this->flysystem->read($readmePath);
@@ -332,7 +332,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $content = "# Title\n\nNo version here.\n";
         $this->flysystem->write($readmePath, $content);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths('/composer.json', '/CHANGELOG.md', $readmePath));
         $this->callPrivateMethod($handler, 'updateReadme', ['1.0.0']);
 
         $this->assertSame($content, $this->flysystem->read($readmePath));
@@ -344,7 +344,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $prompt = $this->prophesize(PromptInterface::class);
         $readmePath = '/nonexistent/README.md';
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths('/composer.json', '/CHANGELOG.md', $readmePath));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read README.md');
@@ -356,7 +356,7 @@ class ReleaseHandlerTest extends CommandTestCase
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $prompt = $this->prophesize(PromptInterface::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, 'composer.json', 'CHANGELOG.md');
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths('composer.json', 'CHANGELOG.md'));
 
         $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'patch']);
         $this->assertSame('2.6.3', $result);
@@ -366,7 +366,7 @@ class ReleaseHandlerTest extends CommandTestCase
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $prompt = $this->prophesize(PromptInterface::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem);
 
         $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'minor']);
         $this->assertSame('2.7.0', $result);
@@ -376,7 +376,7 @@ class ReleaseHandlerTest extends CommandTestCase
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $prompt = $this->prophesize(PromptInterface::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem);
 
         $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'major']);
         $this->assertSame('3.0.0', $result);
@@ -386,7 +386,7 @@ class ReleaseHandlerTest extends CommandTestCase
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $prompt = $this->prophesize(PromptInterface::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Invalid version format: invalid. Expected format: X.Y.Z");
@@ -398,7 +398,7 @@ class ReleaseHandlerTest extends CommandTestCase
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $prompt = $this->prophesize(PromptInterface::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Invalid bump type: invalid. Must be 'major', 'minor', or 'patch'");
@@ -431,7 +431,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
         $response = $handler->handle(null, false, 'patch');
 
         $this->assertSuccessfulReleaseResponse($response, 11);
@@ -465,7 +465,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
         $response = $handler->handle(null, false, 'minor');
 
         $this->assertSuccessfulReleaseResponse($response, 11);
@@ -499,7 +499,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
         $response = $handler->handle(null, false, 'major');
 
         $this->assertSuccessfulReleaseResponse($response, 11);
@@ -533,7 +533,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
         // No version and no bump type - should default to patch
         $response = $handler->handle(null, false, null);
 
@@ -553,7 +553,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => $currentVersion]));
 
         $prompt = $this->prophesize(PromptInterface::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, 'CHANGELOG.md'));
         $result = $this->callPrivateMethod($handler, 'getCurrentVersion');
 
         $this->assertSame($currentVersion, $result);
@@ -567,7 +567,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = '/nonexistent/composer_' . uniqid() . '.json';
 
         $prompt = $this->prophesize(PromptInterface::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, 'CHANGELOG.md'));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read composer.json');
@@ -584,7 +584,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['name' => 'test/package']));
 
         $prompt = $this->prophesize(PromptInterface::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, 'CHANGELOG.md'));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Invalid composer.json format or missing version field');
@@ -599,7 +599,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $changelogPath = '/CHANGELOG.md';
 
         $prompt = $this->prophesize(PromptInterface::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = \App\Tests\Support\ConstructorFixtures::releaseHandler($gitRepository->reveal(), $prompt->reveal(), $this->fileSystem, new \App\DTO\ReleaseDocumentPaths($composerJsonPath, $changelogPath));
 
         $this->assertInstanceOf(ReleaseHandler::class, $handler);
     }

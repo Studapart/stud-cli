@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\DTO\WorkflowRecorder;
+use App\Handler\SubmitHandler;
 use App\Service\BranchRenamePrCoordinator;
-use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GitHostingPort;
 use App\Service\GitRepository;
-use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
@@ -26,12 +25,9 @@ class BranchRenamePrCoordinatorTest extends TestCase
         $this->githubProvider = $this->createStub(GitHostingPort::class);
         $this->coordinator = new BranchRenamePrCoordinator(
             $this->gitRepository,
-            $this->createStub(IssueTrackerPort::class),
             $this->githubProvider,
-            ['JIRA_URL' => 'https://jira.example.com'],
-            'origin/develop',
+            $this->createStub(SubmitHandler::class),
             $this->createStub(PromptInterface::class),
-            $this->createStub(CanConvertToMarkdownInterface::class),
         );
     }
 

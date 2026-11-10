@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\FetchHintContext;
 use App\DTO\WorkItem;
 use App\Exception\ApiException;
 
@@ -12,17 +13,10 @@ use App\Exception\ApiException;
  */
 class FetchHintIssueTrackerPort implements IssueTrackerPort
 {
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
     public function __construct(
         private readonly IssueTrackerPort $inner,
         private readonly IssueTrackerFetchFailureHintBuilder $hintBuilder,
-        private readonly string $attemptedProvider,
-        private readonly ?string $cliOverride,
-        private readonly array $globalConfig,
-        private readonly array $projectConfig,
+        private readonly FetchHintContext $context,
     ) {
     }
 
@@ -38,10 +32,10 @@ class FetchHintIssueTrackerPort implements IssueTrackerPort
         } catch (ApiException $e) {
             $hint = $this->hintBuilder->build(
                 $key,
-                $this->attemptedProvider,
-                $this->cliOverride,
-                $this->globalConfig,
-                $this->projectConfig,
+                $this->context->attemptedProvider,
+                $this->context->cliOverride,
+                $this->context->globalConfig,
+                $this->context->projectConfig,
             );
 
             throw new ApiException(

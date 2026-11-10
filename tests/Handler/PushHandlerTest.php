@@ -9,6 +9,7 @@ use App\Handler\CommitHandler;
 use App\Handler\FlattenHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PushHandler;
+use App\Handler\PushPreparer;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
@@ -27,12 +28,17 @@ class PushHandlerTest extends CommandTestCase
         ?PromptInterface $prompt = null,
         ?FlattenHandler $flattenHandler = null,
     ): PushHandler {
-        return new PushHandler(
+        $preparer = new PushPreparer(
             $commitHandler,
+            $gitRepository,
+            $flattenHandler ?? new FlattenHandler($gitRepository, 'origin/develop'),
+        );
+
+        return new PushHandler(
+            $preparer,
             $gitRepository,
             $pleaseHandler,
             $prompt ?? $this->createStub(PromptInterface::class),
-            $flattenHandler ?? new FlattenHandler($gitRepository, 'origin/develop'),
         );
     }
 

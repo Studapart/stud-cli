@@ -14,11 +14,10 @@ use App\Service\Prompt\PromptInterface;
 class PushHandler implements GitRepositoryAware
 {
     public function __construct(
-        private readonly CommitHandler $commitHandler,
+        private readonly PushPreparer $preparer,
         private readonly GitRepository $gitRepository,
         private readonly PleaseHandler $pleaseHandler,
         private readonly PromptInterface $prompt,
-        private readonly FlattenHandler $flattenHandler,
     ) {
     }
 
@@ -52,46 +51,17 @@ class PushHandler implements GitRepositoryAware
             $eighth,
             $ninth,
         );
-        $commitResponse = $this->runCommitPhase($isNew, $message, $stageAll, $quiet);
+        $commitResponse = $this->preparer->commit($isNew, $message, $stageAll, $quiet);
         if (! $commitResponse->isSuccess()) {
             return $commitResponse;
         }
 
-        $prepared = $this->prepareFlatten($commitResponse, $flatten);
+        $prepared = $this->preparer->flatten($commitResponse, $flatten);
         if (! $prepared->isSuccess()) {
             return $prepared;
         }
 
         return $this->publish($prepared, $quiet, $noPlease, $agentMode, $pleaseFallback);
-    }
-
-    /**
-     * Commit when stageAll or staged files exist; otherwise soft-skip (dirty-tree notice if needed).
-     */
-    protected function runCommitPhase(bool $isNew, ?string $message, bool $stageAll, bool $quiet): CommandResponse
-    {
-        if (! $stageAll && ! $this->gitRepository->hasStagedChanges()) {
-            return $this->skippedCommitResponse();
-        }
-
-        return $this->normalizeResponse(
-            $this->commitHandler->handle($isNew, $message, $stageAll, $quiet),
-            MessageRef::key('push.commit_created'),
-            MessageRef::key('push.commit_failed'),
-        );
-    }
-
-    /**
-     * @return CommandResponse Success with optional dirty-tree notice
-     */
-    protected function skippedCommitResponse(): CommandResponse
-    {
-        $messages = [];
-        if (trim($this->gitRepository->getPorcelainStatus()) !== '') {
-            $messages[] = ResponseMessage::notice(MessageRef::key('push.note_uncommitted_left'));
-        }
-
-        return CommandResponse::success(messages: $messages);
     }
 
     /**
@@ -184,26 +154,6 @@ class PushHandler implements GitRepositoryAware
             (bool) $seventh,
             (bool) $eighth,
         ];
-    }
-
-    private function prepareFlatten(CommandResponse $commitResponse, bool $flatten): CommandResponse
-    {
-        if (! $flatten) {
-            return $commitResponse;
-        }
-
-        return $this->withPublishWarning($this->flattenHandler->applyWhenSafe($commitResponse, true));
-    }
-
-    private function withPublishWarning(CommandResponse $response): CommandResponse
-    {
-        if (! $response->isSuccess() || ($response->data['rewritten'] ?? false) !== true) {
-            return $response;
-        }
-        $messages = $response->getMessages();
-        $messages[] = ResponseMessage::warning(MessageRef::key('flatten.warning_published'));
-
-        return CommandResponse::success($response->message, $response->data, $messages);
     }
 
     private function publish(

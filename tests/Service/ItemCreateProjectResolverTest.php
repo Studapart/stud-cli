@@ -7,6 +7,7 @@ namespace App\Tests\Service;
 use App\DTO\Project;
 use App\Exception\ApiException;
 use App\Service\GitRepository;
+use App\Service\ItemCreateLinearLookup;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\JiraApiClient;
 use App\Service\LinearApiClient;
@@ -40,8 +41,7 @@ class ItemCreateProjectResolverTest extends TestCase
             $this->gitRepository,
             $this->jiraApiClient,
             $this->prompt,
-            $linearApiClient,
-            $logger,
+            new ItemCreateLinearLookup($linearApiClient, $logger),
         );
     }
 

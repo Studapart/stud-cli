@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Service\Jira;
 
-use App\Service\FetchHintIssueTrackerPort;
 use App\Service\IssueTrackerFetchFailureHintBuilder;
 use App\Service\IssueTrackerPort;
 use App\Service\Jira\JiraIssueTrackerCapable;
@@ -17,13 +16,10 @@ class JiraIssueTrackerResolverTest extends TestCase
     public function testUnwrapsFetchHintAndDetectsJiraAdapter(): void
     {
         $inner = $this->createStub(IssueTrackerPort::class);
-        $wrapped = new FetchHintIssueTrackerPort(
+        $wrapped = \App\Tests\Support\ConstructorFixtures::fetchHintPort(
             $inner,
             new IssueTrackerFetchFailureHintBuilder(),
-            'jira',
-            null,
-            [],
-            [],
+            new \App\DTO\FetchHintContext('jira', null, [], []),
         );
         $resolver = new JiraIssueTrackerResolver();
 

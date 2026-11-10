@@ -102,15 +102,15 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
         $io = new SymfonyStyle($input, $output);
 
         $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
+        $providerResolver = new GlobalConfigProviderResolver();
         $handler = new InitHandler(
-            $this->fileSystem,
-            $this->configPath,
+            new \App\Service\GlobalConfigStore($this->fileSystem, $this->configPath),
             $logger,
             new InitPromptCollector(
                 $logger,
-                new GitTokenPromptResolver(),
                 new MessageRenderer($this->translationService),
-                new GlobalConfigProviderResolver(),
+                $providerResolver,
+                \App\Handler\GlobalInit\InitPromptCollectors::defaults($logger, new GitTokenPromptResolver(), $providerResolver),
             ),
         );
 

@@ -14,10 +14,6 @@ use App\Exception\IssueTrackerResolutionException;
 use App\Guard\DTO\ProviderResolutionRequest;
 use App\Guard\DTO\ProviderResolutionResult;
 use App\Service\AttachmentUrlProviderGuesser;
-use App\Service\GlobalConfigProviderResolver;
-use App\Service\IssueTrackerFactory;
-use App\Service\IssueTrackerResolver;
-use App\Service\ProjectScopeKeyResolver;
 
 /**
  * Central issue-tracker provider resolution for guard and runtime (SCI-197 R1–R5).
@@ -25,10 +21,7 @@ use App\Service\ProjectScopeKeyResolver;
 final class IssueTrackerProviderResolver
 {
     public function __construct(
-        private readonly IssueTrackerFactory $issueTrackerFactory = new IssueTrackerFactory(),
-        private readonly IssueTrackerResolver $issueTrackerResolver = new IssueTrackerResolver(),
-        private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
-        private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),
+        private readonly IssueTrackerResolutionDeps $deps = new IssueTrackerResolutionDeps(),
         private readonly AttachmentUrlProviderGuesser $attachmentUrlGuesser = new AttachmentUrlProviderGuesser(),
     ) {
     }
@@ -84,7 +77,7 @@ final class IssueTrackerProviderResolver
 
         $scopeKey = $this->effectiveScopeKey($request);
         if ($scopeKey !== null && $this->profileUsesScopeKey($request->commandProfile)) {
-            $scopeResult = $this->scopeKeyResolver->resolveProviderForDiscoveryScope($scopeKey, $projectConfig);
+            $scopeResult = $this->deps->scope->resolveProviderForDiscoveryScope($scopeKey, $projectConfig);
             if (! $scopeResult['ok']) {
                 return ProviderResolutionResult::blocked($scopeResult['error']);
             }
@@ -105,7 +98,7 @@ final class IssueTrackerProviderResolver
             }
         }
 
-        $active = $this->issueTrackerResolver->resolveActiveProvider($request->globalConfig, $projectConfig);
+        $active = $this->deps->resolver->resolveActiveProvider($request->globalConfig, $projectConfig);
         if ($active['ok']) {
             return $this->applyCommandRule(
                 $request->commandProfile,
@@ -114,7 +107,7 @@ final class IssueTrackerProviderResolver
         }
 
         try {
-            $provider = $this->issueTrackerFactory->resolveType(
+            $provider = $this->deps->factory->resolveType(
                 null,
                 $request->globalConfig,
                 $projectConfig,
@@ -144,7 +137,7 @@ final class IssueTrackerProviderResolver
         string $issueKey,
     ): ProviderResolutionResult {
         try {
-            $provider = $this->issueTrackerFactory->resolveType(
+            $provider = $this->deps->factory->resolveType(
                 null,
                 $globalConfig,
                 $projectConfig,
@@ -219,9 +212,9 @@ final class IssueTrackerProviderResolver
         }
 
         $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
-        $providers = $this->globalResolver->resolveIssueTrackerProviders($globalConfig);
-        if (! $this->globalResolver->collectsJira($providers)
-            || ! $this->globalResolver->collectsLinear($providers)) {
+        $providers = $this->deps->global->resolveIssueTrackerProviders($globalConfig);
+        if (! $this->deps->global->collectsJira($providers)
+            || ! $this->deps->global->collectsLinear($providers)) {
             return false;
         }
 
