@@ -20,12 +20,10 @@ class PortableUpdateService
 
     public function __construct(
         protected readonly UpdateRepositoryContext $repository,
-        mixed $translator,
         protected readonly PromptInterface $prompt,
         protected readonly ?HttpClientInterface $httpClient = null,
         ?PortableOldVersionCleaner $oldVersionCleaner = null,
     ) {
-        unset($translator);
         $this->oldVersionCleaner = $oldVersionCleaner ?? new PortableOldVersionCleaner($prompt);
     }
 

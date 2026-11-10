@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\DTO\ReleaseDocumentPaths;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Guard\Capability\GitRepositoryAware;
@@ -19,17 +20,13 @@ class ReleaseHandler implements GitRepositoryAware, ProjectBaseBranchAware
 {
     private WorkflowEntryRecorder $recorder;
 
-    // @codeCoverageIgnoreStart
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly PromptInterface $prompt,
         private readonly FileSystem $fileSystem,
-        private readonly string $composerJsonPath = 'composer.json',
-        private readonly string $changelogPath = 'CHANGELOG.md',
-        private readonly string $readmePath = 'README.md'
+        private readonly ReleaseDocumentPaths $paths = new ReleaseDocumentPaths(),
     ) {
     }
-    // @codeCoverageIgnoreEnd
 
     /**
      * Calculates the next version based on SemVer rules.
@@ -64,7 +61,7 @@ class ReleaseHandler implements GitRepositoryAware, ProjectBaseBranchAware
     protected function getCurrentVersion(): string
     {
         try {
-            $content = $this->fileSystem->read($this->composerJsonPath);
+            $content = $this->fileSystem->read($this->paths->composerJson);
         } catch (\RuntimeException $e) {
             throw new \RuntimeException('Unable to read composer.json', 0, $e);
         }
@@ -137,7 +134,7 @@ class ReleaseHandler implements GitRepositoryAware, ProjectBaseBranchAware
     protected function updateComposerVersion(string $version): void
     {
         try {
-            $content = $this->fileSystem->read($this->composerJsonPath);
+            $content = $this->fileSystem->read($this->paths->composerJson);
         } catch (\RuntimeException $e) {
             throw new \RuntimeException('Unable to read composer.json', 0, $e);
         }
@@ -154,13 +151,13 @@ class ReleaseHandler implements GitRepositoryAware, ProjectBaseBranchAware
             throw new \RuntimeException('Failed to encode composer.json');
         }
         // @codeCoverageIgnoreEnd
-        $this->fileSystem->write($this->composerJsonPath, $encoded);
+        $this->fileSystem->write($this->paths->composerJson, $encoded);
     }
 
     protected function updateChangelog(string $version): void
     {
         try {
-            $content = $this->fileSystem->read($this->changelogPath);
+            $content = $this->fileSystem->read($this->paths->changelog);
         } catch (\RuntimeException $e) {
             throw new \RuntimeException('Unable to read CHANGELOG.md', 0, $e);
         }
@@ -172,7 +169,7 @@ class ReleaseHandler implements GitRepositoryAware, ProjectBaseBranchAware
         $replacement = $unreleasedHeader . "\n\n" . $newVersionHeader;
         $updatedContent = str_replace($unreleasedHeader, $replacement, $content);
 
-        $this->fileSystem->write($this->changelogPath, $updatedContent);
+        $this->fileSystem->write($this->paths->changelog, $updatedContent);
     }
 
     /**
@@ -183,7 +180,7 @@ class ReleaseHandler implements GitRepositoryAware, ProjectBaseBranchAware
     protected function updateReadme(string $version): void
     {
         try {
-            $content = $this->fileSystem->read($this->readmePath);
+            $content = $this->fileSystem->read($this->paths->readme);
         } catch (\RuntimeException $e) {
             throw new \RuntimeException('Unable to read README.md', 0, $e);
         }
@@ -199,6 +196,6 @@ class ReleaseHandler implements GitRepositoryAware, ProjectBaseBranchAware
             $content
         );
 
-        $this->fileSystem->write($this->readmePath, $updated ?? $content);
+        $this->fileSystem->write($this->paths->readme, $updated ?? $content);
     }
 }

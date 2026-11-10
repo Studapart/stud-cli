@@ -24,12 +24,10 @@ class IssueTrackerPortSupplierTest extends TestCase
         $attachments = $this->createStub(JiraAttachmentService::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $jira,
-            $attachments,
-            null,
+            new \App\Service\IssueTrackerClients($jira, $attachments, null),
         );
 
         $result = $supplier->resolve(
@@ -54,12 +52,10 @@ class IssueTrackerPortSupplierTest extends TestCase
             ['id' => 's1', 'name' => 'Todo', 'type' => 'unstarted'],
         ]);
 
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            null,
-            null,
-            $linear,
+            new \App\Service\IssueTrackerClients(null, null, $linear),
         );
 
         $result = $supplier->resolve(
@@ -78,12 +74,10 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveReturnsErrorWhenProviderResolutionFails(): void
     {
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createStub(JiraApiClient::class),
-            $this->createStub(JiraAttachmentService::class),
-            null,
+            new \App\Service\IssueTrackerClients($this->createStub(JiraApiClient::class), $this->createStub(JiraAttachmentService::class), null),
         );
 
         $result = $supplier->resolve(
@@ -97,12 +91,10 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveReturnsErrorWhenLinearClientMissing(): void
     {
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            null,
-            null,
-            null,
+            new \App\Service\IssueTrackerClients(null, null, null),
         );
 
         $result = $supplier->resolve(
@@ -119,12 +111,10 @@ class IssueTrackerPortSupplierTest extends TestCase
         $jira = $this->createStub(JiraApiClient::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $jira,
-            $this->createStub(JiraAttachmentService::class),
-            null,
+            new \App\Service\IssueTrackerClients($jira, $this->createStub(JiraAttachmentService::class), null),
         );
 
         $result = $supplier->resolveForProvider(
@@ -147,12 +137,10 @@ class IssueTrackerPortSupplierTest extends TestCase
         $linear = $this->createStub(LinearApiClient::class);
         $linear->method('getTeamWorkflowStates')->willReturn([]);
 
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createStub(JiraApiClient::class),
-            $this->createStub(JiraAttachmentService::class),
-            $linear,
+            new \App\Service\IssueTrackerClients($this->createStub(JiraApiClient::class), $this->createStub(JiraAttachmentService::class), $linear),
         );
 
         $result = $supplier->resolveForDiscovery(
@@ -177,12 +165,10 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForDiscoveryReturnsAmbiguousWhenScopeMatchesBoth(): void
     {
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createStub(JiraApiClient::class),
-            $this->createStub(JiraAttachmentService::class),
-            $this->createStub(LinearApiClient::class),
+            new \App\Service\IssueTrackerClients($this->createStub(JiraApiClient::class), $this->createStub(JiraAttachmentService::class), $this->createStub(LinearApiClient::class)),
         );
 
         $result = $supplier->resolveForDiscovery(
@@ -206,12 +192,10 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForProviderReturnsErrorForInvalidProvider(): void
     {
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createStub(JiraApiClient::class),
-            $this->createStub(JiraAttachmentService::class),
-            null,
+            new \App\Service\IssueTrackerClients($this->createStub(JiraApiClient::class), $this->createStub(JiraAttachmentService::class), null),
         );
 
         $result = $supplier->resolveForProvider('invalid', [], []);
@@ -225,12 +209,10 @@ class IssueTrackerPortSupplierTest extends TestCase
         $linear = $this->createStub(LinearApiClient::class);
         $linear->method('getTeamWorkflowStates')->willReturn([]);
 
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createStub(JiraApiClient::class),
-            $this->createStub(JiraAttachmentService::class),
-            $linear,
+            new \App\Service\IssueTrackerClients($this->createStub(JiraApiClient::class), $this->createStub(JiraAttachmentService::class), $linear),
         );
 
         $result = $supplier->resolveForDiscovery(
@@ -254,12 +236,10 @@ class IssueTrackerPortSupplierTest extends TestCase
         $jira = $this->createStub(JiraApiClient::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $jira,
-            $this->createStub(JiraAttachmentService::class),
-            null,
+            new \App\Service\IssueTrackerClients($jira, $this->createStub(JiraAttachmentService::class), null),
         );
 
         $result = $supplier->resolveForDiscovery(
@@ -279,12 +259,10 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForProviderReturnsErrorForAuto(): void
     {
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            null,
-            null,
-            null,
+            new \App\Service\IssueTrackerClients(null, null, null),
         );
 
         $result = $supplier->resolveForProvider('auto', [], []);
@@ -298,12 +276,10 @@ class IssueTrackerPortSupplierTest extends TestCase
         $jira = $this->createStub(JiraApiClient::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $jira,
-            $this->createStub(JiraAttachmentService::class),
-            null,
+            new \App\Service\IssueTrackerClients($jira, $this->createStub(JiraAttachmentService::class), null),
         );
 
         $result = $supplier->resolveForDiscovery(
@@ -327,12 +303,10 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForDiscoveryReturnsUnknownScopeWhenNoMatch(): void
     {
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createStub(JiraApiClient::class),
-            $this->createStub(JiraAttachmentService::class),
-            $this->createStub(LinearApiClient::class),
+            new \App\Service\IssueTrackerClients($this->createStub(JiraApiClient::class), $this->createStub(JiraAttachmentService::class), $this->createStub(LinearApiClient::class)),
         );
 
         $result = $supplier->resolveForDiscovery(
@@ -357,12 +331,10 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testBuildPortResultReturnsErrorForUnknownProvider(): void
     {
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createStub(JiraApiClient::class),
-            $this->createStub(JiraAttachmentService::class),
-            null,
+            new \App\Service\IssueTrackerClients($this->createStub(JiraApiClient::class), $this->createStub(JiraAttachmentService::class), null),
         );
 
         $method = new \ReflectionMethod(IssueTrackerPortSupplier::class, 'buildPortResult');
@@ -376,12 +348,10 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForProviderReturnsErrorWhenCredentialsMissing(): void
     {
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createStub(JiraApiClient::class),
-            $this->createStub(JiraAttachmentService::class),
-            null,
+            new \App\Service\IssueTrackerClients($this->createStub(JiraApiClient::class), $this->createStub(JiraAttachmentService::class), null),
         );
 
         $result = $supplier->resolveForProvider(
@@ -399,12 +369,10 @@ class IssueTrackerPortSupplierTest extends TestCase
         $jira = $this->createStub(JiraApiClient::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $jira,
-            $this->createStub(JiraAttachmentService::class),
-            null,
+            new \App\Service\IssueTrackerClients($jira, $this->createStub(JiraAttachmentService::class), null),
         );
 
         $result = $supplier->resolveForDiscovery(
@@ -427,12 +395,10 @@ class IssueTrackerPortSupplierTest extends TestCase
 
     public function testResolveForProviderUsesProjectCredentials(): void
     {
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createStub(JiraApiClient::class),
-            $this->createStub(JiraAttachmentService::class),
-            null,
+            new \App\Service\IssueTrackerClients($this->createStub(JiraApiClient::class), $this->createStub(JiraAttachmentService::class), null),
         );
 
         $result = $supplier->resolveForProvider(
@@ -454,12 +420,10 @@ class IssueTrackerPortSupplierTest extends TestCase
         $jira = $this->createStub(JiraApiClient::class);
         $jira->method('getProjectTransitions')->willReturn([]);
 
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $jira,
-            $this->createStub(JiraAttachmentService::class),
-            null,
+            new \App\Service\IssueTrackerClients($jira, $this->createStub(JiraAttachmentService::class), null),
         );
 
         $result = $supplier->resolveForDiscovery(
@@ -482,12 +446,10 @@ class IssueTrackerPortSupplierTest extends TestCase
         $linear = $this->createStub(LinearApiClient::class);
         $linear->method('getTeamWorkflowStates')->willReturn([]);
 
-        $supplier = new IssueTrackerPortSupplier(
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
             new IssueTrackerFactory(),
             new IssueTrackerResolver(),
-            $this->createStub(JiraApiClient::class),
-            $this->createStub(JiraAttachmentService::class),
-            $linear,
+            new \App\Service\IssueTrackerClients($this->createStub(JiraApiClient::class), $this->createStub(JiraAttachmentService::class), $linear),
         );
 
         $result = $supplier->resolveForDiscovery(

@@ -2639,7 +2639,7 @@ CHANGELOG;
             null // No httpClient provided
         );
 
-        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter');
 
         $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
@@ -2663,7 +2663,7 @@ CHANGELOG;
             null // No httpClient provided
         );
 
-        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter');
 
         $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
@@ -2671,7 +2671,7 @@ CHANGELOG;
     public function testCreateGithubGitHostingAdapterWithHttpClientProvided(): void
     {
         // Test the path where httpClient is provided (not null)
-        $provider = $this->callPrivateMethod($this->handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($this->handler, 'createGithubGitHostingAdapter');
 
         $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
@@ -2695,7 +2695,7 @@ CHANGELOG;
             $this->httpClient // httpClient provided
         );
 
-        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter');
 
         $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
@@ -2716,7 +2716,12 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
 
         // This should not throw an error, but should skip the asset without 'name'
-        $asset = $this->callPrivateMethod($this->handler, 'findPharAsset', [$releaseData]);
+        $fetcher = new \App\Service\UpdateReleaseFetcher(
+            new \App\Service\UpdateRepositoryContext('studapart', 'stud-cli'),
+            '1.0.0',
+            $this->createStub(\App\Service\FileSystem::class),
+        );
+        $asset = $fetcher->findPharAsset($releaseData, new \App\DTO\WorkflowRecorder());
 
         $this->assertNotNull($asset);
         $this->assertSame(2, $asset['id']);
@@ -2767,8 +2772,7 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -2843,8 +2847,7 @@ CHANGELOG;
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
                 $this->testFileSystem = $testFileSystem;
             }
@@ -2982,8 +2985,7 @@ CHANGELOG;
                     string $testConfigPath,
                     FileSystem $testFileSystem
                 ) {
-                    [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                    parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                     $this->testConfigPath = $testConfigPath;
                     $this->testFileSystem = $testFileSystem;
                 }
@@ -3039,8 +3041,7 @@ CHANGELOG;
                     \App\Service\FileSystem $testFileSystem,
                     string $tempFile
                 ) {
-                    [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                    parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                     $this->testConfigPath = $testConfigPath;
                     $this->tempFile = $tempFile;
                 }
@@ -3050,7 +3051,7 @@ CHANGELOG;
                     return $this->testConfigPath;
                 }
 
-                protected function downloadPhar(array $pharAsset, string $repoOwner, string $repoName): ?string
+                protected function downloadPhar(array $pharAsset): ?string
                 {
                     return $this->tempFile;
                 }
@@ -3133,8 +3134,7 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3307,8 +3307,7 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3378,8 +3377,7 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3437,8 +3435,7 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3499,8 +3496,7 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
             }
 

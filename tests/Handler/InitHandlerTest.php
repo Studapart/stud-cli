@@ -34,11 +34,14 @@ class InitHandlerTest extends CommandTestCase
 
     private function createPromptCollector(?\App\Service\Prompt\PromptInterface $prompt = null): InitPromptCollector
     {
+        $resolvedPrompt = $prompt ?? $this->prompt;
+        $providerResolver = new GlobalConfigProviderResolver();
+
         return new InitPromptCollector(
-            $prompt ?? $this->prompt,
-            new GitTokenPromptResolver(),
+            $resolvedPrompt,
             new MessageRenderer($this->translationService),
-            new GlobalConfigProviderResolver(),
+            $providerResolver,
+            \App\Handler\GlobalInit\InitPromptCollectors::defaults($resolvedPrompt, new GitTokenPromptResolver(), $providerResolver),
         );
     }
 
@@ -47,7 +50,7 @@ class InitHandlerTest extends CommandTestCase
         InitPromptCollector $promptCollector,
         string $configPath = '/tmp/config.yml',
     ): InitHandler {
-        return new InitHandler($this->fileSystem, $configPath, $prompt, $promptCollector);
+        return new InitHandler(new \App\Service\GlobalConfigStore($this->fileSystem, $configPath), $prompt, $promptCollector);
     }
 
     /**
@@ -61,9 +64,9 @@ class InitHandlerTest extends CommandTestCase
             $realLogger,
             new InitPromptCollector(
                 $realLogger,
-                new GitTokenPromptResolver(),
                 new MessageRenderer($this->translationService),
-                new GlobalConfigProviderResolver(),
+                $providerResolver = new GlobalConfigProviderResolver(),
+                \App\Handler\GlobalInit\InitPromptCollectors::defaults($realLogger, new GitTokenPromptResolver(), $providerResolver),
             ),
         );
     }
@@ -945,9 +948,9 @@ class InitHandlerTest extends CommandTestCase
             $realLogger,
             new InitPromptCollector(
                 $realLogger,
-                new GitTokenPromptResolver(),
                 new MessageRenderer($this->translationService),
-                new GlobalConfigProviderResolver(),
+                $providerResolver = new GlobalConfigProviderResolver(),
+                \App\Handler\GlobalInit\InitPromptCollectors::defaults($realLogger, new GitTokenPromptResolver(), $providerResolver),
             ),
         );
 
@@ -1191,9 +1194,9 @@ class InitHandlerTest extends CommandTestCase
             $realLogger,
             new InitPromptCollector(
                 $realLogger,
-                new GitTokenPromptResolver(),
                 new MessageRenderer($this->translationService),
-                new GlobalConfigProviderResolver(),
+                $providerResolver = new GlobalConfigProviderResolver(),
+                \App\Handler\GlobalInit\InitPromptCollectors::defaults($realLogger, new GitTokenPromptResolver(), $providerResolver),
             ),
             $configPath,
         );
@@ -1296,11 +1299,12 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem = $this->createMock(FileSystem::class);
         $this->bindSubject();
 
+        $providerResolver = new GlobalConfigProviderResolver();
         $collector = new class (
             $this->prompt,
-            new GitTokenPromptResolver(),
             new MessageRenderer($this->translationService),
-            new GlobalConfigProviderResolver(),
+            $providerResolver,
+            \App\Handler\GlobalInit\InitPromptCollectors::defaults($this->prompt, new GitTokenPromptResolver(), $providerResolver),
         ) extends InitPromptCollector {
             public function buildGlobalConfig(
                 array $existingConfig,

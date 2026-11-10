@@ -13,17 +13,11 @@ use App\Service\Prompt\PromptInterface;
 
 class BranchRenamePrCoordinator
 {
-    /**
-     * @param array<string, mixed> $jiraConfig
-     */
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly IssueTrackerPort $issueTracker,
         private readonly ?GitHostingPort $githubProvider,
-        private readonly array $jiraConfig,
-        private readonly string $baseBranch,
+        private readonly SubmitHandler $submitHandler,
         private readonly PromptInterface $prompt,
-        private readonly CanConvertToMarkdownInterface $htmlConverter,
     ) {
     }
 
@@ -70,8 +64,7 @@ class BranchRenamePrCoordinator
 
         $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.creating_new_pr'), WorkflowChannel::Git);
 
-        $submitHandler = $this->createSubmitHandler();
-        $submitResult = $submitHandler->handle(new SubmitOptions());
+        $submitResult = $this->submitHandler->handle(new SubmitOptions());
         if ($submitResult->exitCode !== 0) {
             $recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.pr_creation_failed'));
 
@@ -79,21 +72,6 @@ class BranchRenamePrCoordinator
         }
 
         $this->commentOnNewPullRequest($recorder, $oldName, $newName);
-    }
-
-    public function createSubmitHandler(): SubmitHandler
-    {
-        return new SubmitHandler(
-            $this->gitRepository,
-            $this->issueTracker,
-            $this->githubProvider,
-            new SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
-            $this->baseBranch,
-            new SubmitLabelPlanner(
-                $this->gitRepository,
-                $this->githubProvider !== null ? new SubmitLabelResolver($this->githubProvider, $this->prompt) : null,
-            ),
-        );
     }
 
     public function commentOnNewPullRequest(WorkflowEntryRecorder $recorder, string $oldName, string $newName): void

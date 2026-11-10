@@ -457,7 +457,7 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $checksums = hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n";
         $this->mockDownloads(file_get_contents($archive) ?: '', $checksums);
-        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli'), $this->translator, $this->prompt, $this->httpClient) extends PortableUpdateService {
+        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli'), $this->prompt, $this->httpClient) extends PortableUpdateService {
             protected function moveDirectory(string $from, string $to): bool
             {
                 return false;
@@ -494,7 +494,7 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testCanCreateRealHttpClientWhenNoClientIsInjected(): void
     {
-        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli', 'token'), $this->translator, $this->prompt) extends PortableUpdateService {
+        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli', 'token'), $this->prompt) extends PortableUpdateService {
             public function exposedClient(): HttpClientInterface
             {
                 return $this->client();
@@ -506,7 +506,7 @@ class PortableUpdateServiceTest extends TestCase
 
     protected function exposingMoveService(): PortableUpdateService
     {
-        return new class (new UpdateRepositoryContext('studapart', 'stud-cli'), $this->translator, $this->prompt) extends PortableUpdateService {
+        return new class (new UpdateRepositoryContext('studapart', 'stud-cli'), $this->prompt) extends PortableUpdateService {
             public function exposeMove(string $from, string $to): bool
             {
                 return $this->moveDirectory($from, $to);
@@ -518,10 +518,9 @@ class PortableUpdateServiceTest extends TestCase
     {
         return new PortableUpdateService(
             new UpdateRepositoryContext('studapart', 'stud-cli'),
-            $this->translator,
             $this->prompt,
             $this->httpClient,
-            $cleaner
+            $cleaner,
         );
     }
 

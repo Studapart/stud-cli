@@ -21,11 +21,8 @@ class ProjectMetadataPromptService
     public function __construct(
         private readonly IssueTrackerPortSupplier $portSupplier,
         private readonly ProjectsWorkflowNormalizer $normalizer,
-        /** @var array<string, mixed> */
-        private readonly array $globalConfig,
         private readonly PromptInterface $prompt,
-        private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
-        private readonly ?MessageRenderer $messageRenderer = null,
+        private readonly ProjectMetadataPromptContext $context,
     ) {
     }
 
@@ -37,7 +34,7 @@ class ProjectMetadataPromptService
         string $projectKey,
         array $projectConfig,
     ): ?int {
-        $scopeKey = $this->scopeKeyResolver->resolveJiraProjectKey($projectConfig) ?? $projectKey;
+        $scopeKey = $this->context->scope->resolveJiraProjectKey($projectConfig) ?? $projectKey;
         $response = $this->fetchWorkflow(IssueTrackerProvider::Jira->value, $scopeKey, $projectConfig);
         if (! $response->isSuccess()) {
             $this->logWorkflowFailure($recorder, $response);
@@ -76,7 +73,7 @@ class ProjectMetadataPromptService
         string $projectKey,
         array $projectConfig,
     ): ?string {
-        $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($projectConfig) ?? $projectKey;
+        $scopeKey = $this->context->scope->resolveLinearTeamKey($projectConfig) ?? $projectKey;
         $response = $this->fetchWorkflow(IssueTrackerProvider::Linear->value, $scopeKey, $projectConfig);
         if (! $response->isSuccess()) {
             $this->logWorkflowFailure($recorder, $response);
@@ -113,7 +110,7 @@ class ProjectMetadataPromptService
         string $projectKey,
         array $projectConfig,
     ): ?string {
-        $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($projectConfig) ?? $projectKey;
+        $scopeKey = $this->context->scope->resolveLinearTeamKey($projectConfig) ?? $projectKey;
         $response = $this->fetchLabelGroups(IssueTrackerProvider::Linear->value, $scopeKey, $projectConfig);
         if (! $response->isSuccess()) {
             $this->logLabelsFailure($recorder, $response);
@@ -154,7 +151,7 @@ class ProjectMetadataPromptService
         array $projectConfig,
         string $labelGroupId,
     ): ?array {
-        $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($projectConfig) ?? $projectKey;
+        $scopeKey = $this->context->scope->resolveLinearTeamKey($projectConfig) ?? $projectKey;
         $response = $this->fetchLabelGroups(IssueTrackerProvider::Linear->value, $scopeKey, $projectConfig);
         if (! $response->isSuccess()) {
             $this->logLabelsFailure($recorder, $response);
@@ -337,7 +334,7 @@ class ProjectMetadataPromptService
      */
     protected function fetchWorkflow(string $provider, string $scopeKey, array $projectConfig): ProjectsWorkflowResponse
     {
-        $resolution = $this->portSupplier->resolveForProvider($provider, $this->globalConfig, $projectConfig);
+        $resolution = $this->portSupplier->resolveForProvider($provider, $this->context->globalConfig, $projectConfig);
         if (! $resolution['ok']) {
             return ProjectsWorkflowResponse::error($resolution['error']);
         }
@@ -369,7 +366,7 @@ class ProjectMetadataPromptService
      */
     protected function fetchLabelGroups(string $provider, string $scopeKey, array $projectConfig): ProjectsLabelsResponse
     {
-        $resolution = $this->portSupplier->resolveForProvider($provider, $this->globalConfig, $projectConfig);
+        $resolution = $this->portSupplier->resolveForProvider($provider, $this->context->globalConfig, $projectConfig);
         if (! $resolution['ok']) {
             return ProjectsLabelsResponse::error($resolution['error']);
         }
@@ -400,7 +397,7 @@ class ProjectMetadataPromptService
 
     protected function skipChoiceLabel(): string
     {
-        return $this->messageRenderer?->render(MessageRef::key('config.project_init.picker_skip'))
+        return $this->context->messages?->render(MessageRef::key('config.project_init.picker_skip'))
             ?? 'Skip (leave unset)';
     }
 }

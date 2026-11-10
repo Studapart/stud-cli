@@ -101,16 +101,7 @@ class UpdateHandlerPortableTest extends CommandTestCase
                 ?HttpClientInterface $httpClient,
                 private readonly PortableUpdateService $portableUpdateService,
             ) {
-                [$detector, $fetcher, $presenter, $runner] = UpdateHandlerTestKit::services(
-                    $repoOwner,
-                    $repoName,
-                    $currentVersion,
-                    $fileSystem,
-                    $changelogParser,
-                    $gitToken,
-                    $httpClient,
-                );
-                parent::__construct(
+                parent::__construct(...UpdateHandlerTestKit::parts(
                     $repoOwner,
                     $repoName,
                     $currentVersion,
@@ -120,13 +111,9 @@ class UpdateHandlerPortableTest extends CommandTestCase
                     $updateFileService,
                     $prompt,
                     $fileSystem,
-                    $detector,
-                    $fetcher,
-                    $presenter,
-                    $runner,
                     $gitToken,
-                    $httpClient
-                );
+                    $httpClient,
+                ));
             }
 
             protected function createPortableUpdateService(): PortableUpdateService

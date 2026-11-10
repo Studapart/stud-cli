@@ -10,11 +10,9 @@ use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Response\WorkflowResponse;
-use App\Service\BranchNameGenerator;
-use App\Service\BranchNameValidator;
+use App\Service\BranchRenameGit;
+use App\Service\BranchRenameNames;
 use App\Service\BranchRenamePrCoordinator;
-use App\Service\GitBranchService;
-use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 
 class BranchRenameHandler implements GitRepositoryAware
@@ -22,10 +20,8 @@ class BranchRenameHandler implements GitRepositoryAware
     private WorkflowEntryRecorder $recorder;
 
     public function __construct(
-        private readonly GitRepository $gitRepository,
-        private readonly GitBranchService $gitBranchService,
-        private readonly BranchNameGenerator $branchNameGenerator,
-        private readonly BranchNameValidator $branchNameValidator,
+        private readonly BranchRenameGit $git,
+        private readonly BranchRenameNames $names,
         private readonly BranchRenamePrCoordinator $prCoordinator,
         private readonly PromptInterface $prompt,
     ) {
@@ -65,10 +61,10 @@ class BranchRenameHandler implements GitRepositoryAware
     protected function normalizeBranchAndKey(?string $branchName, ?string $key): array
     {
         if ($branchName !== null && $key === null && $this->looksLikeJiraKey($branchName)) {
-            return [$this->gitRepository->getCurrentBranchName(), strtoupper($branchName)];
+            return [$this->git->repository->getCurrentBranchName(), strtoupper($branchName)];
         }
 
-        $targetBranch = $branchName ?? $this->gitRepository->getCurrentBranchName();
+        $targetBranch = $branchName ?? $this->git->repository->getCurrentBranchName();
 
         return [$targetBranch, $key];
     }
@@ -92,7 +88,7 @@ class BranchRenameHandler implements GitRepositoryAware
 
     protected function validateWorkingDirectory(): bool
     {
-        $status = $this->gitRepository->getPorcelainStatus();
+        $status = $this->git->repository->getPorcelainStatus();
         if (! empty($status)) {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_dirty_working'));
 
@@ -104,17 +100,17 @@ class BranchRenameHandler implements GitRepositoryAware
 
     protected function validateBranchName(string $name): bool
     {
-        return $this->branchNameValidator->validateBranchName($name);
+        return $this->names->validator->validateBranchName($name);
     }
 
     protected function generateBranchNameFromKey(string $key): string
     {
-        return $this->branchNameGenerator->generateBranchNameFromKey($key);
+        return $this->names->generator->generateBranchNameFromKey($key);
     }
 
     protected function getBranchPrefixFromIssueType(string $issueType): string
     {
-        return $this->branchNameGenerator->getBranchPrefixFromIssueType($issueType);
+        return $this->names->generator->getBranchPrefixFromIssueType($issueType);
     }
 
     protected function determineNewBranchName(string $targetBranch, ?string $key, ?string $explicitName): ?string
@@ -135,9 +131,9 @@ class BranchRenameHandler implements GitRepositoryAware
      */
     protected function checkBranchSync(string $localBranch, string $remoteBranch): array
     {
-        $behind = $this->gitBranchService->getBranchCommitsBehind($localBranch, $remoteBranch);
-        $ahead = $this->gitBranchService->getBranchCommitsAhead($localBranch, $remoteBranch);
-        $canRebase = $this->gitBranchService->canRebaseBranch($localBranch, $remoteBranch);
+        $behind = $this->git->branches->getBranchCommitsBehind($localBranch, $remoteBranch);
+        $ahead = $this->git->branches->getBranchCommitsAhead($localBranch, $remoteBranch);
+        $canRebase = $this->git->branches->canRebaseBranch($localBranch, $remoteBranch);
 
         return [
             'behind' => $behind,
@@ -195,11 +191,6 @@ class BranchRenameHandler implements GitRepositoryAware
         $this->prCoordinator->updatePullRequestAfterRename($this->recorder, $pr, $oldName, $newName);
     }
 
-    protected function createSubmitHandler(): SubmitHandler
-    {
-        return $this->prCoordinator->createSubmitHandler();
-    }
-
     protected function commentOnNewPullRequest(string $oldName, string $newName): void
     {
         $this->prCoordinator->commentOnNewPullRequest($this->recorder, $oldName, $newName);
@@ -207,8 +198,8 @@ class BranchRenameHandler implements GitRepositoryAware
 
     protected function validateNewBranchNameExists(string $newBranchName): bool
     {
-        if ($this->gitRepository->localBranchExists($newBranchName) ||
-            $this->gitRepository->remoteBranchExists('origin', $newBranchName)) {
+        if ($this->git->repository->localBranchExists($newBranchName) ||
+            $this->git->repository->remoteBranchExists('origin', $newBranchName)) {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_new_name_exists', ['name' => $newBranchName]));
 
             return true;
@@ -222,8 +213,8 @@ class BranchRenameHandler implements GitRepositoryAware
      */
     protected function checkBranchExistence(string $targetBranch, bool $quiet = false): array|false|null
     {
-        $hasLocal = $this->gitRepository->localBranchExists($targetBranch);
-        $hasRemote = $this->gitRepository->remoteBranchExists('origin', $targetBranch);
+        $hasLocal = $this->git->repository->localBranchExists($targetBranch);
+        $hasRemote = $this->git->repository->remoteBranchExists('origin', $targetBranch);
 
         if (! $hasLocal && ! $hasRemote) {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_branch_not_found', ['branch' => $targetBranch]));
@@ -255,7 +246,7 @@ class BranchRenameHandler implements GitRepositoryAware
                 $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.rebasing'), WorkflowChannel::Git);
 
                 try {
-                    $this->gitRepository->rebase("origin/{$targetBranch}");
+                    $this->git->repository->rebase("origin/{$targetBranch}");
                 } catch (\Exception $e) {
                     $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.rebase_failed'));
                     $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.rebase_suggestion', ['branch' => $targetBranch]));
@@ -284,14 +275,14 @@ class BranchRenameHandler implements GitRepositoryAware
         [$hasLocal, $hasRemote] = $branchStatus;
         if ($hasLocal) {
             $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.renaming_local'), WorkflowChannel::Git);
-            $this->gitBranchService->renameLocalBranch($targetBranch, $newBranchName);
+            $this->git->branches->renameLocalBranch($targetBranch, $newBranchName);
         }
 
         if ($hasRemote) {
             $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.renaming_remote'), WorkflowChannel::Git);
 
             try {
-                $this->gitBranchService->renameRemoteBranch($targetBranch, $newBranchName, 'origin');
+                $this->git->branches->renameRemoteBranch($targetBranch, $newBranchName, 'origin');
             } catch (\Exception $e) {
                 $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.remote_not_found'));
             }
@@ -334,7 +325,7 @@ class BranchRenameHandler implements GitRepositoryAware
 
     protected function generateBranchNameFromExtractedKey(string $targetBranch): ?string
     {
-        $extractedKey = $this->gitRepository->getIssueKeyFromBranchName();
+        $extractedKey = $this->git->repository->getIssueKeyFromBranchName();
         if ($extractedKey === null) {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_no_key_in_branch', ['branch' => $targetBranch]));
 
@@ -346,6 +337,6 @@ class BranchRenameHandler implements GitRepositoryAware
 
     protected function looksLikeJiraKey(string $value): bool
     {
-        return $this->branchNameValidator->looksLikeJiraKey($value);
+        return $this->names->validator->looksLikeJiraKey($value);
     }
 }

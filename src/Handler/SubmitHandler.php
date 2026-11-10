@@ -22,10 +22,9 @@ use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitHostingPort;
-use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
-use App\Service\SubmitLabelPlanner;
-use App\Service\SubmitPrBodyBuilder;
+use App\Service\SubmitAssembly;
+use App\Service\SubmitGit;
 
 class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, ProjectBaseBranchAware, JiraAware
 {
@@ -37,12 +36,10 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
     private ?bool $pendingRewritten = null;
 
     public function __construct(
-        private readonly GitRepository $gitRepository,
+        private readonly SubmitGit $git,
         private readonly IssueTrackerPort $provider,
         private readonly ?GitHostingPort $githubProvider,
-        private readonly SubmitPrBodyBuilder $prBodyBuilder,
-        private readonly string $baseBranch,
-        private readonly SubmitLabelPlanner $labelPlanner,
+        private readonly SubmitAssembly $assembly,
     ) {
     }
 
@@ -69,12 +66,12 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
 
         $prBody = $this->buildPrBody($jiraKey);
 
-        $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
+        $remoteOwner = $this->git->repository->getRepositoryOwner('origin');
         $headBranch = ($remoteOwner !== null && $remoteOwner !== '') ? "{$remoteOwner}:{$branch}" : $branch;
         $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('submit.using_head', ['head' => $headBranch]), WorkflowChannel::Git);
 
         $this->explicitSubmitLabels = [];
-        $plannedLabels = $this->labelPlanner->plan($this->recorder(), $options);
+        $plannedLabels = $this->assembly->labels->plan($this->recorder(), $options);
         if ($plannedLabels === null) {
             return $this->finish(1);
         }
@@ -120,13 +117,13 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
      */
     protected function runSubmitPreflight(bool $alreadyPublished = false): array
     {
-        $gitStatus = $this->gitRepository->getPorcelainStatus();
+        $gitStatus = $this->git->repository->getPorcelainStatus();
         if (! empty($gitStatus)) {
             $this->recorder()->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.note_dirty_working'));
         }
 
-        $branch = $this->gitRepository->getCurrentBranchName();
-        $baseBranchName = str_replace('origin/', '', $this->baseBranch);
+        $branch = $this->git->repository->getCurrentBranchName();
+        $baseBranchName = str_replace('origin/', '', $this->git->baseBranch);
         if ($branch === $baseBranchName || in_array($branch, ['main', 'master'], true)) {
             $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_base_branch'));
 
@@ -138,15 +135,15 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
         }
 
         $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.finding_commit'), WorkflowChannel::Git);
-        $ancestorSha = $this->gitRepository->getMergeBase($this->baseBranch, 'HEAD');
-        $firstCommitSha = $this->gitRepository->findFirstLogicalSha($ancestorSha);
+        $ancestorSha = $this->git->repository->getMergeBase($this->git->baseBranch, 'HEAD');
+        $firstCommitSha = $this->git->repository->findFirstLogicalSha($ancestorSha);
         if ($firstCommitSha === null) {
             $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_no_logical'));
 
             return ['exitCode' => 1];
         }
 
-        $firstLogicalMessage = $this->gitRepository->getCommitMessage($firstCommitSha);
+        $firstLogicalMessage = $this->git->repository->getCommitMessage($firstCommitSha);
         $jiraKey = $this->resolveJiraKey($firstLogicalMessage);
         if ($jiraKey === null) {
             $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_no_jira_key'));
@@ -165,7 +162,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
     private function pushBranch(string $branch): bool
     {
         $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.pushing', ['branch' => $branch]), WorkflowChannel::Git);
-        $pushProcess = $this->gitRepository->pushHeadToOrigin();
+        $pushProcess = $this->git->repository->pushHeadToOrigin();
         if ($pushProcess->isSuccessful()) {
             return true;
         }
@@ -193,7 +190,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
 
     private function resolveJiraKey(string $commitMessage): ?string
     {
-        $jiraKey = $this->gitRepository->getIssueKeyFromBranchName();
+        $jiraKey = $this->git->repository->getIssueKeyFromBranchName();
         if ($jiraKey === null || $jiraKey === '') {
             preg_match('/(?i)\[([a-z]+-\d+)]/', $commitMessage, $matches);
             $jiraKey = $matches[1] ?? null;
@@ -207,7 +204,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
      */
     protected function buildPrBody(string $issueKey): string
     {
-        return $this->prBodyBuilder->build($issueKey, $this->fetchIssueForPrBody($issueKey), $this->recorder());
+        return $this->assembly->body->build($issueKey, $this->fetchIssueForPrBody($issueKey), $this->recorder());
     }
 
     protected function fetchIssueForPrBody(string $issueKey): ?WorkItem
@@ -259,7 +256,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
                 return 0;
             }
 
-            $baseBranchName = str_replace('origin/', '', $this->baseBranch);
+            $baseBranchName = str_replace('origin/', '', $this->git->baseBranch);
             $prRequestData = new PullRequestData($prTitle, $headBranch, $baseBranchName, $prBody, $options->draft, $options->assignToAuthor);
             $prData = $this->githubProvider->createPullRequest($prRequestData);
             $this->recordCreatedPullRequest($this->githubProvider, $prData, $finalLabels);

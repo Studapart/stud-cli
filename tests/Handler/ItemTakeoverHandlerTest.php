@@ -12,6 +12,7 @@ use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 use App\Service\Prompt\SymfonyPromptService;
 use App\Tests\CommandTestCase;
+use App\Tests\Support\ItemStartHandlerTestKit;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -47,13 +48,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
     {
         $prompt = new SymfonyPromptService($io);
 
-        return new ItemTakeoverHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
+        return ItemStartHandlerTestKit::takeover(
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $prompt),
             $this->itemStartHandler,
-            'origin/develop',
-            [],
             $prompt
         );
     }
@@ -118,13 +116,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getIssue')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "PROJ-123".', 'HTTP 404: Not Found', 404));
 
-        $handler = new ItemTakeoverHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
+        $handler = ItemStartHandlerTestKit::takeover(
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
             $this->itemStartHandler,
-            'origin/develop',
-            [],
             $this->prompt
         );
 
@@ -274,13 +269,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->prompt->method('confirm')
             ->willReturn(true); // User confirms to start fresh
 
-        $handler = new ItemTakeoverHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
+        $handler = ItemStartHandlerTestKit::takeover(
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
             $this->itemStartHandler,
-            'origin/develop',
-            [],
             $this->prompt
         );
 
@@ -1322,13 +1314,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     private function bindSubject(): void
     {
-        $this->handler = new ItemTakeoverHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->issueTracker,
+        $this->handler = ItemStartHandlerTestKit::takeover(
+            new \App\Handler\ItemBranchWorkspace($this->gitRepository, $this->gitBranchService, 'origin/develop'),
+            ItemStartHandlerTestKit::workflows($this->gitRepository, $this->issueTracker, $this->prompt),
             $this->itemStartHandler,
-            'origin/develop',
-            [],
             $this->prompt
         );
     }

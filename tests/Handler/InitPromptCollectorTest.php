@@ -26,11 +26,13 @@ class InitPromptCollectorTest extends TestCase
         parent::setUp();
         $translationsPath = __DIR__ . '/../../src/resources/translations';
         $translationService = new TranslationService('en', $translationsPath);
+        $prompt = $this->createStub(PromptInterface::class);
+        $providerResolver = new GlobalConfigProviderResolver();
         $this->collector = new InitPromptCollector(
-            $this->createStub(PromptInterface::class),
-            new GitTokenPromptResolver(),
+            $prompt,
             new MessageRenderer($translationService),
-            new GlobalConfigProviderResolver(),
+            $providerResolver,
+            \App\Handler\GlobalInit\InitPromptCollectors::defaults($prompt, new GitTokenPromptResolver(), $providerResolver),
         );
     }
 
@@ -84,13 +86,14 @@ class InitPromptCollectorTest extends TestCase
         $translationsPath = __DIR__ . '/../../src/resources/translations';
         $collector = new InitPromptCollector(
             $prompt,
-            new GitTokenPromptResolver(),
             new MessageRenderer(new TranslationService('en', $translationsPath)),
             new GlobalConfigProviderResolver(),
-            null,
-            $jiraCollector,
-            $linearCollector,
-            $gitTokensCollector,
+            new \App\Handler\GlobalInit\InitPromptCollectors(
+                new \App\Handler\InitPromptInputHelper($prompt),
+                $jiraCollector,
+                $linearCollector,
+                $gitTokensCollector,
+            ),
         );
 
         $recorder = new WorkflowRecorder();

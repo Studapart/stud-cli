@@ -216,8 +216,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -295,8 +294,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -381,8 +379,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -453,8 +450,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -535,8 +531,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
+                parent::__construct(...\App\Tests\Support\UpdateHandlerTestKit::parts($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient));
                 $this->testConfigPath = $testConfigPath;
                 $this->testFileSystem = $testFileSystem;
             }

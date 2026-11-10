@@ -4,6 +4,7 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\BranchRenameHandler;
+use App\Handler\SubmitHandler;
 use App\Service\BranchNameGenerator;
 use App\Service\BranchNameValidator;
 use App\Service\BranchRenamePrCoordinator;
@@ -13,6 +14,11 @@ use App\Service\GithubGitHostingAdapter;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
+use App\Service\SubmitAssembly;
+use App\Service\SubmitGit;
+use App\Service\SubmitLabelPlanner;
+use App\Service\SubmitLabelResolver;
+use App\Service\SubmitPrBodyBuilder;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\Stub;
 
@@ -40,21 +46,15 @@ class BranchRenameHandlerTest extends CommandTestCase
     ): BranchRenameHandler {
         $prompt ??= $this->prompt;
         $githubProvider = $withGithubGitHostingAdapter ? $this->githubProvider : null;
-        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
 
         return new BranchRenameHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            new BranchNameGenerator($this->issueTracker),
-            new BranchNameValidator(),
+            new \App\Service\BranchRenameGit($this->gitRepository, $this->gitBranchService),
+            new \App\Service\BranchRenameNames(new BranchNameGenerator($this->issueTracker), new BranchNameValidator()),
             new BranchRenamePrCoordinator(
                 $this->gitRepository,
-                $this->issueTracker,
                 $githubProvider,
-                ['JIRA_URL' => 'https://jira.example.com'],
-                'origin/develop',
+                $this->submitHandler($githubProvider, $prompt),
                 $prompt,
-                $htmlConverter,
             ),
             $prompt,
         );
@@ -1189,13 +1189,6 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->assertTrue(true); // If we get here, no exception was thrown
     }
 
-    public function testCreateSubmitHandlerReturnsSubmitHandler(): void
-    {
-        $handler = $this->callPrivateMethod($this->handler, 'createSubmitHandler');
-
-        $this->assertInstanceOf(\App\Handler\SubmitHandler::class, $handler);
-    }
-
     public function testCommentOnNewPullRequestDelegatesToCoordinator(): void
     {
         $recorder = new \App\DTO\WorkflowRecorder();
@@ -1215,5 +1208,24 @@ class BranchRenameHandlerTest extends CommandTestCase
     private function bindSubject(): void
     {
         $this->handler = $this->createBranchRenameHandler();
+    }
+
+    private function submitHandler(?GithubGitHostingAdapter $githubProvider, PromptInterface $prompt): SubmitHandler
+    {
+        return new SubmitHandler(
+            new SubmitGit($this->gitRepository, 'origin/develop'),
+            $this->issueTracker,
+            $githubProvider,
+            new SubmitAssembly(
+                new SubmitPrBodyBuilder(
+                    ['JIRA_URL' => 'https://jira.example.com'],
+                    $this->createStub(CanConvertToMarkdownInterface::class),
+                ),
+                new SubmitLabelPlanner(
+                    $this->gitRepository,
+                    $githubProvider !== null ? new SubmitLabelResolver($githubProvider, $prompt) : null,
+                ),
+            ),
+        );
     }
 }

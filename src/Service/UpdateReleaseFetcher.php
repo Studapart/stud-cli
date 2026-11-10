@@ -14,11 +14,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class UpdateReleaseFetcher
 {
     public function __construct(
-        private readonly string $repoOwner,
-        private readonly string $repoName,
+        private readonly UpdateRepositoryContext $repository,
         private readonly string $currentVersion,
         private readonly FileSystem $fileSystem,
-        private readonly ?string $gitToken = null,
         private readonly ?HttpClientInterface $httpClient = null,
     ) {
     }
@@ -33,15 +31,15 @@ class UpdateReleaseFetcher
             'User-Agent' => 'stud-cli',
         ];
 
-        if ($this->gitToken) {
-            $headers['Authorization'] = 'Bearer ' . $this->gitToken;
+        if ($this->repository->token) {
+            $headers['Authorization'] = 'Bearer ' . $this->repository->token;
         }
 
         $client = $this->httpClient ?? HttpClient::createForBaseUri('https://api.github.com', HttpClientDefaults::withLimits([
             'headers' => $headers,
         ]));
 
-        return new GithubGitHostingAdapter(new GithubApiClient($this->gitToken ?? '', $this->repoOwner, $this->repoName, $client));
+        return new GithubGitHostingAdapter(new GithubApiClient($this->repository->token ?? '', $this->repository->owner, $this->repository->name, $client));
     }
 
     /**
@@ -163,7 +161,7 @@ class UpdateReleaseFetcher
             return null;
         }
 
-        $apiUrl = "https://api.github.com/repos/{$this->repoOwner}/{$this->repoName}/releases/assets/{$assetId}";
+        $apiUrl = "https://api.github.com/repos/{$this->repository->owner}/{$this->repository->name}/releases/assets/{$assetId}";
         $logVerbose('Downloading from', $apiUrl);
 
         try {
@@ -172,8 +170,8 @@ class UpdateReleaseFetcher
                 'Accept' => 'application/octet-stream',
             ];
 
-            if ($this->gitToken) {
-                $headers['Authorization'] = 'Bearer ' . $this->gitToken;
+            if ($this->repository->token) {
+                $headers['Authorization'] = 'Bearer ' . $this->repository->token;
             }
 
             // @codeCoverageIgnoreStart

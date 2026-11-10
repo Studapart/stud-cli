@@ -50,9 +50,11 @@ class BranchCleanHandlerTest extends CommandTestCase
 
         return new BranchCleanHandler(
             $this->gitRepository,
-            $resolver,
-            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $prompt),
-            new BranchCleanupPlanner($this->gitRepository, $this->gitBranchService, $resolver),
+            new \App\Service\BranchCleanupPipeline(
+                $resolver,
+                new BranchCleanupExecutor($this->gitRepository, $this->translationService, $prompt),
+                new BranchCleanupPlanner($this->gitRepository, $this->gitBranchService, $resolver),
+            ),
             $configuredBaseBranch,
             $prompt,
         );

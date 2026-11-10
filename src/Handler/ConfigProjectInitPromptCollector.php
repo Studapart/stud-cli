@@ -4,17 +4,12 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
-use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigFieldMap;
 use App\Config\ProjectStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
-use App\Service\FileSystem;
 use App\Service\GitRepository;
-use App\Service\GlobalConfigProviderResolver;
-use App\Service\ProjectMetadataPromptService;
-use App\Service\ProjectScopeKeyResolver;
 use App\Service\Prompt\PromptInterface;
 
 /**
@@ -26,11 +21,7 @@ class ConfigProjectInitPromptCollector
         private readonly GitRepository $gitRepository,
         private readonly ProjectGitPrompts $gitPrompts,
         private readonly PromptInterface $prompt,
-        private readonly FileSystem $fileSystem,
-        private readonly string $globalConfigPath,
-        private readonly GlobalConfigProviderResolver $providerResolver,
-        private readonly ProjectMetadataPromptService $metadataPrompts,
-        private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
+        private readonly ProjectInitPromptContext $context,
     ) {
     }
 
@@ -45,8 +36,8 @@ class ConfigProjectInitPromptCollector
         $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.project_init.interactive_hint'));
 
         $patches = [];
-        if ($this->providerResolver->collectsJira($globalIssueTrackerProviders)
-            && $this->providerResolver->collectsLinear($globalIssueTrackerProviders)) {
+        if ($this->context->global->providers->collectsJira($globalIssueTrackerProviders)
+            && $this->context->global->providers->collectsLinear($globalIssueTrackerProviders)) {
             $patches = array_merge($patches, $this->promptIssueTrackerProvider($existing));
         }
 
@@ -108,22 +99,22 @@ class ConfigProjectInitPromptCollector
      */
     protected function promptLinearFields(array $mergedConfig, WorkflowEntryRecorder $recorder): array
     {
-        $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($mergedConfig);
+        $scopeKey = $this->context->scope->resolveLinearTeamKey($mergedConfig);
         if ($scopeKey === null) {
             return [];
         }
 
         $patches = [];
-        $startStateId = $this->metadataPrompts->chooseLinearStartStateId($recorder, $scopeKey, $mergedConfig);
+        $startStateId = $this->context->metadata->chooseLinearStartStateId($recorder, $scopeKey, $mergedConfig);
         if ($startStateId !== null) {
             $patches['linearStartStateId'] = $startStateId;
         }
 
-        $labelGroupId = $this->metadataPrompts->chooseLinearTypeLabelGroupId($recorder, $scopeKey, $mergedConfig);
+        $labelGroupId = $this->context->metadata->chooseLinearTypeLabelGroupId($recorder, $scopeKey, $mergedConfig);
         if ($labelGroupId !== null) {
             $patches['linearTypeLabelGroupId'] = $labelGroupId;
             /** @var array<string, string>|null $branchPrefixes */
-            $branchPrefixes = $this->metadataPrompts->buildLinearBranchPrefixMap(
+            $branchPrefixes = $this->context->metadata->buildLinearBranchPrefixMap(
                 $recorder,
                 $scopeKey,
                 $mergedConfig,
@@ -148,7 +139,7 @@ class ConfigProjectInitPromptCollector
             return [];
         }
 
-        $transitionId = $this->metadataPrompts->chooseJiraTransitionId($recorder, $projectKey, $mergedConfig);
+        $transitionId = $this->context->metadata->chooseJiraTransitionId($recorder, $projectKey, $mergedConfig);
         if ($transitionId === null) {
             return [];
         }
@@ -174,22 +165,7 @@ class ConfigProjectInitPromptCollector
      */
     protected function readGlobalIssueTrackerProviders(): array
     {
-        if (! $this->fileSystem->fileExists($this->globalConfigPath)) {
-            return [IssueTrackerProvider::Jira->value];
-        }
-
-        try {
-            $config = $this->fileSystem->parseFile($this->globalConfigPath);
-        } catch (\Throwable) {
-            return [IssueTrackerProvider::Jira->value];
-        }
-
-        $providers = GlobalStudConfigKeys::readIssueTrackerProvidersList($config);
-        if ($providers !== null) {
-            return $this->providerResolver->normalizeIssueTrackerProviders($providers);
-        }
-
-        return $this->providerResolver->inferDefaultIssueTrackerProviders($config);
+        return $this->context->global->readIssueTrackerProviders();
     }
 
     /**
@@ -198,8 +174,8 @@ class ConfigProjectInitPromptCollector
      */
     protected function resolveEffectiveIssueTrackerProvider(array $existing, array $globalIssueTrackerProviders): string
     {
-        $hasJira = $this->providerResolver->collectsJira($globalIssueTrackerProviders);
-        $hasLinear = $this->providerResolver->collectsLinear($globalIssueTrackerProviders);
+        $hasJira = $this->context->global->providers->collectsJira($globalIssueTrackerProviders);
+        $hasLinear = $this->context->global->providers->collectsLinear($globalIssueTrackerProviders);
 
         if ($hasJira && ! $hasLinear) {
             return IssueTrackerProvider::Jira->value;
@@ -228,8 +204,8 @@ class ConfigProjectInitPromptCollector
         }
 
         return $effectiveProvider === IssueTrackerProvider::Auto->value
-            && $this->providerResolver->collectsJira($globalIssueTrackerProviders)
-            && $this->providerResolver->collectsLinear($globalIssueTrackerProviders);
+            && $this->context->global->providers->collectsJira($globalIssueTrackerProviders)
+            && $this->context->global->providers->collectsLinear($globalIssueTrackerProviders);
     }
 
     /**
@@ -237,8 +213,8 @@ class ConfigProjectInitPromptCollector
      */
     protected function shouldRunLinearTeamKeyPrompt(string $effectiveProvider, array $globalIssueTrackerProviders): bool
     {
-        if (! $this->providerResolver->collectsJira($globalIssueTrackerProviders)
-            || ! $this->providerResolver->collectsLinear($globalIssueTrackerProviders)) {
+        if (! $this->context->global->providers->collectsJira($globalIssueTrackerProviders)
+            || ! $this->context->global->providers->collectsLinear($globalIssueTrackerProviders)) {
             return false;
         }
 

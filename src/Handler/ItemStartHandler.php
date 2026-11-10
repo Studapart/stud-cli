@@ -4,392 +4,78 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
-use App\Config\ProjectStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
-use App\DTO\StateChange;
 use App\DTO\WorkflowRecorder;
 use App\DTO\WorkItem;
-use App\Enum\IssueTrackerProvider;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\WorkflowResponse;
-use App\Service\BranchNameGenerator;
-use App\Service\GitBranchService;
-use App\Service\GitRepository;
-use App\Service\IssueTrackerPort;
-use App\Service\LinearTypeLabelResolver;
-use App\Service\Prompt\NonInteractivePromptService;
-use App\Service\Prompt\PromptInterface;
-use Symfony\Component\String\Slugger\AsciiSlugger;
 
 class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, JiraAware
 {
-    private WorkflowEntryRecorder $recorder;
-
     /**
      * @param array<string, mixed> $jiraConfig
      */
     public function __construct(
-        private readonly GitRepository $gitRepository,
-        private readonly GitBranchService $gitBranchService,
-        private readonly IssueTrackerPort $provider,
-        private readonly string $baseBranch,
+        private readonly ItemStartWorkflows $workflows,
+        private readonly ItemStartBranchPlanner $planner,
+        private readonly ItemBranchWorkspace $branches,
         private readonly array $jiraConfig,
-        private readonly PromptInterface $prompt,
-        private readonly LinearTypeLabelResolver $linearTypeLabelResolver = new LinearTypeLabelResolver(),
-        private readonly BranchActionResolver $branchActionResolver = new BranchActionResolver(),
     ) {
     }
 
     public function handle(string $key): WorkflowResponse
     {
-        $this->recorder = new WorkflowRecorder();
+        $recorder = new WorkflowRecorder();
         $key = strtoupper($key);
-        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.section', ['key' => $key]));
+        $recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.section', ['key' => $key]));
 
-        $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.fetching', ['key' => $key]), WorkflowChannel::Jira);
+        $issue = $this->fetchIssue($recorder, $key);
+        if ($issue instanceof WorkflowResponse) {
+            return $issue;
+        }
+
+        $projectConfig = $this->branches->readProjectConfig();
+        if (! empty($this->jiraConfig['JIRA_TRANSITION_ENABLED'])) {
+            $this->workflows->transition($recorder, $key, $projectConfig);
+        }
+
+        $this->openBranch($recorder, $issue, $key, $projectConfig);
+
+        return $recorder->toResponse(0);
+    }
+
+    private function fetchIssue(WorkflowEntryRecorder $recorder, string $key): WorkItem|WorkflowResponse
+    {
+        $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.fetching', ['key' => $key]), WorkflowChannel::Jira);
 
         try {
-            $issue = $this->provider->getIssue($key);
+            return $this->workflows->fetchIssue($key);
         } catch (ApiException $e) {
-            $this->recorder->addErrorWithDetails(
+            $recorder->addErrorWithDetails(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 $e->getResolutionHint() ?? MessageRef::key('item.start.error_not_found', ['key' => $key]),
                 $e->getTechnicalDetails()
             );
 
-            return $this->recorder->toResponse(1);
-        }
-
-        $projectConfig = $this->gitRepository->readProjectConfig();
-
-        // Handle Jira transition if enabled
-        if (! empty($this->jiraConfig['JIRA_TRANSITION_ENABLED'])) {
-            $this->handleTransition($key, $issue, $projectConfig);
-            // All error handling is done inside handleTransition with warnings/errors
-            // Branch creation continues regardless of transition success/failure
-        }
-
-        $prefix = $this->resolveBranchPrefix($issue, $projectConfig);
-        // Use Symfony's AsciiSlugger to create a clean, lowercase slug for the branch name
-        $slugger = new AsciiSlugger();
-        $slugValue = $slugger->slug($issue->title)->lower()->toString();
-        $branchName = "{$prefix}/{$key}-{$slugValue}";
-
-        $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.generated_branch', ['branch' => $branchName]), WorkflowChannel::Git);
-
-        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.fetching_changes'), WorkflowChannel::Git);
-        $this->gitRepository->fetch();
-
-        // Check for existing branches before creating
-        $existingBranches = $this->gitBranchService->findBranchesByIssueKey($key);
-        $branchAction = $this->branchActionResolver->resolve($branchName, $existingBranches);
-
-        $this->executeBranchAction($branchAction, $branchName);
-
-        return $this->recorder->toResponse(0);
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    protected function handleTransition(string $key, WorkItem $issue, array $projectConfig): void
-    {
-        $this->tryAssignIssueToCurrentUser($key);
-
-        if ($this->usesLinearStartWorkflow($key, $projectConfig)) {
-            $stateId = $this->resolveLinearStartStateId($key, $projectConfig);
-            if ($stateId !== null) {
-                $this->executeStateChangeWithLogging($key, $stateId);
-            }
-
-            return;
-        }
-
-        $projectKey = $this->gitRepository->getProjectKeyFromIssueKey($key);
-        $transitionId = $this->resolveTransitionId($key, $projectKey, $projectConfig);
-        if ($transitionId !== null) {
-            $this->executeStateChangeWithLogging($key, (string) $transitionId);
-        }
-    }
-
-    protected function tryAssignIssueToCurrentUser(string $key): void
-    {
-        try {
-            $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.assigning', ['key' => $key]), WorkflowChannel::Jira);
-            $this->provider->assign($key);
-        } catch (ApiException $e) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.assign_error', ['error' => $e->getMessage()]));
-            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
-        } catch (\Exception $e) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.assign_error', ['error' => $e->getMessage()]));
+            return $recorder->toResponse(1);
         }
     }
 
     /**
      * @param array<string, mixed> $projectConfig
      */
-    protected function resolveTransitionId(string $key, string $projectKey, array $projectConfig): ?int
+    private function openBranch(WorkflowEntryRecorder $recorder, WorkItem $issue, string $key, array $projectConfig): void
     {
-        if (isset($projectConfig['projectKey']) && $projectConfig['projectKey'] === $projectKey && isset($projectConfig['transitionId'])) {
-            $id = (int) $projectConfig['transitionId'];
-            $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.using_cached_transition', ['id' => $id]), WorkflowChannel::Jira);
-
-            return $id;
-        }
-
-        return $this->promptForTransitionId($key, $projectKey);
-    }
-
-    protected function promptForTransitionId(string $key, string $projectKey): ?int
-    {
-        try {
-            $transitions = $this->provider->listItemStateChanges($key);
-            if ($transitions === []) {
-                $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.no_transitions', ['key' => $key]));
-
-                return null;
-            }
-            $options = array_map(fn (StateChange $t) => "{$t->name} (ID: {$t->id})", $transitions);
-            $selected = $this->prompt->choice(MessageRef::key('item.start.select_transition'), $options);
-            preg_match('/ID: (\d+)\)$/', $selected, $matches);
-            if (! isset($matches[1])) {
-                throw new \RuntimeException('Unable to extract transition ID from selection');
-            }
-            $transitionId = (int) $matches[1];
-            if ($this->prompt->confirm(MessageRef::key('item.start.save_transition', ['project' => $projectKey]), true)) {
-                $this->gitRepository->writeProjectConfig(['projectKey' => $projectKey, 'transitionId' => $transitionId]);
-                $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.transition_saved', ['project' => $projectKey]), WorkflowChannel::Jira);
-            }
-
-            return $transitionId;
-        } catch (ApiException $e) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.transition_error', ['error' => $e->getMessage()]));
-            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
-
-            return null;
-        } catch (\Exception $e) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.transition_error', ['error' => $e->getMessage()]));
-
-            return null;
-        }
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    protected function resolveLinearStartStateId(string $key, array $projectConfig): ?string
-    {
-        $cached = $projectConfig[ProjectStudConfigKeys::LINEAR_START_STATE_ID] ?? null;
-        if (is_string($cached) && trim($cached) !== '') {
-            $stateId = trim($cached);
-            $this->recorder->addLine(
-                WorkflowEntryRecorder::VERBOSITY_VERBOSE,
-                MessageRef::key('item.start.using_cached_linear_state', ['id' => $stateId]),
-                WorkflowChannel::Jira,
-            );
-
-            return $stateId;
-        }
-
-        if ($this->prompt instanceof NonInteractivePromptService) {
-            $this->recorder->addWarning(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('item.start.no_cached_linear_state_agent', ['key' => $key]),
-            );
-
-            return null;
-        }
-
-        return $this->promptForLinearStartStateId($key);
-    }
-
-    protected function promptForLinearStartStateId(string $key): ?string
-    {
-        try {
-            $states = $this->provider->listItemStateChanges($key);
-            if ($states === []) {
-                $this->recorder->addWarning(
-                    WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                    MessageRef::key('item.start.no_linear_states', ['key' => $key]),
-                );
-
-                return null;
-            }
-            $options = array_map(fn (StateChange $t) => "{$t->name} (ID: {$t->id})", $states);
-            $selected = $this->prompt->choice(MessageRef::key('item.start.select_linear_state'), $options);
-            preg_match('/ID: ([^)]+)\)$/', (string) $selected, $matches);
-            if (! isset($matches[1]) || trim($matches[1]) === '') {
-                throw new \RuntimeException('Unable to extract Linear state ID from selection');
-            }
-            $stateId = trim($matches[1]);
-            if ($this->prompt->confirm(MessageRef::key('item.start.save_linear_state'), true)) {
-                $this->gitRepository->writeProjectConfig([
-                    ProjectStudConfigKeys::LINEAR_START_STATE_ID => $stateId,
-                ]);
-                $this->recorder->addLine(
-                    WorkflowEntryRecorder::VERBOSITY_VERBOSE,
-                    MessageRef::key('item.start.linear_state_saved'),
-                    WorkflowChannel::Jira,
-                );
-            }
-
-            return $stateId;
-        } catch (ApiException $e) {
-            $this->recorder->addWarning(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('item.start.transition_error', ['error' => $e->getMessage()]),
-            );
-            $this->recorder->addText(
-                WorkflowEntryRecorder::VERBOSITY_VERBOSE,
-                ['', ' Technical details: ' . $e->getTechnicalDetails()],
-            );
-
-            return null;
-        } catch (\Exception $e) {
-            $this->recorder->addWarning(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('item.start.transition_error', ['error' => $e->getMessage()]),
-            );
-
-            return null;
-        }
-    }
-
-    protected function executeStateChangeWithLogging(string $key, string $stateChangeId): void
-    {
-        try {
-            $this->provider->applyStateChange($key, $stateChangeId);
-            $this->recorder->addSuccess(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('item.start.transition_success', ['key' => $key]),
-            );
-        } catch (ApiException $e) {
-            $this->recorder->addWarning(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('item.start.transition_exec_error', ['error' => $e->getMessage()]),
-            );
-            $this->recorder->addText(
-                WorkflowEntryRecorder::VERBOSITY_VERBOSE,
-                ['', ' Technical details: ' . $e->getTechnicalDetails()],
-            );
-        } catch (\Exception $e) {
-            $this->recorder->addWarning(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('item.start.transition_exec_error', ['error' => $e->getMessage()]),
-            );
-        }
-    }
-
-    protected function getBranchPrefixFromIssueType(string $issueType): string
-    {
-        return BranchNameGenerator::prefixForIssueType($issueType);
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    protected function resolveBranchPrefix(WorkItem $issue, array $projectConfig): string
-    {
-        if (! $this->usesLinearStartWorkflow($issue->key, $projectConfig)) {
-            return $this->getBranchPrefixFromIssueType($issue->issueType);
-        }
-
-        $teamKey = isset($projectConfig[ProjectStudConfigKeys::PROJECT_KEY]) && is_string($projectConfig[ProjectStudConfigKeys::PROJECT_KEY])
-            ? $projectConfig[ProjectStudConfigKeys::PROJECT_KEY]
-            : $this->gitRepository->getProjectKeyFromIssueKey($issue->key);
-
-        $result = $this->linearTypeLabelResolver->resolveBranchPrefix(array_values($issue->labels), $projectConfig, $teamKey);
-        if ($result['warning'] !== null) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, $result['warning']);
-        }
-        if ($result['matchedLabel'] !== null) {
-            $this->recorder->addLine(
-                WorkflowEntryRecorder::VERBOSITY_VERBOSE,
-                MessageRef::key('item.start.linear_type_label_matched', [
-                    'label' => $result['matchedLabel'],
-                    'prefix' => $result['prefix'],
-                ]),
-            );
-        }
-
-        return $result['prefix'];
-    }
-
-    /**
-     * Linear start-state + type-label branch prefixes apply when provider is pinned
-     * to Linear, or when dual-PM auto resolves this issue key to the Linear team.
-     *
-     * @param array<string, mixed> $projectConfig
-     */
-    protected function usesLinearStartWorkflow(string $issueKey, array $projectConfig): bool
-    {
-        $provider = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
-        if (! is_string($provider)) {
-            return false;
-        }
-
-        $normalized = IssueTrackerProvider::tryFromNormalized($provider);
-        if ($normalized === IssueTrackerProvider::Linear) {
-            return true;
-        }
-
-        if ($normalized !== IssueTrackerProvider::Auto) {
-            return false;
-        }
-
-        return $this->issueKeyMatchesLinearTeam($issueKey, $projectConfig);
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    protected function issueKeyMatchesLinearTeam(string $issueKey, array $projectConfig): bool
-    {
-        $linearTeamKey = $projectConfig[ProjectStudConfigKeys::LINEAR_TEAM_KEY] ?? null;
-        if (! is_string($linearTeamKey) || trim($linearTeamKey) === '') {
-            return false;
-        }
-
-        $issueProjectKey = $this->gitRepository->getProjectKeyFromIssueKey($issueKey);
-
-        return strtoupper($issueProjectKey) === strtoupper(trim($linearTeamKey));
-    }
-
-    /**
-     * Executes the determined branch action.
-     *
-     * @param array{action: string, branch: string} $branchAction
-     */
-    protected function executeBranchAction(array $branchAction, string $defaultBranchName): void
-    {
-        if ($branchAction['action'] === BranchAction::SWITCH_LOCAL) {
-            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.switching_branch', ['branch' => $branchAction['branch']]), WorkflowChannel::Git);
-            $this->gitBranchService->switchBranch($branchAction['branch']);
-            $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.success_switched', ['branch' => $branchAction['branch']]));
-
-            return;
-        }
-
-        if ($branchAction['action'] === BranchAction::SWITCH_REMOTE) {
-            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.switching_remote_branch', ['branch' => $branchAction['branch']]), WorkflowChannel::Git);
-            $this->gitBranchService->switchToRemoteBranch($branchAction['branch']);
-            $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.success_switched', ['branch' => $branchAction['branch']]));
-
-            return;
-        }
-
-        // Default: create new branch from the most advanced base ref
-        $resolvedBase = $this->gitBranchService->resolveLatestBaseBranch($this->baseBranch);
-        if ($resolvedBase !== $this->baseBranch) {
-            $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.using_advanced_base', ['configured' => $this->baseBranch, 'resolved' => $resolvedBase]), WorkflowChannel::Git);
-        }
-        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.creating_branch', ['branch' => $defaultBranchName]), WorkflowChannel::Git);
-        $this->gitRepository->createBranch($defaultBranchName, $resolvedBase);
-        $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.success', ['branch' => $defaultBranchName, 'base' => $resolvedBase]));
+        $branchName = $this->planner->branchName($issue, $key, $this->workflows->branchPrefix($recorder, $issue, $projectConfig));
+        $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.generated_branch', ['branch' => $branchName]), WorkflowChannel::Git);
+        $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.fetching_changes'), WorkflowChannel::Git);
+        $this->branches->fetch();
+        $action = $this->planner->resolveAction($branchName, $this->branches->findBranches($key));
+        $this->branches->applyStartAction($recorder, $action, $branchName);
     }
 }

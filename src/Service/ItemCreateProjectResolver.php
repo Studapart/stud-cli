@@ -15,9 +15,7 @@ class ItemCreateProjectResolver
         private readonly GitRepository $gitRepository,
         private readonly JiraApiClient $jiraService,
         private readonly PromptInterface $prompt,
-        private readonly ?LinearApiClient $linearApiClient = null,
-        private readonly ?Logger $logger = null,
-        private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
+        private readonly ItemCreateLinearLookup $linear = new ItemCreateLinearLookup(),
     ) {
     }
 
@@ -43,7 +41,7 @@ class ItemCreateProjectResolver
     {
         /** @var array<string, mixed> $config */
         $config = $this->gitRepository->readProjectConfig();
-        $fromConfig = $this->scopeKeyResolver->resolveLinearTeamKey($config);
+        $fromConfig = $this->linear->scope->resolveLinearTeamKey($config);
         if ($fromConfig !== null) {
             return $fromConfig;
         }
@@ -61,12 +59,12 @@ class ItemCreateProjectResolver
         } catch (ApiException) {
             /** @var array<string, mixed> $config */
             $config = $this->gitRepository->readProjectConfig();
-            $linearTeamKey = $this->scopeKeyResolver->resolveLinearTeamKey($config) ?? $projectKey;
-            $this->logger?->writeln(
+            $linearTeamKey = $this->linear->scope->resolveLinearTeamKey($config) ?? $projectKey;
+            $this->linear->logger?->writeln(
                 Logger::VERBOSITY_VERBOSE,
                 sprintf('Jira project "%s" not found; trying Linear team lookup.', $projectKey),
             );
-            $linearTeam = $this->linearApiClient?->getTeamByKey($linearTeamKey);
+            $linearTeam = $this->linear->client?->getTeamByKey($linearTeamKey);
             if ($linearTeam !== null) {
                 return $linearTeam;
             }

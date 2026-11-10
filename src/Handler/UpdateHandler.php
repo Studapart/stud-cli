@@ -8,62 +8,25 @@ use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Response\WorkflowResponse;
-use App\Service\ChangelogParser;
-use App\Service\FileSystem;
 use App\Service\GithubGitHostingAdapter;
-use App\Service\GlobalMigrationService;
 use App\Service\PortableUpdateService;
-use App\Service\Prompt\PromptInterface;
-use App\Service\TestEnvironmentDetector;
-use App\Service\UpdateChangelogPresenter;
-use App\Service\UpdateFileService;
 use App\Service\UpdateInstallContext;
 use App\Service\UpdateInstallDetector;
-use App\Service\UpdatePrerequisiteMigrationRunner;
-use App\Service\UpdateReleaseFetcher;
-use App\Service\UpdateRepositoryContext;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
+use App\Service\UpdateInstaller;
+use App\Service\UpdatePrerequisites;
+use App\Service\UpdateReleaseFlow;
+use App\Service\UpdateTarget;
 
 class UpdateHandler
 {
     private ?WorkflowEntryRecorder $recorder = null;
 
     public function __construct(
-        protected readonly string $repoOwner,
-        protected readonly string $repoName,
-        protected readonly string $currentVersion,
-        protected readonly string $binaryPath,
-        protected readonly mixed $translator,
-        protected readonly ChangelogParser $changelogParser,
-        protected readonly UpdateFileService $updateFileService,
-        protected readonly PromptInterface $prompt,
-        protected readonly FileSystem $fileSystem,
-        protected readonly TestEnvironmentDetector $testEnvironmentDetector,
-        protected readonly UpdateReleaseFetcher $releaseFetcher,
-        protected readonly UpdateChangelogPresenter $changelogPresenter,
-        protected readonly UpdatePrerequisiteMigrationRunner $migrationRunner,
-        protected ?string $gitToken = null,
-        protected ?HttpClientInterface $httpClient = null,
-        protected ?GlobalMigrationService $globalMigrationService = null,
+        protected readonly UpdateTarget $target,
+        protected readonly UpdateReleaseFlow $releaseFlow,
+        protected readonly UpdateInstaller $installer,
+        protected readonly UpdatePrerequisites $prerequisites,
     ) {
-    }
-
-    private function globalMigrationService(): GlobalMigrationService
-    {
-        if ($this->globalMigrationService !== null) {
-            return $this->globalMigrationService;
-        }
-
-        $io = new \Symfony\Component\Console\Style\SymfonyStyle(
-            new \Symfony\Component\Console\Input\ArrayInput([]),
-            new \Symfony\Component\Console\Output\BufferedOutput(),
-        );
-
-        return new GlobalMigrationService(
-            $this->fileSystem,
-            $this->translator,
-            new \App\Service\Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io, true)),
-        );
     }
 
     private function recorder(): WorkflowEntryRecorder
@@ -76,18 +39,18 @@ class UpdateHandler
         $this->recorder = new WorkflowRecorder();
         $this->recorder()->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.section'));
 
-        $binaryPath = $this->updateFileService->getBinaryPath($this->binaryPath);
+        $binaryPath = $this->installer->resolveBinaryPath($this->target->binaryPath);
         $this->logVerbose('Binary path', $binaryPath);
-        $this->logVerbose('Repository', "{$this->repoOwner}/{$this->repoName}");
-        $this->logVerbose('Current version', $this->currentVersion);
+        $this->logVerbose('Repository', "{$this->target->repository->owner}/{$this->target->repository->name}");
+        $this->logVerbose('Current version', $this->target->currentVersion);
 
-        $installContext = (new UpdateInstallDetector())->detect($binaryPath, $this->currentVersion);
-        $githubProvider = $this->createGithubGitHostingAdapter($this->repoOwner, $this->repoName);
-        $release = $this->getReleaseOrExitCode($githubProvider);
+        $installContext = (new UpdateInstallDetector())->detect($binaryPath, $this->target->currentVersion);
+        $githubProvider = $this->createGithubGitHostingAdapter();
+        $release = $this->releaseFlow->fetcher->getReleaseOrExitCode($githubProvider, $this->recorder());
         if (is_int($release)) {
             return $this->recorder()->toResponse($release);
         }
-        $this->displayChangelog($githubProvider, $release);
+        $this->releaseFlow->changelogPresenter->display($this->recorder(), $githubProvider, $release, $this->logVerbose(...));
 
         if ($info) {
             return $this->recorder()->toResponse(0);
@@ -97,17 +60,17 @@ class UpdateHandler
             return $this->recorder()->toResponse($this->handlePortableUpdate($installContext, $release, $quiet));
         }
 
-        $pharAsset = $this->findPharAsset($release);
+        $pharAsset = $this->releaseFlow->fetcher->findPharAsset($release, $this->recorder());
         if (! $pharAsset) {
             return $this->recorder()->toResponse(1);
         }
 
-        $tempFile = $this->downloadPhar($pharAsset, $this->repoOwner, $this->repoName);
+        $tempFile = $this->downloadPhar($pharAsset);
         if ($tempFile === null) {
             return $this->recorder()->toResponse(1);
         }
 
-        $verificationResult = $this->updateFileService->verifyHash($this->recorder, $tempFile, $pharAsset, $quiet);
+        $verificationResult = $this->installer->verifyHash($this->recorder(), $tempFile, $pharAsset, $quiet);
         if ($verificationResult === false) {
             return $this->recorder()->toResponse($this->cleanupAndReturn($tempFile, 1));
         }
@@ -119,7 +82,7 @@ class UpdateHandler
         }
         // @codeCoverageIgnoreEnd
 
-        return $this->recorder()->toResponse($this->updateFileService->replaceBinary($this->recorder, $tempFile, $binaryPath, $this->currentVersion, $release['tag_name'] ?? 'unknown'));
+        return $this->recorder()->toResponse($this->installer->replaceBinary($this->recorder(), $tempFile, $this->target, $release['tag_name'] ?? 'unknown'));
     }
 
     /**
@@ -143,7 +106,15 @@ class UpdateHandler
         }
         // @codeCoverageIgnoreEnd
 
-        return $this->createPortableUpdateService()->update($installContext, $release, $quiet, $this->recorder);
+        return $this->createPortableUpdateService()->update($installContext, $release, $quiet, $this->recorder());
+    }
+
+    /**
+     * @codeCoverageIgnore
+     */
+    protected function createGithubGitHostingAdapter(): GithubGitHostingAdapter
+    {
+        return $this->releaseFlow->fetcher->createGithubGitHostingAdapter();
     }
 
     /**
@@ -151,60 +122,7 @@ class UpdateHandler
      */
     protected function createPortableUpdateService(): PortableUpdateService
     {
-        return new PortableUpdateService(
-            new UpdateRepositoryContext($this->repoOwner, $this->repoName, $this->gitToken),
-            $this->translator,
-            $this->prompt,
-            $this->httpClient
-        );
-    }
-
-    /**
-     * @codeCoverageIgnore
-     */
-    protected function createGithubGitHostingAdapter(string $repoOwner, string $repoName): GithubGitHostingAdapter
-    {
-        return $this->releaseFetcher->createGithubGitHostingAdapter();
-    }
-
-    /**
-     * @return array{release: array<string, mixed>|null, is404: bool}
-     *
-     * @codeCoverageIgnore
-     */
-    protected function fetchLatestRelease(GithubGitHostingAdapter $githubProvider): array
-    {
-        return $this->releaseFetcher->fetchLatestRelease($githubProvider, $this->recorder());
-    }
-
-    /**
-     * @return int|array<string, mixed>
-     */
-    protected function getReleaseOrExitCode(GithubGitHostingAdapter $githubProvider): int|array
-    {
-        return $this->releaseFetcher->getReleaseOrExitCode($githubProvider, $this->recorder());
-    }
-
-    /**
-     * @param array<string, mixed> $release
-     *
-     * @codeCoverageIgnore
-     */
-    protected function isAlreadyLatestVersion(array $release): bool
-    {
-        return $this->releaseFetcher->isAlreadyLatestVersion($release, $this->recorder());
-    }
-
-    /**
-     * @param array<string, mixed> $release
-     *
-     * @return array<string, mixed>|null
-     *
-     * @codeCoverageIgnore
-     */
-    protected function findPharAsset(array $release): ?array
-    {
-        return $this->releaseFetcher->findPharAsset($release, $this->recorder());
+        return $this->installer->portableService($this->target->repository);
     }
 
     /**
@@ -212,9 +130,9 @@ class UpdateHandler
      *
      * @codeCoverageIgnore
      */
-    protected function downloadPhar(array $pharAsset, string $repoOwner, string $repoName): ?string
+    protected function downloadPhar(array $pharAsset): ?string
     {
-        return $this->releaseFetcher->downloadPhar($pharAsset, $this->recorder(), $this->logVerbose(...));
+        return $this->releaseFlow->fetcher->downloadPhar($pharAsset, $this->recorder(), $this->logVerbose(...));
     }
 
     /**
@@ -227,9 +145,8 @@ class UpdateHandler
 
     protected function runPrerequisiteMigrations(): int
     {
-        return $this->migrationRunner->run(
+        return $this->prerequisites->run(
             $this->recorder(),
-            $this->globalMigrationService(),
             fn (): string => $this->getConfigPath(),
             fn (): bool => $this->isTestEnvironment(),
             fn (string $id, string $msg): MessageRef => $this->getErrorMessage($id, $msg),
@@ -241,7 +158,7 @@ class UpdateHandler
      */
     protected function loadConfigAndVersion(): ?array
     {
-        return $this->migrationRunner->loadConfigAndVersion(
+        return $this->prerequisites->loadConfigAndVersion(
             fn (): string => $this->getConfigPath(),
             fn (): bool => $this->isTestEnvironment(),
         );
@@ -252,8 +169,7 @@ class UpdateHandler
      */
     protected function discoverPrerequisiteMigrations(string $currentVersion): array
     {
-        return $this->migrationRunner->discoverPrerequisiteMigrations(
-            $this->globalMigrationService(),
+        return $this->prerequisites->discoverPrerequisiteMigrations(
             $currentVersion,
             fn (): bool => $this->isTestEnvironment(),
         );
@@ -265,18 +181,12 @@ class UpdateHandler
      */
     protected function executePendingMigrations(array $pendingMigrations, array $config, string $configPath): int
     {
-        return $this->migrationRunner->executePendingMigrations(
-            $this->recorder(),
-            $this->globalMigrationService(),
-            $pendingMigrations,
-            $config,
-            $configPath,
-        );
+        return $this->prerequisites->executePendingMigrations($this->recorder(), $pendingMigrations, $config, $configPath);
     }
 
     protected function handleMigrationError(\Throwable $e): int
     {
-        return $this->migrationRunner->handleMigrationError(
+        return $this->prerequisites->handleMigrationError(
             $this->recorder(),
             $e,
             fn (): bool => $this->isTestEnvironment(),
@@ -302,58 +212,12 @@ class UpdateHandler
 
     protected function isTestEnvironment(): bool
     {
-        if ($this->isTestEnvironmentByConstant()) {
-            return true;
-        }
-        // @codeCoverageIgnoreStart
-        if ($this->isTestEnvironmentByBacktrace()) {
-            return true;
-        }
-        // @codeCoverageIgnoreEnd
-        if ($this->isTestEnvironmentByClassOrEnv()) {
-            return true;
-        }
-
-        return false;
-    }
-
-    protected function isTestEnvironmentByConstant(): bool
-    {
-        return $this->testEnvironmentDetector->isTestEnvironmentByConstant();
-    }
-
-    /**
-     * @codeCoverageIgnore
-     */
-    protected function isTestEnvironmentByBacktrace(): bool
-    {
-        return $this->testEnvironmentDetector->isTestEnvironmentByBacktrace();
-    }
-
-    /**
-     * @codeCoverageIgnore
-     */
-    protected function isTestEnvironmentByClassOrEnv(): bool
-    {
-        return $this->testEnvironmentDetector->isTestEnvironmentByClassOrEnv();
-    }
-
-    /**
-     * @param array<string, mixed> $release
-     *
-     * @codeCoverageIgnore
-     */
-    protected function displayChangelog(GithubGitHostingAdapter $githubProvider, array $release): void
-    {
-        $this->changelogPresenter->display($this->recorder(), $githubProvider, $release, $this->logVerbose(...));
+        return $this->prerequisites->isTestEnvironment();
     }
 
     private function cleanupAndReturn(string $tempFile, int $exitCode): int
     {
-        try {
-            $this->fileSystem->delete($tempFile);
-        } catch (\RuntimeException) {
-        }
+        $this->installer->deleteTempFile($tempFile);
 
         return $exitCode;
     }

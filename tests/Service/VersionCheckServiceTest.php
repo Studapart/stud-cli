@@ -4,6 +4,7 @@ namespace App\Tests\Service;
 
 use App\Service\FileSystem;
 use App\Service\GithubGitHostingAdapter;
+use App\Service\UpdateRepositoryContext;
 use App\Service\VersionCheckService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
@@ -36,12 +37,10 @@ class VersionCheckServiceTest extends TestCase
     public function testConstructor(): void
     {
         $service = new VersionCheckService(
-            'owner',
-            'repo',
+            new UpdateRepositoryContext('owner', 'repo', 'token'),
             '1.0.0',
             $this->fileSystem,
-            'token',
-            $this->httpClientMock
+            $this->httpClientMock,
         );
 
         $this->assertInstanceOf(VersionCheckService::class, $service);
@@ -459,12 +458,10 @@ class VersionCheckServiceTest extends TestCase
 
         // Create a new service instance with the mock FileSystem
         $service = new VersionCheckService(
-            self::REPO_OWNER,
-            self::REPO_NAME,
+            new UpdateRepositoryContext(self::REPO_OWNER, self::REPO_NAME, self::GIT_TOKEN),
             self::CURRENT_VERSION,
             $mockFileSystem,
-            self::GIT_TOKEN,
-            $this->httpClientMock
+            $this->httpClientMock,
         );
 
         $reflection = new \ReflectionClass($service);
@@ -504,12 +501,10 @@ class VersionCheckServiceTest extends TestCase
     public function testCreateGithubGitHostingAdapterWithoutToken(): void
     {
         $service = new VersionCheckService(
-            self::REPO_OWNER,
-            self::REPO_NAME,
+            new UpdateRepositoryContext(self::REPO_OWNER, self::REPO_NAME, null),
             self::CURRENT_VERSION,
             $this->fileSystem,
-            null, // No token
-            $this->httpClientMock
+            $this->httpClientMock,
         );
 
         $reflection = new \ReflectionClass($service);
@@ -533,12 +528,10 @@ class VersionCheckServiceTest extends TestCase
     public function testCreateGithubGitHostingAdapterWithoutHttpClient(): void
     {
         $service = new VersionCheckService(
-            self::REPO_OWNER,
-            self::REPO_NAME,
+            new UpdateRepositoryContext(self::REPO_OWNER, self::REPO_NAME, self::GIT_TOKEN),
             self::CURRENT_VERSION,
             $this->fileSystem,
-            self::GIT_TOKEN,
-            null // No httpClient provided
+            null,
         );
 
         $reflection = new \ReflectionClass($service);
@@ -552,12 +545,10 @@ class VersionCheckServiceTest extends TestCase
     public function testCreateGithubGitHostingAdapterWithoutTokenAndWithoutHttpClient(): void
     {
         $service = new VersionCheckService(
-            self::REPO_OWNER,
-            self::REPO_NAME,
+            new UpdateRepositoryContext(self::REPO_OWNER, self::REPO_NAME, null),
             self::CURRENT_VERSION,
             $this->fileSystem,
-            null, // No token
-            null  // No httpClient
+            null,
         );
 
         $reflection = new \ReflectionClass($service);
@@ -730,12 +721,10 @@ class VersionCheckServiceTest extends TestCase
             ->willThrowException(new \RuntimeException('Mkdir failed'));
 
         $service = new VersionCheckService(
-            self::REPO_OWNER,
-            self::REPO_NAME,
+            new UpdateRepositoryContext(self::REPO_OWNER, self::REPO_NAME, self::GIT_TOKEN),
             self::CURRENT_VERSION,
             $mockFileSystem,
-            self::GIT_TOKEN,
-            $this->httpClientMock
+            $this->httpClientMock,
         );
 
         $reflection = new \ReflectionClass($service);
@@ -770,12 +759,10 @@ class VersionCheckServiceTest extends TestCase
         $this->flysystem->createDirectory($this->tempCacheDir . '/.cache/stud');
 
         $this->service = new VersionCheckService(
-            self::REPO_OWNER,
-            self::REPO_NAME,
+            new UpdateRepositoryContext(self::REPO_OWNER, self::REPO_NAME, self::GIT_TOKEN),
             self::CURRENT_VERSION,
             $this->fileSystem,
-            self::GIT_TOKEN,
-            $this->httpClientMock
+            $this->httpClientMock,
         );
     }
 }
