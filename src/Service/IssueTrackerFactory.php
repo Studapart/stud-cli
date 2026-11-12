@@ -16,6 +16,8 @@ class IssueTrackerFactory
     public function __construct(
         private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),
         private readonly IssueKeyPrefixMatcher $issueKeyPrefixMatcher = new IssueKeyPrefixMatcher(),
+        private readonly DualTrackerPolicy $dualTracker = new DualTrackerPolicy(),
+        private readonly ?GitRepository $gitRepository = null,
     ) {
     }
 
@@ -44,7 +46,7 @@ class IssueTrackerFactory
             return $projectProvider->value;
         }
 
-        if ($this->shouldResolveByIssueKeyPrefix($globalConfig, $projectConfig)) {
+        if ($this->dualTracker->isDualAuto($globalConfig, $projectConfig)) {
             return $this->resolveByIssueKeyPrefix($globalConfig, $projectConfig, $issueKey);
         }
 
@@ -88,6 +90,8 @@ class IssueTrackerFactory
         IssueTrackerClients $clients,
         ?GitRepository $gitRepository = null,
     ): IssueTrackerPort {
+        $gitRepository ??= $this->gitRepository;
+
         return match ($type) {
             IssueTrackerProvider::Jira->value => new JiraIssueTrackerAdapter(
                 $clients->jira ?? throw new \InvalidArgumentException('Jira service is required for the jira work-item provider'),
@@ -176,28 +180,6 @@ class IssueTrackerFactory
     /**
      * @param array<string, mixed> $globalConfig
      */
-    private function hasDualConfiguredProviders(array $globalConfig): bool
-    {
-        foreach (IssueTrackerProvider::vendors() as $vendor) {
-            if (! GlobalStudConfigKeys::hasCredentialsFor($vendor, $globalConfig)) {
-                return false;
-            }
-        }
-
-        $globalProviders = $this->globalResolver->resolveIssueTrackerProviders($globalConfig);
-
-        foreach (IssueTrackerProvider::vendors() as $vendor) {
-            if (! $this->globalResolver->collectsIssueTracker($vendor, $globalProviders)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     */
     private function soleConfiguredVendor(array $globalConfig): ?IssueTrackerProvider
     {
         $globalProviders = $this->globalResolver->resolveIssueTrackerProviders($globalConfig);
@@ -281,23 +263,5 @@ class IssueTrackerFactory
         }
 
         return $provider;
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
-    private function shouldResolveByIssueKeyPrefix(array $globalConfig, array $projectConfig): bool
-    {
-        if (! $this->hasDualConfiguredProviders($globalConfig)) {
-            return false;
-        }
-
-        $projectSetting = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
-        if ($projectSetting === null) {
-            return true;
-        }
-
-        return $projectSetting === IssueTrackerProvider::Auto->value;
     }
 }

@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Guard\Resolver;
 
-use App\Config\EffectiveIssueTrackerCredentials;
-use App\Config\GlobalStudConfigKeys;
-use App\Config\ProjectStudConfigKeys;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
 use App\Enum\WorkItemCommandProfile;
@@ -14,6 +11,7 @@ use App\Exception\IssueTrackerResolutionException;
 use App\Guard\DTO\ProviderResolutionRequest;
 use App\Guard\DTO\ProviderResolutionResult;
 use App\Service\AttachmentUrlProviderGuesser;
+use App\Service\DualTrackerPolicy;
 
 /**
  * Central issue-tracker provider resolution for guard and runtime (SCI-197 R1–R5).
@@ -23,6 +21,7 @@ final class IssueTrackerProviderResolver
     public function __construct(
         private readonly IssueTrackerResolutionDeps $deps = new IssueTrackerResolutionDeps(),
         private readonly AttachmentUrlProviderGuesser $attachmentUrlGuesser = new AttachmentUrlProviderGuesser(),
+        private readonly DualTrackerPolicy $dualTracker = new DualTrackerPolicy(),
     ) {
     }
 
@@ -42,7 +41,7 @@ final class IssueTrackerProviderResolver
         $projectConfig = $request->projectConfig ?? [];
 
         if ($request->commandProfile === WorkItemCommandProfile::SearchSingle
-            && $this->isDualPmWithCredentials($request->globalConfig, $projectConfig)) {
+            && $this->dualTracker->isDualAuto($request->globalConfig, $projectConfig)) {
             return ProviderResolutionResult::blocked(
                 MessageRef::key('issue_tracker_provider.search_requires_explicit_provider'),
             );
@@ -90,7 +89,7 @@ final class IssueTrackerProviderResolver
 
         if ($request->commandProfile === WorkItemCommandProfile::DualAggregate
             || $request->commandProfile === WorkItemCommandProfile::FilterByName) {
-            if ($this->isDualPmWithCredentials($request->globalConfig, $projectConfig)) {
+            if ($this->dualTracker->isDualAuto($request->globalConfig, $projectConfig)) {
                 return ProviderResolutionResult::dualAggregate(
                     [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
                     'dual_default',
@@ -199,39 +198,5 @@ final class IssueTrackerProviderResolver
             WorkItemCommandProfile::ScopeDiscovery,
             WorkItemCommandProfile::LinearOnly,
         ], true);
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
-    private function isDualPmWithCredentials(array $globalConfig, array $projectConfig): bool
-    {
-        if (! $this->isProjectAuto($projectConfig)) {
-            return false;
-        }
-
-        $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
-        $providers = $this->deps->global->resolveIssueTrackerProviders($globalConfig);
-        if (! $this->deps->global->collectsJira($providers)
-            || ! $this->deps->global->collectsLinear($providers)) {
-            return false;
-        }
-
-        return GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, $globalConfig)
-            && GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Linear, $globalConfig);
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    private function isProjectAuto(array $projectConfig): bool
-    {
-        $stored = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
-        if ($stored === null) {
-            return true;
-        }
-
-        return $stored === IssueTrackerProvider::Auto->value;
     }
 }

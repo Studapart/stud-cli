@@ -8,12 +8,15 @@ use App\Config\ProjectStudConfigKeys;
 use App\Enum\IssueTrackerProvider;
 use App\Exception\IssueTrackerException;
 use App\Exception\IssueTrackerResolutionException;
+use App\Service\GitRepository;
 use App\Service\IssueTrackerClients;
 use App\Service\IssueTrackerFactory;
 use App\Service\JiraApiClient;
 use App\Service\JiraAttachmentService;
 use App\Service\JiraIssueTrackerAdapter;
+use App\Service\LinearApiClient;
 use App\Service\LinearIssueTrackerAdapter;
+use App\Service\StudIssueKeys;
 use PHPUnit\Framework\TestCase;
 
 class IssueTrackerFactoryTest extends TestCase
@@ -497,6 +500,39 @@ class IssueTrackerFactoryTest extends TestCase
     private function bothProvidersGlobal(): array
     {
         return ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]];
+    }
+
+    public function testLinearPortFromTheFactoryReadsTheConfiguredTypeLabelGroup(): void
+    {
+        $gitRepository = $this->createStub(GitRepository::class);
+        $gitRepository->method('readProjectConfig')->willReturn([
+            ProjectStudConfigKeys::LINEAR_TYPE_LABEL_GROUP_ID => 'group-1',
+        ]);
+        $factory = new IssueTrackerFactory(gitRepository: $gitRepository);
+        $client = $this->createMock(LinearApiClient::class);
+        $client->expects($this->atLeastOnce())->method('resolveTeamId')->willReturn('team-1');
+        $sawGroup = false;
+        $client->expects($this->atLeastOnce())->method('resolveLabelIds')->willReturnCallback(
+            function (string $teamKey, array $names, ?string $groupId) use (&$sawGroup): array {
+                if ($groupId === 'group-1' && $names === ['Story']) {
+                    $sawGroup = true;
+
+                    return ['label-1'];
+                }
+
+                return [];
+            },
+        );
+        $client->expects($this->once())->method('issueCreate')->willReturn(['identifier' => 'OPS-1', 'url' => 'https://linear.app/OPS-1']);
+
+        $port = $factory->createForProvider(IssueTrackerProvider::Linear->value, new IssueTrackerClients(null, null, $client));
+        $port->create([
+            StudIssueKeys::PROJECT => [StudIssueKeys::KEY => 'OPS'],
+            StudIssueKeys::ISSUE_TYPE => [StudIssueKeys::NAME => 'Story'],
+            StudIssueKeys::TITLE => 'Title',
+        ]);
+
+        $this->assertTrue($sawGroup);
     }
 
     /**

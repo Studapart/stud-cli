@@ -28,6 +28,11 @@ class WorkflowOutput implements WorkflowEntryRecorder
         $this->recorder = new WorkflowRecorder();
     }
 
+    public function absorbResponse(WorkflowResponse $response): void
+    {
+        $this->recorder->absorbResponse($response);
+    }
+
     /**
      * @return list<WorkflowOutputEntry>
      */

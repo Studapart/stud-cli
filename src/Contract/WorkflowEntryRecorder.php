@@ -45,6 +45,11 @@ interface WorkflowEntryRecorder
 
     public function addRawValue(string $message): void;
 
+    /**
+     * Continues this sequence with the entries and messages of a response produced by another flow.
+     */
+    public function absorbResponse(WorkflowResponse $response): void;
+
     public function addLine(int $verbosity, MessageRef|string $message, WorkflowChannel $channel = WorkflowChannel::Default): void;
 
     public function addSection(int $verbosity, MessageRef|string $message): void;

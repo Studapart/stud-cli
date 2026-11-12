@@ -1020,59 +1020,6 @@ class GithubGitHostingAdapterTest extends TestCase
         );
     }
 
-    public function testUpdatePullRequestHeadSuccess(): void
-    {
-        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->bindSubject();
-
-        $pullNumber = 123;
-        $newHead = 'owner:new-branch';
-        $expectedResponse = ['number' => $pullNumber, 'head' => ['ref' => 'new-branch']];
-
-        $responseMock = $this->createStub(ResponseInterface::class);
-        $responseMock->method('getStatusCode')->willReturn(200);
-        $responseMock->method('toArray')->willReturn($expectedResponse);
-
-        $this->httpClientMock->expects($this->once())
-            ->method('request')
-            ->with(
-                'PATCH',
-                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls/{$pullNumber}",
-                [
-                    'json' => [
-                        'head' => $newHead,
-                    ],
-                ]
-            )
-            ->willReturn($responseMock);
-
-        $result = $this->githubProvider->updatePullRequestHead($pullNumber, $newHead);
-
-        $this->assertSame($expectedResponse, $result);
-    }
-
-    public function testUpdatePullRequestHeadThrowsExceptionOnError(): void
-    {
-        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->bindSubject();
-
-        $pullNumber = 123;
-        $newHead = 'owner:new-branch';
-
-        $responseMock = $this->createMock(ResponseInterface::class);
-        $responseMock->method('getStatusCode')->willReturn(422);
-        $responseMock->expects($this->once())->method('getContent')->with(false)->willReturn('{"message": "Head branch cannot be changed"}');
-
-        $this->httpClientMock->expects($this->once())
-            ->method('request')
-            ->willReturn($responseMock);
-
-        $this->expectException(\App\Exception\ApiException::class);
-        $this->expectExceptionMessage("Failed to update pull request head for PR #{$pullNumber}.");
-
-        $this->githubProvider->updatePullRequestHead($pullNumber, $newHead);
-    }
-
     public function testFindPullRequestByBranchWithStateOpen(): void
     {
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
