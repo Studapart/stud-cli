@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\Contract\WorkflowEntryRecorder;
+use App\DTO\InitPromptField;
+use App\Handler\GlobalInit\GlobalInitPromptContext;
 use App\Handler\InitPromptInputHelper;
 use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
@@ -30,6 +33,14 @@ class InitHandlerPromptResolutionTest extends TestCase
     private function createInputHelper(PromptInterface $prompt): InitPromptInputHelper
     {
         return new InitPromptInputHelper($prompt);
+    }
+
+    /**
+     * @param array<string, mixed> $rawAgentInput
+     */
+    private function initContext(bool $isAgent, array $rawAgentInput = []): GlobalInitPromptContext
+    {
+        return new GlobalInitPromptContext([], $rawAgentInput, $isAgent, $this->createStub(WorkflowEntryRecorder::class), [], []);
     }
 
     public function testPromptRequiredVisibleRepromptsWhenSkippedWithNoStoredValue(): void
@@ -125,11 +136,8 @@ class InitHandlerPromptResolutionTest extends TestCase
         $helper = $this->createInputHelper($prompt);
         $result = $helper->resolveWhenActive(
             false,
-            false,
-            [],
-            'jiraUrl',
-            '  https://stored.example.com/  ',
-            'Q',
+            $this->initContext(false),
+            new InitPromptField('jiraUrl', '  https://stored.example.com/  ', 'Q'),
         );
         $this->assertSame('https://stored.example.com/', $result);
     }
@@ -141,13 +149,8 @@ class InitHandlerPromptResolutionTest extends TestCase
         $helper = $this->createInputHelper($prompt);
         $result = $helper->resolveWhenActive(
             true,
-            true,
-            ['jiraUrl' => 'https://agent.example.com/'],
-            'jiraUrl',
-            null,
-            'Q',
-            false,
-            fn (string $s): string => rtrim($s, '/'),
+            $this->initContext(true, ['jiraUrl' => 'https://agent.example.com/']),
+            new InitPromptField('jiraUrl', null, 'Q', fn (string $s): string => rtrim($s, '/')),
         );
         $this->assertSame('https://agent.example.com', $result);
     }
@@ -162,11 +165,8 @@ class InitHandlerPromptResolutionTest extends TestCase
         $helper = $this->createInputHelper($prompt);
         $result = $helper->resolveWhenActive(
             true,
-            false,
-            [],
-            'token',
-            null,
-            'H',
+            $this->initContext(false),
+            new InitPromptField('token', null, 'H'),
             hidden: true,
         );
         $this->assertSame('secret', $result);
@@ -182,11 +182,8 @@ class InitHandlerPromptResolutionTest extends TestCase
         $helper = $this->createInputHelper($prompt);
         $result = $helper->resolveWhenActive(
             true,
-            false,
-            [],
-            'key',
-            null,
-            'Q',
+            $this->initContext(false),
+            new InitPromptField('key', null, 'Q'),
         );
         $this->assertSame('answer', $result);
     }

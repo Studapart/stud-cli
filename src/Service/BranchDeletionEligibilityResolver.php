@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\BranchDeletionEligibility;
+use App\DTO\BranchEligibilityContext;
 use App\Enum\BranchAutoCleanDecision;
 use App\Enum\WorkflowChannel;
 
@@ -85,26 +86,20 @@ class BranchDeletionEligibilityResolver
         return null;
     }
 
-    /**
-     * @param array<string, array<string, mixed>> $prMap
-     */
     public function evaluate(
         string $branch,
-        string $currentBranch,
         bool $remoteExists,
-        ?string $baseBranch,
-        array $prMap,
-        bool $providerDataAvailable,
+        BranchEligibilityContext $context,
         ?WorkflowEntryRecorder $recorder = null,
     ): BranchDeletionEligibility {
-        $pr = $prMap[$branch] ?? null;
+        $pr = $context->prMap[$branch] ?? null;
         $hasPullRequest = $pr !== null;
-        $blockingDecision = $this->resolveBlockingDecision($branch, $currentBranch, $baseBranch, $pr, $hasPullRequest);
+        $blockingDecision = $this->resolveBlockingDecision($branch, $context, $pr);
         if ($blockingDecision !== null) {
             return $blockingDecision;
         }
 
-        $mergedByGit = $this->checkMergedByGit($branch, (string) $baseBranch, $recorder);
+        $mergedByGit = $this->checkMergedByGit($branch, (string) $context->baseBranch, $recorder);
         if ($mergedByGit === null) {
             return new BranchDeletionEligibility(BranchAutoCleanDecision::Manual, 'merge_check_failed', 'active', $hasPullRequest);
         }
@@ -122,7 +117,7 @@ class BranchDeletionEligibilityResolver
             );
         }
 
-        return $this->resolveUnmergedDecision($pr, $providerDataAvailable, $hasPullRequest);
+        return $this->resolveUnmergedDecision($pr, $context->providerDataAvailable, $hasPullRequest);
     }
 
     protected function isProtectedBranch(string $branch): bool
@@ -163,18 +158,13 @@ class BranchDeletionEligibilityResolver
     /**
      * @param array<string, mixed>|null $pr
      */
-    protected function resolveBlockingDecision(
-        string $branch,
-        string $currentBranch,
-        ?string $baseBranch,
-        ?array $pr,
-        bool $hasPullRequest
-    ): ?BranchDeletionEligibility {
+    protected function resolveBlockingDecision(string $branch, BranchEligibilityContext $context, ?array $pr): ?BranchDeletionEligibility
+    {
         if ($this->isProtectedBranch($branch)) {
             return new BranchDeletionEligibility(BranchAutoCleanDecision::No, 'protected_branch', 'active', false);
         }
 
-        if ($branch === $currentBranch) {
+        if ($branch === $context->currentBranch) {
             return new BranchDeletionEligibility(BranchAutoCleanDecision::No, 'current_branch', 'active', false);
         }
 
@@ -182,8 +172,8 @@ class BranchDeletionEligibilityResolver
             return new BranchDeletionEligibility(BranchAutoCleanDecision::No, 'open_pull_request', 'active-pr', true);
         }
 
-        if ($baseBranch === null) {
-            return new BranchDeletionEligibility(BranchAutoCleanDecision::Manual, 'base_branch_unresolved', 'active', $hasPullRequest);
+        if ($context->baseBranch === null) {
+            return new BranchDeletionEligibility(BranchAutoCleanDecision::Manual, 'base_branch_unresolved', 'active', $pr !== null);
         }
 
         return null;

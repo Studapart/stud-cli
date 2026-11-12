@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\AttachmentTransferLog;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Guard\Capability\IssueTracker\JiraAware;
@@ -120,41 +121,33 @@ class ItemDownloadHandler implements JiraAware, LinearAware
             );
         }
 
-        $files = [];
-        $errors = [];
+        $log = new AttachmentTransferLog();
         foreach ($attachments as $attachment) {
-            $files = $this->pullOneAttachment($attachment->filename, $attachment->contentUrl, $targetDir, $files, $errors);
+            $this->pullOneAttachment($attachment->filename, $attachment->contentUrl, $targetDir, $log);
         }
 
-        return ItemDownloadResponse::result($files, $errors);
+        return ItemDownloadResponse::result($log->files(), $log->errors());
     }
 
     private function downloadSingleFromUrl(string $url, string $targetDir): ItemDownloadResponse
     {
         $filename = $this->filenameHintFromUrl($url);
-        $files = [];
-        $errors = [];
-        $files = $this->pullOneAttachment($filename, $url, $targetDir, $files, $errors);
+        $log = new AttachmentTransferLog();
+        $this->pullOneAttachment($filename, $url, $targetDir, $log);
 
-        if ($files === [] && $errors !== []) {
-            return ItemDownloadResponse::fatal($errors[0]['message']);
+        if ($log->files() === [] && $log->errors() !== []) {
+            return ItemDownloadResponse::fatal($log->errors()[0]['message']);
         }
 
-        return ItemDownloadResponse::result($files, $errors);
+        return ItemDownloadResponse::result($log->files(), $log->errors());
     }
 
-    /**
-     * @param list<array{filename: string, path: string}>                                    $files
-     * @param list<array{filename: string|null, message: MessageRef|string}> $errors
-     * @return list<array{filename: string, path: string}>
-     */
     private function pullOneAttachment(
         string $originalFilename,
         string $contentUrl,
         string $targetDir,
-        array $files,
-        array &$errors
-    ): array {
+        AttachmentTransferLog $log
+    ): void {
         $safe = $this->sanitizeFilename($originalFilename);
         $uniqueName = $this->allocateFilename($targetDir, $safe);
         $relativePath = $targetDir . '/' . $uniqueName;
@@ -162,24 +155,16 @@ class ItemDownloadHandler implements JiraAware, LinearAware
         try {
             $this->provider->downloadAttachment($contentUrl, $relativePath);
         } catch (ApiException $e) {
-            $errors[] = [
-                'filename' => $originalFilename,
-                'message' => MessageRef::key('item.download.error_file', ['error' => $e->getMessage()]),
-            ];
+            $log->addError($originalFilename, MessageRef::key('item.download.error_file', ['error' => $e->getMessage()]));
 
-            return $files;
+            return;
         } catch (\Throwable $e) {
-            $errors[] = [
-                'filename' => $originalFilename,
-                'message' => MessageRef::key('item.download.error_file', ['error' => $e->getMessage()]),
-            ];
+            $log->addError($originalFilename, MessageRef::key('item.download.error_file', ['error' => $e->getMessage()]));
 
-            return $files;
+            return;
         }
 
-        $files[] = ['filename' => $uniqueName, 'path' => $relativePath];
-
-        return $files;
+        $log->addFile($uniqueName, $relativePath);
     }
 
     private function filenameHintFromUrl(string $url): string

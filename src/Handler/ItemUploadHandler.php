@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\AttachmentTransferLog;
 use App\DTO\ItemUploadInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
@@ -39,25 +40,19 @@ class ItemUploadHandler implements JiraAware, LinearAware
         }
         // @codeCoverageIgnoreEnd
 
-        $files = [];
-        $errors = [];
+        $log = new AttachmentTransferLog();
         foreach ($input->filePaths as $relPath) {
-            $this->processOnePath($key, $relPath, $cwd, $files, $errors);
+            $this->processOnePath($key, $relPath, $cwd, $log);
         }
 
-        return ItemUploadResponse::result($files, $errors);
+        return ItemUploadResponse::result($log->files(), $log->errors());
     }
 
-    /**
-     * @param list<array{filename: string, path: string}>                         $files
-     * @param list<array{filename: string|null, message: MessageRef|string}> $errors
-     */
     private function processOnePath(
         string $issueKey,
         string $relPath,
         string $cwd,
-        array &$files,
-        array &$errors
+        AttachmentTransferLog $log
     ): void {
         $trimmed = trim($relPath);
         if ($trimmed === '') {
@@ -67,28 +62,19 @@ class ItemUploadHandler implements JiraAware, LinearAware
         try {
             $this->assertNoPathTraversal($trimmed);
         } catch (\InvalidArgumentException) {
-            $errors[] = [
-                'filename' => $trimmed,
-                'message' => MessageRef::key('item.upload.error_path_traversal'),
-            ];
+            $log->addError($trimmed, MessageRef::key('item.upload.error_path_traversal'));
 
             return;
         }
 
         if (! $this->fileSystem->fileExists($trimmed)) {
-            $errors[] = [
-                'filename' => $trimmed,
-                'message' => MessageRef::key('item.upload.error_not_found'),
-            ];
+            $log->addError($trimmed, MessageRef::key('item.upload.error_not_found'));
 
             return;
         }
 
         if ($this->fileSystem->isDir($trimmed)) {
-            $errors[] = [
-                'filename' => $trimmed,
-                'message' => MessageRef::key('item.upload.error_not_file'),
-            ];
+            $log->addError($trimmed, MessageRef::key('item.upload.error_not_file'));
 
             return;
         }
@@ -98,17 +84,11 @@ class ItemUploadHandler implements JiraAware, LinearAware
 
         try {
             $this->provider->uploadAttachment($issueKey, $absolute);
-            $files[] = ['filename' => $uploadName, 'path' => $trimmed];
+            $log->addFile($uploadName, $trimmed);
         } catch (ApiException $e) {
-            $errors[] = [
-                'filename' => $trimmed,
-                'message' => MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]),
-            ];
+            $log->addError($trimmed, MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]));
         } catch (\Throwable $e) {
-            $errors[] = [
-                'filename' => $trimmed,
-                'message' => MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]),
-            ];
+            $log->addError($trimmed, MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]));
         }
     }
 

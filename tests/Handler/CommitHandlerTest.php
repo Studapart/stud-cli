@@ -8,9 +8,6 @@ use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class CommitHandlerTest extends CommandTestCase
 {
@@ -34,10 +31,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn('');
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->getMessages()[0]->message, 'commit.note_clean_working_tree');
         $this->assertTrue($result->isSuccess());
@@ -50,10 +45,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn('   ');
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->getMessages()[0]->message, 'commit.note_clean_working_tree');
         $this->assertTrue($result->isSuccess());
@@ -80,10 +73,8 @@ class CommitHandlerTest extends CommandTestCase
             ->with('my message');
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, 'my message', false);
+        $result = $this->handler->handle(false, 'my message', false);
 
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('my message', $result->data['commitMessage']);
@@ -194,10 +185,8 @@ class CommitHandlerTest extends CommandTestCase
             ->with('my message');
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, 'my message', true);
+        $result = $this->handler->handle(false, 'my message', true);
 
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('my message', $result->data['commitMessage']);
@@ -224,10 +213,8 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit');
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, 'my message', false);
+        $result = $this->handler->handle(false, 'my message', false);
 
         $this->assertMessageRef($result->getErrorMessage(), 'commit.no_staged_changes');
         $this->assertFalse($result->isSuccess());
@@ -257,12 +244,10 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commitFixup')
             ->with('abcdef');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
 
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->message, 'commit.fixup_success', ['sha' => 'abcdef']);
         $this->assertTrue($result->isSuccess());
@@ -290,12 +275,10 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commitFixup')
             ->with('abcdef');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
 
 
-        $result = $this->handler->handle($io, false, null, true);
+        $result = $this->handler->handle(false, null, true);
 
         $this->assertMessageRef($result->message, 'commit.fixup_success', ['sha' => 'abcdef']);
         $this->assertTrue($result->isSuccess());
@@ -356,11 +339,9 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commitFixup');
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->getErrorMessage(), 'commit.no_staged_changes');
         $this->assertFalse($result->isSuccess());
@@ -408,10 +389,8 @@ class CommitHandlerTest extends CommandTestCase
             ->with('feat(api): New feature [TPW-35]');
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, true, null, false, true);
+        $result = $this->handler->handle(true, null, false, true);
 
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('feat(api): New feature [TPW-35]', $result->data['commitMessage']);
@@ -465,8 +444,6 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $this->prompt->expects($this->exactly(3))
             ->method('ask')
@@ -480,7 +457,7 @@ class CommitHandlerTest extends CommandTestCase
             );
 
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('feat(api): My awesome feature [TPW-35]', $result->data['commitMessage']);
@@ -536,10 +513,8 @@ class CommitHandlerTest extends CommandTestCase
             ->method('ask');
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null, false, true);
+        $result = $this->handler->handle(false, null, false, true);
 
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('feat(api): My awesome feature [TPW-35]', $result->data['commitMessage']);
@@ -642,8 +617,6 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $this->prompt->expects($this->exactly(3))
             ->method('ask')
@@ -657,7 +630,7 @@ class CommitHandlerTest extends CommandTestCase
             );
 
 
-        $result = $this->handler->handle($io, false, null, true);
+        $result = $this->handler->handle(false, null, true);
 
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('feat(api): My awesome feature [TPW-35]', $result->data['commitMessage']);
@@ -709,8 +682,6 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit');
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $this->prompt->expects($this->exactly(3))
             ->method('ask')
@@ -723,7 +694,7 @@ class CommitHandlerTest extends CommandTestCase
                 }
             );
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->getErrorMessage(), 'commit.no_staged_changes');
         $this->assertFalse($result->isSuccess());
@@ -744,10 +715,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->getErrorMessage(), 'commit.error_no_key');
         $this->assertFalse($result->isSuccess());
@@ -774,10 +743,8 @@ class CommitHandlerTest extends CommandTestCase
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Jira service error');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->handler->handle($io, false, null, false);
+        $this->handler->handle(false, null, false);
     }
 
     public function testHandleWithJiraApiClientApiException(): void
@@ -799,10 +766,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->getErrorMessage(), 'commit.error_not_found', ['key' => 'TPW-35']);
         $this->assertFalse($result->isSuccess());
@@ -854,8 +819,6 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $this->prompt->expects($this->exactly(3))
             ->method('ask')
@@ -869,7 +832,7 @@ class CommitHandlerTest extends CommandTestCase
             );
 
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('feat(api): My awesome feature [TPW-35]', $result->data['commitMessage']);
@@ -922,8 +885,6 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('feat: My awesome feature [TPW-35]');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $this->prompt->expects($this->exactly(3))
             ->method('ask')
@@ -937,7 +898,7 @@ class CommitHandlerTest extends CommandTestCase
             );
 
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('feat: My awesome feature [TPW-35]', $result->data['commitMessage']);
@@ -990,8 +951,6 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $this->prompt->expects($this->exactly(3))
             ->method('ask')
@@ -1005,7 +964,7 @@ class CommitHandlerTest extends CommandTestCase
             );
 
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('feat(api): My awesome feature [TPW-35]', $result->data['commitMessage']);
@@ -1018,8 +977,6 @@ class CommitHandlerTest extends CommandTestCase
         $this->prompt = $this->createMock(PromptInterface::class);
         $this->bindSubject();
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $this->gitRepository
             ->method('getPorcelainStatus')
@@ -1073,7 +1030,7 @@ class CommitHandlerTest extends CommandTestCase
             );
 
 
-        $result = $this->handler->handle($io, false, null, false);
+        $result = $this->handler->handle(false, null, false);
 
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('feat: My awesome feature [TPW-35]', $result->data['commitMessage']);

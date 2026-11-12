@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Responder;
 
 use App\DTO\ConfigValidateIntegrationPing;
+use App\DTO\ConfigValidatePingResults;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Enum\OutputFormat;
@@ -37,10 +38,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->bindSubject();
 
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::ok(),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 
@@ -88,10 +89,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->bindSubject();
 
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_SKIPPED,
-            null,
-            ConfigValidateResponse::STATUS_SKIPPED,
-            null,
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::skipped(),
+                ConfigValidateIntegrationPing::skipped(),
+            ),
             gitProvider: 'gitlab',
         );
         $io = $this->createStub(SymfonyStyle::class);
@@ -107,10 +108,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->bindSubject();
 
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_SKIPPED,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            'git ok',
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::skipped(),
+                new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK, 'git ok'),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 
@@ -168,10 +169,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->bindSubject();
 
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null,
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::ok(),
+            ),
             messages: [
                 ResponseMessage::warning(MessageRef::key('config.validate.warn_gitlab_token_missing')),
             ],
@@ -193,10 +194,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->bindSubject();
 
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null,
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::ok(),
+            ),
             messages: [
                 ResponseMessage::warning('plain warning'),
             ],
@@ -237,10 +238,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->bindSubject();
 
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_FAIL,
-            'Connection refused',
-            ConfigValidateResponse::STATUS_OK,
-            null
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::fail('Connection refused'),
+                ConfigValidateIntegrationPing::ok(),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 
@@ -259,10 +260,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->bindSubject();
 
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_SKIPPED,
-            null,
-            ConfigValidateResponse::STATUS_SKIPPED,
-            null
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::skipped(),
+                ConfigValidateIntegrationPing::skipped(),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 
@@ -282,10 +283,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $logger = $this->createMock(Logger::class);
         $responder = new ConfigValidateResponder($helper, $logger);
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::ok(),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 
@@ -307,10 +308,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->bindSubject();
 
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_SKIPPED,
-            null
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::skipped(),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 
@@ -326,10 +327,10 @@ class ConfigValidateResponderTest extends CommandTestCase
     public function testRespondJsonReturnsValidationData(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::ok(),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 
@@ -399,10 +400,10 @@ class ConfigValidateResponderTest extends CommandTestCase
     public function testRespondJsonFailureCompactIncludesRollupsAndIntegrations(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_FAIL,
-            MessageRef::key('config.validate.error_jira_not_configured'),
-            ConfigValidateResponse::STATUS_OK,
-            null,
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::fail(MessageRef::key('config.validate.error_jira_not_configured')),
+                ConfigValidateIntegrationPing::ok(),
+            ),
             gitProvider: 'github',
         );
         $io = $this->createStub(SymfonyStyle::class);
@@ -419,10 +420,10 @@ class ConfigValidateResponderTest extends CommandTestCase
     public function testRespondJsonFailureNonCompactIncludesFlatAliases(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_FAIL,
-            MessageRef::key('config.validate.error_jira_not_configured'),
-            ConfigValidateResponse::STATUS_OK,
-            null,
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::fail(MessageRef::key('config.validate.error_jira_not_configured')),
+                ConfigValidateIntegrationPing::ok(),
+            ),
             gitProvider: 'github',
         );
         $io = $this->createStub(SymfonyStyle::class);
@@ -436,10 +437,10 @@ class ConfigValidateResponderTest extends CommandTestCase
     public function testRespondJsonCompactCleanSuccessOmitsData(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null,
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::ok(),
+            ),
             gitProvider: 'github',
         );
         $io = $this->createStub(SymfonyStyle::class);
@@ -454,10 +455,10 @@ class ConfigValidateResponderTest extends CommandTestCase
     public function testRespondJsonIncludesWarningDiagnostics(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null,
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::ok(),
+            ),
             messages: [
                 ResponseMessage::warning(MessageRef::key('config.validate.warn_gitlab_token_missing')),
             ],
@@ -475,10 +476,10 @@ class ConfigValidateResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorOnFailure(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_FAIL,
-            'Connection refused',
-            ConfigValidateResponse::STATUS_OK,
-            null
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::fail('Connection refused'),
+                ConfigValidateIntegrationPing::ok(),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 
@@ -490,12 +491,11 @@ class ConfigValidateResponderTest extends CommandTestCase
     public function testRespondJsonTranslatesMessageRefAndPlainComponentMessages(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            MessageRef::key('config.validate.error_jira_ping', ['error' => 'timeout']),
-            ConfigValidateResponse::STATUS_OK,
-            'plain git detail',
-            ConfigValidateResponse::STATUS_SKIPPED,
-            MessageRef::key('config.validate.error_git_not_configured'),
+            new ConfigValidatePingResults(
+                new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK, MessageRef::key('config.validate.error_jira_ping', ['error' => 'timeout'])),
+                new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK, 'plain git detail'),
+                new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_SKIPPED, MessageRef::key('config.validate.error_git_not_configured')),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 
@@ -514,10 +514,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->bindSubject();
 
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_FAIL,
-            MessageRef::key('config.validate.error_jira_not_configured'),
-            ConfigValidateResponse::STATUS_OK,
-            null,
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::fail(MessageRef::key('config.validate.error_jira_not_configured')),
+                ConfigValidateIntegrationPing::ok(),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 
@@ -534,10 +534,10 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->bindSubject();
 
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_FAIL,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null,
+            new ConfigValidatePingResults(
+                new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_FAIL),
+                ConfigValidateIntegrationPing::ok(),
+            ),
         );
         $io = $this->createStub(SymfonyStyle::class);
 

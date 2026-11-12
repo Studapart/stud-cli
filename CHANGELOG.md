@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Monthly maintenance (SCI-135):** Retire `AI.md` after moving the rules that still apply, and drop the unused handler translator parameter.
 
+- **Method argument limits (SCI-233):** Methods that took more than four arguments, including `GithubConversationProvider::mapGithubFeedbackComment`, now take an input object or an extracted collaborator, and their `phpmd.baseline.xml` rows are removed. Command output, options, and agent JSON are unchanged. The PHPMD suppression example quotes the rule name, which is the form PHPStan accepts. Internal/dev-facing only.
+
 - **Split oversized classes (SCI-235):** Extract collaborators from the 18 classes that exceeded the 400-line class limit and drop their `phpmd.baseline.xml` rows. Linear team lookups no longer print their verbose fallback messages. Verbosity levels live on the output gate, submit label planning takes the label resolver directly, and `FileSystem` builds its path policy from the one operator it is given.
 
 - **Constructor argument limits (SCI-232):** Services and handlers take at most four constructor arguments. Dependencies that travel together move into input objects or extracted collaborators, and their `phpmd.baseline.xml` rows are removed. Command output, options, and agent JSON are unchanged. Internal/dev-facing only.

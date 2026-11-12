@@ -2,6 +2,8 @@
 
 namespace App\Tests\Handler;
 
+use App\DTO\ExtraFieldPromptContext;
+use App\DTO\IssueCreationState;
 use App\DTO\ItemCreateInput;
 use App\DTO\Project;
 use App\Exception\ApiException;
@@ -54,6 +56,21 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->issueTracker,
             new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser, $defaultWorkItemLabels), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
+    }
+
+    private function createPromptService(): ItemCreatePromptService
+    {
+        return new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt);
+    }
+
+    /**
+     * @param array<string, mixed>|null $descriptionAdf
+     */
+    private function promptContext(bool $typeExplicitlyProvided, string $summary, ?array $descriptionAdf): ExtraFieldPromptContext
+    {
+        $state = new IssueCreationState('PROJ', '10001', [], [], ['title' => $summary]);
+
+        return new ExtraFieldPromptContext($state, $typeExplicitlyProvided, $descriptionAdf);
     }
 
     public function testHandleSuccessWithAllOptions(): void
@@ -1375,9 +1392,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn(['project' => ['required' => true, 'name' => 'Project']]);
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', null, ['project'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'Summary', null), ['project']);
         $this->assertIsArray($result);
         $this->assertSame(['project' => ['key' => 'PROJ']], $result);
     }
@@ -1394,9 +1409,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-id');
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', null, ['reporter'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'Summary', null), ['reporter']);
         $this->assertIsArray($result);
         $this->assertSame(['reporter' => ['accountId' => 'current-user-id']], $result);
     }
@@ -1413,9 +1426,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-id');
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', null, ['assignee'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'Summary', null), ['assignee']);
         $this->assertIsArray($result);
         $this->assertSame(['assignee' => ['accountId' => 'current-user-id']], $result);
     }
@@ -1432,9 +1443,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
                 'Issue Type' => ['required' => true, 'name' => 'Issue Type'],
             ]);
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', true, 'Summary', null, ['issuetype'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(true, 'Summary', null), ['issuetype']);
         $this->assertIsArray($result);
         $this->assertArrayHasKey('issueType', $result);
         $this->assertSame(['id' => '10001'], $result['issueType']);
@@ -1451,9 +1460,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('PROJ', '10001')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
         $this->prompt->expects($this->never())->method('ask');
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'My Title', null, ['summary'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'My Title', null), ['summary']);
         $this->assertIsArray($result);
         $this->assertSame(['title' => 'My Title'], $result);
     }
@@ -1470,9 +1477,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('PROJ', '10001')
             ->willReturn(['description' => ['required' => true, 'name' => 'Description']]);
         $this->prompt->expects($this->never())->method('ask');
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', $descriptionAdf, ['description'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'Summary', $descriptionAdf), ['description']);
         $this->assertIsArray($result);
         $this->assertSame(['description' => $descriptionAdf], $result);
     }
@@ -1498,14 +1503,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
         && $message->key === 'item.create.prompt_description_required'))
             ->willReturn('User typed description');
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ',
-            '10001',
-            false,
-            'Summary',
-            null,
-            ['description'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'Summary', null), ['description']);
         $this->assertIsArray($result);
         $this->assertArrayHasKey('description', $result);
         $this->assertSame(['type' => 'doc', 'content' => []], $result['description']);

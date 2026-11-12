@@ -27,7 +27,7 @@ class UpdateFileService
      * 3. We need atomic operations that work with the running process
      * 4. Flysystem cannot handle this special case
      */
-    public function replaceBinary(WorkflowEntryRecorder $recorder, string $tempFile, string $binaryPath, string $currentVersion, string $tagName): int
+    public function replaceBinary(WorkflowEntryRecorder $recorder, string $tempFile, string $binaryPath, string $currentVersion): int
     {
         if (! is_writable($binaryPath)) {
             $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_not_writable'));

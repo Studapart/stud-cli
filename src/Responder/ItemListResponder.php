@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\DTO\IssueProviderLabels;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ItemListResponse;
@@ -116,8 +117,7 @@ class ItemListResponder
             'issues' => $this->issueSerializer->serializeList(
                 $response->issues,
                 $jiraBaseUrl,
-                issueProviders: $response->issueProviders,
-                includeProvider: $response->multiProvider,
+                providerLabels: new IssueProviderLabels($response->issueProviders, $response->multiProvider),
             ),
             'all' => $response->all,
             'project' => $response->project,

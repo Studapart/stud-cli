@@ -7,6 +7,7 @@ namespace App\Service;
 use App\DTO\FetchHintContext;
 use App\DTO\WorkItem;
 use App\Exception\ApiException;
+use App\Exception\ApiExceptionWithHint;
 
 /**
  * Delegates to an inner port and attaches resolution hints on getIssue failures.
@@ -30,21 +31,12 @@ class FetchHintIssueTrackerPort implements IssueTrackerPort
         try {
             return $this->inner->getIssue($key, $renderFields);
         } catch (ApiException $e) {
-            $hint = $this->hintBuilder->build(
-                $key,
-                $this->context->attemptedProvider,
-                $this->context->cliOverride,
-                $this->context->globalConfig,
-                $this->context->projectConfig,
-            );
+            $hint = $this->hintBuilder->build($key, $this->context);
+            if ($hint === null) {
+                throw $e;
+            }
 
-            throw new ApiException(
-                $e->getMessage(),
-                $e->getTechnicalDetails(),
-                $e->getStatusCode(),
-                $e,
-                $hint,
-            );
+            throw new ApiExceptionWithHint($e, $hint);
         }
     }
 

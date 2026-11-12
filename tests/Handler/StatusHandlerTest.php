@@ -97,7 +97,7 @@ class StatusHandlerTest extends CommandTestCase
             '%alternate%' => 'linear',
         ]);
         $this->issueTracker->method('getIssue')->willThrowException(
-            new \App\Exception\ApiException('not found', 'HTTP 404', 404, null, $hint),
+            new \App\Exception\ApiExceptionWithHint(new \App\Exception\ApiException('not found', 'HTTP 404', 404), $hint),
         );
 
         $response = $this->handler->handle();

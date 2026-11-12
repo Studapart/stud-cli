@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\DTO\ConfigValidateInput;
 use App\DTO\MessageRef;
 use App\Enum\GitProvider;
 use App\Enum\IssueTrackerProvider;
@@ -23,19 +24,11 @@ final class ConfigValidatePlannerTest extends TestCase
 
     public function testExplicitLinearWinsOverSharedScopeKey(): void
     {
-        $plan = $this->planner->plan(
-            $this->dualGlobalConfig(),
-            [
+        $plan = $this->planner->plan(new ConfigValidateInput($this->dualGlobalConfig(), [
                 'issueTrackerProvider' => IssueTrackerProvider::Linear->value,
                 'projectKey' => 'SCI',
                 'linearTeamKey' => 'SCI',
-            ],
-            true,
-            false,
-            false,
-            false,
-            'github',
-        );
+            ], true, false, false, false, 'github'));
 
         $this->assertSame(IssueTrackerProvider::Linear, $plan->selectedTracker);
         $this->assertNull($plan->projectSelectionError);
@@ -44,7 +37,7 @@ final class ConfigValidatePlannerTest extends TestCase
 
     public function testNoProjectConfigHasNoSelectionFailure(): void
     {
-        $plan = $this->planner->plan($this->dualGlobalConfig(), [], true, false, false, false, 'github');
+        $plan = $this->planner->plan(new ConfigValidateInput($this->dualGlobalConfig(), [], true, false, false, false, 'github'));
 
         $this->assertNull($plan->selectedTracker);
         $this->assertNull($plan->projectSelectionError);
@@ -55,14 +48,7 @@ final class ConfigValidatePlannerTest extends TestCase
 
     public function testSharedScopeWithoutExplicitProviderIsASelectionError(): void
     {
-        $plan = $this->planner->plan(
-            $this->dualGlobalConfig(),
-            ['projectKey' => 'SCI', 'linearTeamKey' => 'SCI'],
-            true,
-            false,
-            false,
-            true,
-        );
+        $plan = $this->planner->plan(new ConfigValidateInput($this->dualGlobalConfig(), ['projectKey' => 'SCI', 'linearTeamKey' => 'SCI'], true, false, false, true));
 
         $this->assertNull($plan->selectedTracker);
         $this->assertNotNull($plan->projectSelectionError);
@@ -71,15 +57,7 @@ final class ConfigValidatePlannerTest extends TestCase
 
     public function testProjectKeyOnlySelectsJiraWhenDualGlobal(): void
     {
-        $plan = $this->planner->plan(
-            $this->dualGlobalConfig(),
-            ['projectKey' => 'SCI'],
-            true,
-            false,
-            false,
-            false,
-            'github',
-        );
+        $plan = $this->planner->plan(new ConfigValidateInput($this->dualGlobalConfig(), ['projectKey' => 'SCI'], true, false, false, false, 'github'));
 
         $this->assertSame(IssueTrackerProvider::Jira, $plan->selectedTracker);
         $this->assertNull($plan->projectSelectionError);
@@ -87,15 +65,7 @@ final class ConfigValidatePlannerTest extends TestCase
 
     public function testProjectKeyOnlySelectsLinearWhenLinearOnlyGlobal(): void
     {
-        $plan = $this->planner->plan(
-            ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'GIT_PROVIDERS' => ['github']],
-            ['projectKey' => 'SCI'],
-            true,
-            false,
-            false,
-            false,
-            'github',
-        );
+        $plan = $this->planner->plan(new ConfigValidateInput(['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'GIT_PROVIDERS' => ['github']], ['projectKey' => 'SCI'], true, false, false, false, 'github'));
 
         $this->assertSame(IssueTrackerProvider::Linear, $plan->selectedTracker);
         $this->assertNull($plan->projectSelectionError);
@@ -103,16 +73,7 @@ final class ConfigValidatePlannerTest extends TestCase
 
     public function testUnreadableProjectConfigFailsSelection(): void
     {
-        $plan = $this->planner->plan(
-            $this->dualGlobalConfig(),
-            [],
-            true,
-            false,
-            false,
-            false,
-            'github',
-            MessageRef::key('config.show.project_config_unreadable'),
-        );
+        $plan = $this->planner->plan(new ConfigValidateInput($this->dualGlobalConfig(), [], true, false, false, false, 'github', MessageRef::key('config.show.project_config_unreadable')));
 
         $this->assertTrue($plan->hasProjectConfig);
         $this->assertNull($plan->selectedTracker);
@@ -122,15 +83,7 @@ final class ConfigValidatePlannerTest extends TestCase
 
     public function testLinearTeamKeyOnlySelectsLinearWhenBothTrackersListed(): void
     {
-        $plan = $this->planner->plan(
-            $this->dualGlobalConfig(),
-            ['linearTeamKey' => 'ENG'],
-            true,
-            false,
-            false,
-            false,
-            'github',
-        );
+        $plan = $this->planner->plan(new ConfigValidateInput($this->dualGlobalConfig(), ['linearTeamKey' => 'ENG'], true, false, false, false, 'github'));
 
         $this->assertSame(IssueTrackerProvider::Linear, $plan->selectedTracker);
         $this->assertNull($plan->projectSelectionError);
@@ -138,15 +91,7 @@ final class ConfigValidatePlannerTest extends TestCase
 
     public function testDistinctScopeKeysSelectTheJiraKey(): void
     {
-        $plan = $this->planner->plan(
-            $this->dualGlobalConfig(),
-            ['projectKey' => 'SCI', 'linearTeamKey' => 'ENG'],
-            true,
-            false,
-            false,
-            false,
-            'github',
-        );
+        $plan = $this->planner->plan(new ConfigValidateInput($this->dualGlobalConfig(), ['projectKey' => 'SCI', 'linearTeamKey' => 'ENG'], true, false, false, false, 'github'));
 
         $this->assertSame(IssueTrackerProvider::Jira, $plan->selectedTracker);
         $this->assertNull($plan->projectSelectionError);
@@ -154,15 +99,7 @@ final class ConfigValidatePlannerTest extends TestCase
 
     public function testUnpinnedProjectWithoutScopeKeyFailsWhenBothTrackersListed(): void
     {
-        $plan = $this->planner->plan(
-            $this->dualGlobalConfig(),
-            ['gitProvider' => 'github'],
-            true,
-            false,
-            false,
-            false,
-            null,
-        );
+        $plan = $this->planner->plan(new ConfigValidateInput($this->dualGlobalConfig(), ['gitProvider' => 'github'], true, false, false, false, null));
 
         $this->assertNull($plan->selectedTracker);
         $this->assertNotNull($plan->projectSelectionError);
@@ -177,15 +114,7 @@ final class ConfigValidatePlannerTest extends TestCase
                 return [];
             }
         };
-        $plan = (new ConfigValidatePlanner($resolver))->plan(
-            ['GIT_PROVIDERS' => ['github']],
-            ['gitProvider' => 'github'],
-            true,
-            false,
-            false,
-            false,
-            null,
-        );
+        $plan = (new ConfigValidatePlanner($resolver))->plan(new ConfigValidateInput(['GIT_PROVIDERS' => ['github']], ['gitProvider' => 'github'], true, false, false, false, null));
 
         $this->assertNull($plan->selectedTracker);
         $this->assertNotNull($plan->projectSelectionError);
@@ -194,15 +123,7 @@ final class ConfigValidatePlannerTest extends TestCase
 
     public function testProjectKeyOnlySelectsJiraWhenJiraOnlyGlobal(): void
     {
-        $plan = $this->planner->plan(
-            ['ISSUE_TRACKER_PROVIDERS' => ['jira'], 'GIT_PROVIDERS' => ['github']],
-            ['projectKey' => 'SCI'],
-            true,
-            false,
-            false,
-            false,
-            'github',
-        );
+        $plan = $this->planner->plan(new ConfigValidateInput(['ISSUE_TRACKER_PROVIDERS' => ['jira'], 'GIT_PROVIDERS' => ['github']], ['projectKey' => 'SCI'], true, false, false, false, 'github'));
 
         $this->assertSame(IssueTrackerProvider::Jira, $plan->selectedTracker);
         $this->assertNull($plan->projectSelectionError);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Guard;
 
+use App\DTO\CommandContextInput;
 use App\Enum\IssueTrackerProvider;
 use App\Guard\CommandContextFactory;
 use App\Guard\Resolver\CommandInputResolver;
@@ -32,18 +33,11 @@ class CommandContextFactoryTest extends TestCase
         $event = $this->createEvent(['--quiet' => true]);
         $factory = new CommandContextFactory();
 
-        $context = $factory->create(
-            $event,
-            [
+        $context = $factory->create($event, new CommandContextInput([
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
-            ],
-            ['baseBranch' => 'develop'],
-            true,
-            null,
-            'items:list',
-        );
+            ], ['baseBranch' => 'develop'], true, null, 'items:list'));
 
         $this->assertSame('develop', $context->projectConfig['baseBranch']);
         $this->assertTrue($context->hasGitRepository);
@@ -56,24 +50,17 @@ class CommandContextFactoryTest extends TestCase
         $event = $this->createEvent(['key' => 'SCIL-99'], 'items:show', true);
         $factory = new CommandContextFactory();
 
-        $context = $factory->create(
-            $event,
-            [
+        $context = $factory->create($event, new CommandContextInput([
                 'ISSUE_TRACKER_PROVIDERS' => ['jira', 'linear'],
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
-            ],
-            [
+            ], [
                 'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
                 'projectKey' => 'SCI',
                 'linearTeamKey' => 'SCIL',
-            ],
-            true,
-            null,
-            'items:show',
-        );
+            ], true, null, 'items:show'));
 
         $this->assertSame(['linear'], $context->issueTrackerProviders);
         $this->assertNull($context->providerResolutionBlock);
@@ -85,20 +72,13 @@ class CommandContextFactoryTest extends TestCase
         $factory = new CommandContextFactory(new \App\Guard\Resolver\ConfigResolver(), new \App\Guard\Resolver\EffectiveProviderResolver(), new \App\Guard\Resolver\IssueTrackerProviderResolver(), new CommandInputResolver($helper));
         $event = $this->createEvent(['--agent' => true], 'items:search', true);
 
-        $context = $factory->create(
-            $event,
-            [
+        $context = $factory->create($event, new CommandContextInput([
                 'ISSUE_TRACKER_PROVIDERS' => ['jira', 'linear'],
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
-            ],
-            ['issueTrackerProvider' => IssueTrackerProvider::Auto->value, 'projectKey' => 'SCI', 'linearTeamKey' => 'SCIL'],
-            true,
-            null,
-            'items:search',
-        );
+            ], ['issueTrackerProvider' => IssueTrackerProvider::Auto->value, 'projectKey' => 'SCI', 'linearTeamKey' => 'SCIL'], true, null, 'items:search'));
 
         $this->assertNotNull($context->providerResolutionBlock);
         $this->assertSame('issue_tracker_provider.search_requires_explicit_provider', $context->providerResolutionBlock->key);
@@ -109,14 +89,7 @@ class CommandContextFactoryTest extends TestCase
         $event = $this->createEvent([], 'help');
         $factory = new CommandContextFactory();
 
-        $context = $factory->create(
-            $event,
-            ['ISSUE_TRACKER_PROVIDERS' => ['jira'], 'JIRA_URL' => 'x', 'JIRA_EMAIL' => 'e', 'JIRA_API_TOKEN' => 't'],
-            null,
-            false,
-            null,
-            'help',
-        );
+        $context = $factory->create($event, new CommandContextInput(['ISSUE_TRACKER_PROVIDERS' => ['jira'], 'JIRA_URL' => 'x', 'JIRA_EMAIL' => 'e', 'JIRA_API_TOKEN' => 't'], null, false, null, 'help'));
 
         $this->assertSame(['jira'], $context->issueTrackerProviders);
         $this->assertNull($context->providerResolution);

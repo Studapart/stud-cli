@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\ConfluencePageContent;
+use App\DTO\ConfluencePageTarget;
+
 final class ConfluenceWikiAdapter implements WikiPort
 {
     public function __construct(
@@ -28,12 +31,11 @@ final class ConfluenceWikiAdapter implements WikiPort
 
     public function updatePage(
         string $pageId,
-        string $title,
-        string $adfJsonString,
+        ConfluencePageContent $content,
         int $versionNumber,
         string $versionMessage = 'Updated via stud-cli',
     ): array {
-        return $this->confluenceApiClient->updatePage($pageId, $title, $adfJsonString, $versionNumber, $versionMessage);
+        return $this->confluenceApiClient->updatePage($pageId, $content, $versionNumber, $versionMessage);
     }
 
     public function getFolder(string $folderId): array
@@ -46,14 +48,9 @@ final class ConfluenceWikiAdapter implements WikiPort
         return $this->confluenceApiClient->resolveSpaceId($spaceKey);
     }
 
-    public function createPage(
-        string $spaceId,
-        string $title,
-        string $adfJsonString,
-        ?string $parentId = null,
-        string $status = 'current',
-    ): array {
-        return $this->confluenceApiClient->createPage($spaceId, $title, $adfJsonString, $parentId, $status);
+    public function createPage(ConfluencePageTarget $target, ConfluencePageContent $content): array
+    {
+        return $this->confluenceApiClient->createPage($target, $content);
     }
 
     public function getDirectChildPages(string $parentPageId): array

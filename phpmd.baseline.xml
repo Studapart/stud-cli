@@ -26,11 +26,8 @@
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/DTO/SubmitOptions.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/DTO/WorkItem.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/DTO/WorkflowOutputEntry.php" method="__construct"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/DTO/WorkflowRecorder.php" method="add"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Exception/ApiException.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Guard/CommandContext.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Guard/CommandContextFactory.php" method="create"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Guard/CommandContextFactory.php" method="create"/>
   <violation rule="PHPMD\Rule\CyclomaticComplexity" file="src/Guard/CommandGuard.php" method="check"/>
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Guard/CommandGuard.php" method="check"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Guard/CommandGuard.php" method="check"/>
@@ -41,8 +38,6 @@
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Guard/Resolver/IssueTrackerProviderResolver.php" method="resolve"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Guard/Resolver/IssueTrackerProviderResolver.php" method="resolve"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/BranchListHandler.php" method="handle"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/CommitHandler.php" method="handle"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/CommitHandler.php" method="normalizeHandleArguments"/>
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Handler/CommitHandler.php" method="commitWithJiraPrompt"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/CommitHandler.php" method="commitWithJiraPrompt"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/CommitUndoHandler.php" method="handle"/>
@@ -51,7 +46,6 @@
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/ConfigProjectInitHandler.php" method="handle"/>
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Handler/ConfigProjectInitHandler.php" method="coerceAgentValue"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/ConfigProjectInitPromptCollector.php" method="collect"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/ConfluencePushHandler.php" method="executeCreateWithDuplicateFallback"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/ConfluencePushHandler.php" method="tryUpdateExistingPageUnderParent"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/FilterListHandler.php" method="handle"/>
   <violation rule="PHPMD\Rule\CyclomaticComplexity" file="src/Handler/FilterShowHandler.php" method="handle"/>
@@ -62,31 +56,19 @@
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/GlobalInit/GitProviderTokensCollector.php" method="collect"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/GlobalInit/GlobalInitPromptContext.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/GlobalInit/JiraCredentialsCollector.php" method="collect"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/InitPromptInputHelper.php" method="resolveWhenActive"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/ItemCreateHandler.php" method="promptAndMergeExtraFields"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/ItemCreateHandler.php" method="promptForExtraRequiredFields"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/ItemDownloadHandler.php" method="pullOneAttachment"/>
   <violation rule="PHPMD\Rule\CyclomaticComplexity" file="src/Handler/ItemListHandler.php" method="fetchFromProviders"/>
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Handler/ItemListHandler.php" method="fetchFromProviders"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/ItemListHandler.php" method="fetchFromProviders"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/ItemTakeoverHandler.php" method="handle"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/ItemUploadHandler.php" method="processOnePath"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/ItemUploadHandler.php" method="processOnePath"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/ProjectListHandler.php" method="handle"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/PushHandler.php" method="handle"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/PushHandler.php" method="handleFailedPush"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/PushHandler.php" method="normalizeHandleArguments"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/PushHandler.php" method="publish"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/PushHandler.php" method="pushCurrent"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/ReleaseHandler.php" method="handle"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/SubmitHandler.php" method="runSubmitPreflight"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/SubmitHandler.php" method="createPullRequest"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Handler/SubmitHandler.php" method="createPullRequest"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Handler/UpdateHandler.php" method="handle"/>
   <violation rule="PHPMD\Rule\CyclomaticComplexity" file="src/Responder/ConfigValidateResponder.php" method="respond"/>
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Responder/ConfigValidateResponder.php" method="respond"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Responder/ConfigValidateResponder.php" method="respond"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Responder/IssueListJsonSerializer.php" method="serializeList"/>
   <violation rule="PHPMD\Rule\CyclomaticComplexity" file="src/Responder/ItemCreateResponder.php" method="respond"/>
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Responder/ItemCreateResponder.php" method="respond"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Responder/ItemCreateResponder.php" method="respond"/>
@@ -99,11 +81,9 @@
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/BranchSwitchResponse.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/BranchSwitchResponse.php" method="error"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/CommandResponse.php" method="__construct"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/CommandResponse.php" method="fromExitCode"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/ConfigShowResponse.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/ConfigValidateResponse.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Response/ConfigValidateResponse.php" method="create"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/ConfigValidateResponse.php" method="create"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/ConfluencePushResponse.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/ConfluenceShowResponse.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/FilterListResponse.php" method="__construct"/>
@@ -118,36 +98,12 @@
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/PrCommentsResponse.php" method="success"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/ProjectListResponse.php" method="__construct"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/WorkflowResponse.php" method="__construct"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Response/WorkflowResponse.php" method="fromExitCode"/>
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Service/AgentModeSchemaGenerator.php" method="generate"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/AgentModeSchemaGenerator.php" method="generate"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/BranchCleanupPlanner.php" method="findBranchesToClean"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/BranchDeletionEligibilityResolver.php" method="evaluate"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/BranchDeletionEligibilityResolver.php" method="resolveBlockingDecision"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/BranchRenamePrCoordinator.php" method="handlePostRenameActions"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/ChangelogParser.php" method="parse"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/CommandMap.php" method="toolCommands"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/ConfigValidatePlanner.php" method="plan"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/ConfluenceApiClient.php" method="createPage"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/ConfluenceApiClient.php" method="updatePage"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/ConfluenceWikiAdapter.php" method="updatePage"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/ConfluenceWikiAdapter.php" method="createPage"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/DescriptionFormatter.php" method="flushCurrentListItem"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/DescriptionFormatter.php" method="appendNonCheckboxLine"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/GithubConversationProvider.php" method="mapGithubFeedbackComment"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/IssueFieldResolver.php" method="buildBaseFields"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/IssueFieldResolver.php" method="resolveStandardFieldsAndExtraRequired"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/IssueFieldResolver.php" method="applyOptionalFieldsFromCreatemeta"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/IssueTrackerFactory.php" method="create"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/IssueTrackerFactory.php" method="createForProvider"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/IssueTrackerFetchFailureHintBuilder.php" method="build"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/IssueTrackerFetchFailureHintBuilder.php" method="build"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/ItemCreatePromptService.php" method="promptForExtraRequiredFields"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/ItemCreatePromptService.php" method="getPromptedValueForExtraField"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/ItemCreatePromptService.php" method="getValueForStandardExtraField"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/Jira/JiraCreateDeferralCoordinator.php" method="create"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/Jira/JiraCreateDeferralCoordinator.php" method="retryOrFail"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/Jira/JiraCreateDeferralCoordinator.php" method="retryCreate"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/JiraIssueMapper.php" method="mapToWorkItem"/>
   <violation rule="PHPMD\Rule\CyclomaticComplexity" file="src/Service/JiraIssueMapper.php" method="normalizeAttachmentRow"/>
   <violation rule="PHPMD\Rule\Design\NPathComplexity" file="src/Service/JiraIssueMapper.php" method="normalizeAttachmentRow"/>
@@ -156,13 +112,8 @@
   <violation rule="PHPMD\Rule\CyclomaticComplexity" file="src/Service/LinearGraphqlClient.php" method="formatGraphQlErrors"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/UpdateChangelogPresenter.php" method="display"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/UpdateFileService.php" method="replaceBinary"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/UpdateFileService.php" method="replaceBinary"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/UpdateFileService.php" method="verifyHash"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/UpdateInstallContext.php" method="__construct"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/UpdatePrerequisiteMigrationRunner.php" method="run"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/UpdatePrerequisiteMigrationRunner.php" method="executePendingMigrations"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/UpdateReleaseFetcher.php" method="downloadPhar"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/WikiPort.php" method="updatePage"/>
-  <violation rule="PHPMD\Rule\Design\ExcessiveParameterList" file="src/Service/WikiPort.php" method="createPage"/>
   <violation rule="PHPMD\Rule\Design\ExcessiveMethodLength" file="src/Service/WorkflowCommandMap.php" method="workflowSimpleCommands"/>
 </phpmd-baseline>

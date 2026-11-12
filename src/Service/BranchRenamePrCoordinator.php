@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Contract\WorkflowEntryRecorder;
+use App\DTO\BranchRenamePostActions;
 use App\DTO\MessageRef;
 use App\DTO\SubmitOptions;
 use App\Enum\WorkflowChannel;
@@ -98,25 +99,19 @@ class BranchRenamePrCoordinator
         }
     }
 
-    /**
-     * @param array<string, mixed>|null $pr
-     */
     public function handlePostRenameActions(
         WorkflowEntryRecorder $recorder,
-        ?array $pr,
-        string $targetBranch,
-        string $newBranchName,
-        bool $quiet,
+        BranchRenamePostActions $input,
     ): void {
-        if ($pr !== null && $this->githubProvider !== null) {
-            $this->updatePullRequestAfterRename($recorder, $pr, $targetBranch, $newBranchName);
+        if ($input->pr !== null && $this->githubProvider !== null) {
+            $this->updatePullRequestAfterRename($recorder, $input->pr, $input->targetBranch, $input->newBranchName);
         }
 
-        $recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.success', ['oldName' => $targetBranch, 'newName' => $newBranchName]));
+        $recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.success', ['oldName' => $input->targetBranch, 'newName' => $input->newBranchName]));
 
-        if ($pr === null && $this->githubProvider !== null) {
+        if ($input->pr === null && $this->githubProvider !== null) {
             $recorder->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.no_pr_found'));
-            if ($quiet || $this->prompt->confirm(MessageRef::key('branch.rename.create_pr_prompt'), true)) {
+            if ($input->quiet || $this->prompt->confirm(MessageRef::key('branch.rename.create_pr_prompt'), true)) {
                 $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.switching_for_submit'), WorkflowChannel::Git);
                 $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, "Run 'stud submit' to create a Pull Request.");
             }

@@ -116,13 +116,7 @@ class IssueTrackerPortSupplier
             return [
                 'ok' => true,
                 'provider' => $providerSlug,
-                'port' => $this->factory->createForProvider(
-                    $providerSlug,
-                    $this->clients->jira,
-                    $this->clients->jiraAttachments,
-                    $this->clients->linear,
-                    linearAttachmentService: $this->clients->linearAttachments,
-                ),
+                'port' => $this->factory->createForProvider($providerSlug, $this->clients),
             ];
         } catch (IssueTrackerException $e) {
             return ['ok' => false, 'error' => $e->messageRef];

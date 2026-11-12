@@ -82,7 +82,7 @@ class UpdateHandler
         }
         // @codeCoverageIgnoreEnd
 
-        return $this->recorder()->toResponse($this->installer->replaceBinary($this->recorder(), $tempFile, $this->target, $release['tag_name'] ?? 'unknown'));
+        return $this->recorder()->toResponse($this->installer->replaceBinary($this->recorder(), $tempFile, $this->target));
     }
 
     /**

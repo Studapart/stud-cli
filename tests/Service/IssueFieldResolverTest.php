@@ -2,6 +2,8 @@
 
 namespace App\Tests\Service;
 
+use App\DTO\IssueCreateContent;
+use App\DTO\IssueCreationState;
 use App\Service\DurationParser;
 use App\Service\IssueFieldResolver;
 use App\Service\JiraApiClient;
@@ -77,7 +79,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testBuildBaseFieldsCreatesMinimalFields(): void
     {
-        $fields = $this->resolver->buildBaseFields('PROJ', '10001', 'Summary', null, null, null);
+        $fields = $this->resolver->buildBaseFields('PROJ', '10001', new IssueCreateContent('Summary'));
 
         $this->assertSame(['key' => 'PROJ'], $fields['project']);
         $this->assertSame(['id' => '10001'], $fields['issueType']);
@@ -88,7 +90,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testBuildBaseFieldsIncludesParent(): void
     {
-        $fields = $this->resolver->buildBaseFields('PROJ', '10001', 'Summary', null, null, 'PROJ-100');
+        $fields = $this->resolver->buildBaseFields('PROJ', '10001', new IssueCreateContent('Summary', parentKey: 'PROJ-100'));
 
         $this->assertSame(['key' => 'PROJ-100'], $fields['parent']);
     }
@@ -103,7 +105,7 @@ class IssueFieldResolverTest extends CommandTestCase
             ->with('desc text', 'plain')
             ->willReturn(['type' => 'doc', 'content' => []]);
 
-        $fields = $this->resolver->buildBaseFields('PROJ', '10001', 'Summary', 'desc text', null, null);
+        $fields = $this->resolver->buildBaseFields('PROJ', '10001', new IssueCreateContent('Summary', 'desc text'));
 
         $this->assertSame(['type' => 'doc', 'content' => []], $fields['description']);
     }
@@ -255,7 +257,7 @@ class IssueFieldResolverTest extends CommandTestCase
         ];
         $fields = [];
 
-        $skipped = $this->resolver->applyOptionalFieldsFromCreatemeta($meta, $fields, 'a, b', '2h', $this->translationService);
+        $skipped = $this->resolver->applyOptionalFieldsFromCreatemeta($meta, $fields, 'a, b', '2h');
 
         $this->assertSame(['a', 'b'], $fields['labels']);
         $this->assertSame(7200, $fields['timeoriginalestimate']);
@@ -269,7 +271,7 @@ class IssueFieldResolverTest extends CommandTestCase
         ];
         $fields = [];
 
-        $skipped = $this->resolver->applyOptionalFieldsFromCreatemeta($meta, $fields, null, 'invalid', $this->translationService);
+        $skipped = $this->resolver->applyOptionalFieldsFromCreatemeta($meta, $fields, null, 'invalid');
 
         $this->assertArrayNotHasKey('timeoriginalestimate', $fields);
         $this->assertCount(1, $skipped);
@@ -280,7 +282,7 @@ class IssueFieldResolverTest extends CommandTestCase
         $meta = [];
         $fields = [];
 
-        $skipped = $this->resolver->applyOptionalFieldsFromCreatemeta($meta, $fields, 'a', '1d', $this->translationService);
+        $skipped = $this->resolver->applyOptionalFieldsFromCreatemeta($meta, $fields, 'a', '1d');
 
         $this->assertArrayNotHasKey('labels', $fields);
         $this->assertArrayNotHasKey('timeoriginalestimate', $fields);
@@ -304,11 +306,11 @@ class IssueFieldResolverTest extends CommandTestCase
             'customfield_10001' => ['required' => true, 'name' => 'Team'],
         ];
         $requiredFieldIds = ['project', 'issuetype', 'summary', 'reporter', 'customfield_10001'];
-        $fields = [
+        $state = new IssueCreationState('PROJ', '10001', $allFieldsMeta, $requiredFieldIds, [
             'project' => ['key' => 'PROJ'],
             'issueType' => ['id' => '10001'],
             'title' => 'Summary',
-        ];
+        ]);
 
         $fieldValues = [
             'projectKey' => 'PROJ',
@@ -318,16 +320,10 @@ class IssueFieldResolverTest extends CommandTestCase
             'assigneeOption' => null,
             'parentKey' => null,
         ];
-        $extra = $this->resolver->resolveStandardFieldsAndExtraRequired(
-            $requiredFieldIds,
-            $allFieldsMeta,
-            $fields,
-            $fieldValues,
-            true
-        );
+        $extra = $this->resolver->resolveStandardFieldsAndExtraRequired($state, $fieldValues, true);
 
         $this->assertSame(['customfield_10001'], $extra);
-        $this->assertSame(['accountId' => 'user-id'], $fields['reporter']);
+        $this->assertSame(['accountId' => 'user-id'], $state->fields['reporter']);
     }
 
     private function bindSubject(): void

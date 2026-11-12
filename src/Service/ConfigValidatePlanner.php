@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Config\ProjectStudConfigKeys;
+use App\DTO\ConfigValidateInput;
 use App\DTO\ConfigValidatePlan;
 use App\DTO\MessageRef;
 use App\Enum\GitProvider;
@@ -23,20 +24,16 @@ final class ConfigValidatePlanner
     ) {
     }
 
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
-    public function plan(
-        array $globalConfig,
-        array $projectConfig,
-        bool $inRepo,
-        bool $skipJira,
-        bool $skipLinear,
-        bool $skipGit,
-        ?string $detectedGitHost = null,
-        ?MessageRef $projectConfigReadError = null,
-    ): ConfigValidatePlan {
+    public function plan(ConfigValidateInput $input): ConfigValidatePlan
+    {
+        $globalConfig = $input->globalConfig;
+        $projectConfig = $input->projectConfig;
+        $inRepo = $input->inRepo;
+        $skipJira = $input->skipJira;
+        $skipLinear = $input->skipLinear;
+        $skipGit = $input->skipGit;
+        $detectedGitHost = $input->detectedGitHost;
+        $projectConfigReadError = $input->projectConfigReadError;
         $trackers = $this->globalResolver->resolveIssueTrackerProviders($globalConfig);
         $gitProviders = $this->globalResolver->resolveGitProviders($globalConfig);
         $hasStoredProjectConfig = $projectConfig !== [];

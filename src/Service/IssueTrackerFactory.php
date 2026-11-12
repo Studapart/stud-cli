@@ -85,21 +85,18 @@ class IssueTrackerFactory
 
     public function create(
         string $type,
-        ?JiraApiClient $jiraService = null,
-        ?JiraAttachmentService $attachmentService = null,
-        ?LinearApiClient $linearApiClient = null,
+        IssueTrackerClients $clients,
         ?GitRepository $gitRepository = null,
-        ?LinearAttachmentService $linearAttachmentService = null,
     ): IssueTrackerPort {
         return match ($type) {
             IssueTrackerProvider::Jira->value => new JiraIssueTrackerAdapter(
-                $jiraService ?? throw new \InvalidArgumentException('Jira service is required for the jira work-item provider'),
-                $attachmentService ?? throw new \InvalidArgumentException('Jira attachment service is required for the jira work-item provider'),
+                $clients->jira ?? throw new \InvalidArgumentException('Jira service is required for the jira work-item provider'),
+                $clients->jiraAttachments ?? throw new \InvalidArgumentException('Jira attachment service is required for the jira work-item provider'),
             ),
             IssueTrackerProvider::Linear->value => new LinearIssueTrackerAdapter(
-                $linearApiClient ?? throw new \InvalidArgumentException('Linear API client is required for the linear work-item provider'),
+                $clients->linear ?? throw new \InvalidArgumentException('Linear API client is required for the linear work-item provider'),
                 gitRepository: $gitRepository,
-                linearAttachmentService: $linearAttachmentService,
+                linearAttachmentService: $clients->linearAttachments,
             ),
             default => throw new \InvalidArgumentException(sprintf('Unknown work-item provider type: %s', $type)),
         };
@@ -110,32 +107,17 @@ class IssueTrackerFactory
      *
      * @throws IssueTrackerException
      */
-    public function createForProvider(
-        string $type,
-        ?JiraApiClient $jiraApiClient,
-        ?JiraAttachmentService $attachmentService,
-        ?LinearApiClient $linearApiClient,
-        ?GitRepository $gitRepository = null,
-        ?LinearAttachmentService $linearAttachmentService = null,
-    ): IssueTrackerPort {
+    public function createForProvider(string $type, IssueTrackerClients $clients): IssueTrackerPort
+    {
         if ($type === IssueTrackerProvider::Jira->value) {
-            if ($jiraApiClient === null || $attachmentService === null) {
+            if ($clients->jira === null || $clients->jiraAttachments === null) {
                 throw IssueTrackerException::missingJiraConfiguration();
             }
-
-            return $this->create(IssueTrackerProvider::Jira->value, $jiraApiClient, $attachmentService);
-        }
-
-        if ($linearApiClient === null) {
+        } elseif ($clients->linear === null) {
             throw IssueTrackerException::missingLinearApiKey();
         }
 
-        return $this->create(
-            IssueTrackerProvider::Linear->value,
-            linearApiClient: $linearApiClient,
-            gitRepository: $gitRepository,
-            linearAttachmentService: $linearAttachmentService,
-        );
+        return $this->create($type, $clients);
     }
 
     /**

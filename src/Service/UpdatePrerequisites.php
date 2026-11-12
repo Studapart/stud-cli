@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Contract\WorkflowEntryRecorder;
+use App\DTO\GlobalConfigFile;
+use App\DTO\PrerequisiteMigrationHooks;
 
 final class UpdatePrerequisites
 {
@@ -36,7 +38,11 @@ final class UpdatePrerequisites
      */
     public function run(WorkflowEntryRecorder $recorder, callable $getConfigPath, callable $isTestEnvironment, callable $buildErrorMessage): int
     {
-        return $this->migrationRunner->run($recorder, $this->globalMigrationService, $getConfigPath, $isTestEnvironment, $buildErrorMessage);
+        return $this->migrationRunner->run(
+            $recorder,
+            $this->globalMigrationService,
+            new PrerequisiteMigrationHooks($getConfigPath(...), $isTestEnvironment(...), $buildErrorMessage(...)),
+        );
     }
 
     /**
@@ -66,7 +72,7 @@ final class UpdatePrerequisites
      */
     public function executePendingMigrations(WorkflowEntryRecorder $recorder, array $pendingMigrations, array $config, string $configPath): int
     {
-        return $this->migrationRunner->executePendingMigrations($recorder, $this->globalMigrationService, $pendingMigrations, $config, $configPath);
+        return $this->migrationRunner->executePendingMigrations($recorder, $this->globalMigrationService, $pendingMigrations, new GlobalConfigFile($config, $configPath));
     }
 
     /**

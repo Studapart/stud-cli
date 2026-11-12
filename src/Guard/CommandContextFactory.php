@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Guard;
 
+use App\DTO\CommandContextInput;
 use App\Guard\DTO\ProviderResolutionRequest;
 use App\Guard\Resolver\CommandInputResolver;
 use App\Guard\Resolver\ConfigResolver;
 use App\Guard\Resolver\EffectiveProviderResolver;
 use App\Guard\Resolver\EnvironmentResolver;
 use App\Guard\Resolver\IssueTrackerProviderResolver;
-use App\Service\GitRepository;
 use Symfony\Component\Console\Event\ConsoleCommandEvent;
 
 /**
@@ -26,19 +26,15 @@ class CommandContextFactory
     ) {
     }
 
-    /**
-     * @param array<string, mixed>      $globalConfig
-     * @param array<string, mixed>|null $projectConfig
-     */
-    public function create(
-        ConsoleCommandEvent $event,
-        array $globalConfig,
-        ?array $projectConfig,
-        bool $hasGitRepository,
-        ?string $resolvedGitProvider,
-        string $commandName,
-        ?GitRepository $gitRepository = null,
-    ): CommandContext {
+    public function create(ConsoleCommandEvent $event, CommandContextInput $input): CommandContext
+    {
+        $globalConfig = $input->globalConfig;
+        $projectConfig = $input->projectConfig;
+        $hasGitRepository = $input->hasGitRepository;
+        $resolvedGitProvider = $input->resolvedGitProvider;
+        $commandName = $input->commandName;
+        $gitRepository = $input->gitRepository;
+
         $configData = $this->configResolver->resolve($globalConfig, $projectConfig);
         $environment = EnvironmentResolver::fromEvent($event, $hasGitRepository);
         $flags = $environment->resolveFlags($event->getInput());

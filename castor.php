@@ -971,14 +971,14 @@ function _get_issue_tracker(bool $quiet = false, ?string $override = null, ?stri
                 throw IssueTrackerException::missingLinearApiKey();
             }
 
-            $port = $factory->create($type, linearApiClient: $linearApiClient, gitRepository: _get_git_repository());
+            $port = $factory->create($type, new IssueTrackerClients(null, null, $linearApiClient), _get_git_repository());
         } else {
             $jiraService = _get_jira_api_client_if_configured();
             if ($jiraService === null) {
                 throw IssueTrackerException::missingJiraConfiguration();
             }
 
-            $port = $factory->create($type, $jiraService, _get_jira_attachment_service());
+            $port = $factory->create($type, new IssueTrackerClients($jiraService, _get_jira_attachment_service()));
         }
 
         return new FetchHintIssueTrackerPort(
@@ -1716,12 +1716,14 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
         $guardGitRepository = $hasGitRepository ? $gitRepository : null;
         $context = $contextFactory->create(
             $event,
-            $config,
-            $projectConfig,
-            $hasGitRepository,
-            $resolvedGitProvider,
-            $commandName,
-            $guardGitRepository,
+            new \App\DTO\CommandContextInput(
+                $config,
+                $projectConfig,
+                $hasGitRepository,
+                $resolvedGitProvider,
+                $commandName,
+                $guardGitRepository,
+            ),
         );
         $capabilities = CommandHandlerRegistry::resolveCapabilities($commandName);
         $guard = new CommandGuard();
@@ -2151,7 +2153,7 @@ function _agent_submit_run_push_phase(array $input): \App\Response\CommandRespon
     $pleaseHandler = new PleaseHandler($gitRepository);
     $pushHandler = new PushHandler(new PushPreparer($commitHandler, $gitRepository, _new_flatten_handler()), $gitRepository, $pleaseHandler, _get_prompt());
 
-    return $pushHandler->handle($isNew, $message, true, true, false, true, $pleaseFallback, $flatten);
+    return $pushHandler->handle(new \App\DTO\PushInput($isNew, $message, true, true, false, true, $pleaseFallback, $flatten));
 }
 
 function _new_flatten_handler(): FlattenHandler
@@ -2287,7 +2289,7 @@ function config_validate(
         $detectedGitHost = $gitRepository->getGitProvider();
     }
 
-    $plan = (new \App\Service\ConfigValidatePlanner())->plan(
+    $plan = (new \App\Service\ConfigValidatePlanner())->plan(new \App\DTO\ConfigValidateInput(
         $globalConfig,
         $projectConfig,
         $inRepo,
@@ -2296,7 +2298,7 @@ function config_validate(
         $skipGit,
         $detectedGitHost,
         $projectConfigReadError,
-    );
+    ));
     $trackerConfig = (new \App\Config\EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
     $jiraResolution = $plan->probeJira
         ? _config_validate_tracker_resolution(\App\Enum\IssueTrackerProvider::Jira->value, $trackerConfig)
@@ -3495,7 +3497,7 @@ function push(
     $pleaseHandler = new PleaseHandler($gitRepository);
     $handler = new PushHandler(new PushPreparer($commitHandler, $gitRepository, _new_flatten_handler()), $gitRepository, $pleaseHandler, _get_prompt());
     $noPleaseForHandler = $agent ? false : $noPlease;
-    $response = $handler->handle($isNew, $message, $stageAll, $quiet, $noPleaseForHandler, $agent, $pleaseFallback, $flatten);
+    $response = $handler->handle(new \App\DTO\PushInput($isNew, $message, $stageAll, $quiet, $noPleaseForHandler, $agent, $pleaseFallback, $flatten));
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
         _agent_respond($responder->respond($response, OutputFormat::Json, $compact));

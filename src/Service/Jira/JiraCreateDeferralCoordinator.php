@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\Jira;
 
+use App\DTO\IssueCreationState;
+use App\DTO\JiraCreateRetry;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Response\ItemCreateResponse;
@@ -36,52 +38,30 @@ final class JiraCreateDeferralCoordinator
     }
 
     /**
-     * @param array<string, mixed> $createFields
-     * @param array<string, string|list<string>> $fieldInputsForUpdate
-     * @param array<string, string> $payloadKeyToInputKey
-     * @param array<string, array{required: bool, name: string}> $allFieldsMeta
      * @param list<string> $skippedOptionalFields
      */
     public function create(
         IssueTrackerPort $port,
-        array $createFields,
-        array $fieldInputsForUpdate,
-        array $payloadKeyToInputKey,
-        array $allFieldsMeta,
+        IssueCreationState $state,
         array $skippedOptionalFields,
     ): ItemCreateResponse {
         try {
-            $created = $port->create($createFields);
+            $created = $port->create($state->fields);
 
             return ItemCreateResponse::success($created['key'], $created['self'], $skippedOptionalFields);
         } catch (ApiException $exception) {
-            return $this->retryOrFail(
-                $port,
-                $createFields,
-                $fieldInputsForUpdate,
-                $payloadKeyToInputKey,
-                $allFieldsMeta,
-                $skippedOptionalFields,
-                $exception,
-            );
+            return $this->retryOrFail($port, $state, $skippedOptionalFields, $exception);
         } catch (\Throwable $exception) {
             return $this->createError($exception->getMessage());
         }
     }
 
     /**
-     * @param array<string, mixed> $createFields
-     * @param array<string, string|list<string>> $fieldInputsForUpdate
-     * @param array<string, string> $payloadKeyToInputKey
-     * @param array<string, array{required: bool, name: string}> $allFieldsMeta
      * @param list<string> $skippedOptionalFields
      */
     private function retryOrFail(
         IssueTrackerPort $port,
-        array $createFields,
-        array $fieldInputsForUpdate,
-        array $payloadKeyToInputKey,
-        array $allFieldsMeta,
+        IssueCreationState $state,
         array $skippedOptionalFields,
         ApiException $exception,
     ): ItemCreateResponse {
@@ -90,11 +70,11 @@ final class JiraCreateDeferralCoordinator
             return $this->createError($this->formatException($exception));
         }
 
-        $stripKeys = $this->studKeys(array_keys($errors), $createFields);
+        $stripKeys = $this->studKeys(array_keys($errors), $state->fields);
         if ($this->containsImmutable($stripKeys)) {
             return $this->createError($this->formatException($exception));
         }
-        $requiredName = $this->requiredFieldName($stripKeys, $payloadKeyToInputKey, $allFieldsMeta);
+        $requiredName = $this->requiredFieldName($stripKeys, $state->payloadKeyToInputKey, $state->allFieldsMeta);
         if ($requiredName !== null) {
             return ItemCreateResponse::error(MessageRef::key(
                 'item.create.error_required_on_create_screen',
@@ -102,37 +82,20 @@ final class JiraCreateDeferralCoordinator
             ));
         }
 
-        return $this->retryCreate(
-            $port,
-            $createFields,
-            $fieldInputsForUpdate,
-            $payloadKeyToInputKey,
-            $allFieldsMeta,
-            $skippedOptionalFields,
-            $stripKeys,
-            $exception,
-        );
+        return $this->retryCreate($port, $state, $skippedOptionalFields, new JiraCreateRetry($stripKeys, $exception));
     }
 
     /**
-     * @param array<string, mixed> $createFields
-     * @param array<string, string|list<string>> $fieldInputsForUpdate
-     * @param array<string, string> $payloadKeyToInputKey
-     * @param array<string, array{required: bool, name: string}> $allFieldsMeta
      * @param list<string> $skippedOptionalFields
-     * @param list<string> $stripKeys
      */
     private function retryCreate(
         IssueTrackerPort $port,
-        array $createFields,
-        array $fieldInputsForUpdate,
-        array $payloadKeyToInputKey,
-        array $allFieldsMeta,
+        IssueCreationState $state,
         array $skippedOptionalFields,
-        array $stripKeys,
-        ApiException $firstFailure,
+        JiraCreateRetry $retry,
     ): ItemCreateResponse {
-        $retryFields = $createFields;
+        $stripKeys = $retry->stripKeys;
+        $retryFields = $state->fields;
         foreach ($stripKeys as $key) {
             unset($retryFields[$key]);
         }
@@ -142,14 +105,14 @@ final class JiraCreateDeferralCoordinator
         } catch (\Throwable $second) {
             $secondMessage = $second instanceof ApiException ? $this->formatException($second) : $second->getMessage();
 
-            return $this->retryError($firstFailure, $secondMessage, $stripKeys);
+            return $this->retryError($retry->firstFailure, $secondMessage, $stripKeys);
         }
 
-        $raw = $this->autofillValues($stripKeys, $createFields, $payloadKeyToInputKey, $allFieldsMeta);
-        $deferred = $this->deferredInputs($this->withoutKeys($stripKeys, $raw), $fieldInputsForUpdate, $payloadKeyToInputKey);
+        $raw = $this->autofillValues($stripKeys, $state->fields, $state->payloadKeyToInputKey, $state->allFieldsMeta);
+        $deferred = $this->deferredInputs($this->withoutKeys($stripKeys, $raw), $state->fieldInputsForUpdate, $state->payloadKeyToInputKey);
         $warnings = $this->warningNames(
             $this->fieldWriter->applyFields($created['key'], $deferred, $port, $raw),
-            $allFieldsMeta,
+            $state->allFieldsMeta,
         );
 
         return ItemCreateResponse::success(

@@ -85,7 +85,7 @@ final class WorkflowResponderTest extends TestCase
     public function testRespondJsonIncludesRewrittenBesidePullNumber(): void
     {
         $responder = new WorkflowResponder($this->createStub(Logger::class), $this->messageRenderer());
-        $response = WorkflowResponse::fromExitCode(0, pullNumber: 42, rewritten: false);
+        $response = WorkflowResponse::fromExitCode(0, pullNumber: 42)->withRewritten(false);
 
         $agentResponse = $responder->respond($this->createStub(SymfonyStyle::class), $response, OutputFormat::Json, true);
 
@@ -157,7 +157,7 @@ final class WorkflowResponderTest extends TestCase
         $responder = new WorkflowResponder($this->createStub(Logger::class), $this->messageRenderer());
         $response = WorkflowResponse::fromExitCode(1, messages: [
             ResponseMessage::error(MessageRef::key('table.key')),
-        ], rewritten: true);
+        ])->withRewritten(true);
 
         $agentResponse = $responder->respond($this->createStub(SymfonyStyle::class), $response, OutputFormat::Json, true);
 

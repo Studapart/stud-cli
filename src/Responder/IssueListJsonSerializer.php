@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\DTO\IssueProviderLabels;
 use App\DTO\WorkItem;
 
 /**
@@ -13,24 +14,22 @@ class IssueListJsonSerializer
 {
     /**
      * @param array<int, WorkItem> $issues
-     * @param list<string>         $issueProviders
      * @return list<array{key: string, status: string, title: string, url: string, provider?: string, priority?: string}>
      */
     public function serializeList(
         array $issues,
         string $projectManagementBaseUrl,
         bool $includePriority = false,
-        array $issueProviders = [],
-        bool $includeProvider = false,
+        ?IssueProviderLabels $providerLabels = null,
     ): array {
         $serialized = [];
         foreach (array_values($issues) as $index => $item) {
-            $provider = $issueProviders[$index] ?? null;
+            $provider = $providerLabels?->providers[$index] ?? null;
             $serialized[] = $this->serializeSummary(
                 $item,
                 $projectManagementBaseUrl,
                 $includePriority,
-                $includeProvider ? $provider : null,
+                $providerLabels?->include === true ? $provider : null,
             );
         }
 

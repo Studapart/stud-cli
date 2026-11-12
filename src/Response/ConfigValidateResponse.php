@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Response;
 
 use App\DTO\ConfigValidateIntegrationPing;
+use App\DTO\ConfigValidatePingResults;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Enum\GitProvider;
@@ -84,29 +85,28 @@ final class ConfigValidateResponse extends AbstractResponse
      * @param list<ResponseMessage> $messages
      */
     public static function create(
-        string $jiraStatus,
-        MessageRef|string|null $jiraMessage,
-        string $gitStatus,
-        MessageRef|string|null $gitMessage,
-        string $linearStatus = self::STATUS_SKIPPED,
-        MessageRef|string|null $linearMessage = null,
+        ConfigValidatePingResults $pings,
         ?string $gitProvider = null,
         array $messages = [],
     ): self {
+        $jira = $pings->jira;
+        $git = $pings->git;
+        $linear = $pings->linear;
+
         $integrations = [];
-        if ($jiraStatus !== self::STATUS_SKIPPED) {
-            $integrations['jira'] = new ConfigValidateIntegrationPing($jiraStatus, $jiraMessage);
+        if ($jira->status !== self::STATUS_SKIPPED) {
+            $integrations['jira'] = $jira;
         }
-        if ($linearStatus !== self::STATUS_SKIPPED) {
-            $integrations['linear'] = new ConfigValidateIntegrationPing($linearStatus, $linearMessage);
+        if ($linear->status !== self::STATUS_SKIPPED) {
+            $integrations['linear'] = $linear;
         }
-        if ($gitStatus !== self::STATUS_SKIPPED && $gitProvider !== null) {
-            $integrations[$gitProvider] = new ConfigValidateIntegrationPing($gitStatus, $gitMessage);
+        if ($git->status !== self::STATUS_SKIPPED && $gitProvider !== null) {
+            $integrations[$gitProvider] = $git;
         }
 
-        $success = ($jiraStatus !== self::STATUS_FAIL)
-            && ($gitStatus !== self::STATUS_FAIL)
-            && ($linearStatus !== self::STATUS_FAIL);
+        $success = ($jira->status !== self::STATUS_FAIL)
+            && ($git->status !== self::STATUS_FAIL)
+            && ($linear->status !== self::STATUS_FAIL);
 
         $globalRollup = $success ? ConfigReadinessEvaluator::ROLLUP_OK : ConfigReadinessEvaluator::ROLLUP_FAIL;
 
@@ -116,12 +116,12 @@ final class ConfigValidateResponse extends AbstractResponse
             $globalRollup,
             ConfigReadinessEvaluator::ROLLUP_NOT_APPLICABLE,
             $integrations,
-            $jiraStatus,
-            $jiraMessage,
-            $gitStatus,
-            $gitMessage,
-            $linearStatus,
-            $linearMessage,
+            $jira->status,
+            $jira->message,
+            $git->status,
+            $git->message,
+            $linear->status,
+            $linear->message,
             $gitProvider,
             $messages,
         );

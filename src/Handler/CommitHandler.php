@@ -31,9 +31,12 @@ class CommitHandler implements GitRepositoryAware, JiraAware
     ) {
     }
 
-    public function handle(mixed $first, mixed $second = null, mixed $third = null, mixed $fourth = false, mixed $fifth = false): CommandResponse|int
+    public function handle(mixed $isNew, mixed $message = null, mixed $stageAll = null, mixed $quiet = false): CommandResponse|int
     {
-        [$isNew, $message, $stageAll, $quiet] = $this->normalizeHandleArguments($first, $second, $third, $fourth, $fifth);
+        $isNew = (bool) $isNew;
+        $message = is_string($message) ? $message : null;
+        $stageAll = (bool) $stageAll;
+        $quiet = (bool) $quiet;
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         if (empty(trim($gitStatus))) {
             return CommandResponse::success(
@@ -51,18 +54,6 @@ class CommitHandler implements GitRepositoryAware, JiraAware
         }
 
         return $this->commitWithJiraPrompt($stageAll, $quiet);
-    }
-
-    /**
-     * @return array{0: bool, 1: string|null, 2: bool, 3: bool}
-     */
-    private function normalizeHandleArguments(mixed $first, mixed $second, mixed $third, mixed $fourth, mixed $fifth): array
-    {
-        if ($first instanceof \Symfony\Component\Console\Style\SymfonyStyle) {
-            return [(bool) $second, is_string($third) ? $third : null, (bool) $fourth, (bool) $fifth];
-        }
-
-        return [(bool) $first, is_string($second) ? $second : null, (bool) $third, (bool) $fourth];
     }
 
     protected function commitWithMessage(string $message, bool $stageAll): CommandResponse

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\BranchEligibilityContext;
 use App\DTO\BranchListRow;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Response\BranchListResponse;
@@ -34,19 +35,13 @@ class BranchListHandler implements GitRepositoryAware
         $prSnapshot = $this->eligibilityResolver->buildPullRequestSnapshot();
         $baseBranch = $this->eligibilityResolver->resolveBaseBranch($this->configuredBaseBranch);
         $currentBranch = $this->gitRepository->getCurrentBranchName();
+        $context = new BranchEligibilityContext($currentBranch, $baseBranch, $prSnapshot['map'], $prSnapshot['available']);
 
         $rows = [];
         foreach ($branches as $branch) {
             $isCurrent = $branch === $currentBranch;
             $remoteExists = isset($remoteBranchesSet[$branch]);
-            $eligibility = $this->eligibilityResolver->evaluate(
-                $branch,
-                $currentBranch,
-                $remoteExists,
-                $baseBranch,
-                $prSnapshot['map'],
-                $prSnapshot['available']
-            );
+            $eligibility = $this->eligibilityResolver->evaluate($branch, $remoteExists, $context);
 
             $branchDisplay = $branch;
             if ($isCurrent) {

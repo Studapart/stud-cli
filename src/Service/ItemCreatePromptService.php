@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\ExtraFieldPromptContext;
 use App\DTO\MessageRef;
 use App\Service\Prompt\PromptInterface;
 
@@ -18,17 +19,12 @@ class ItemCreatePromptService
 
     /**
      * @param list<string> $extraRequiredFieldIds
-     * @param array<string, mixed>|null $descriptionAdf
      *
      * @return array<string, mixed>|null
      */
     public function promptForExtraRequiredFields(
         bool $interactive,
-        string $projectKey,
-        string $issueTypeId,
-        bool $typeExplicitlyProvided,
-        string $summary,
-        ?array $descriptionAdf,
+        ExtraFieldPromptContext $context,
         array $extraRequiredFieldIds,
     ): ?array {
         if (! $interactive) {
@@ -36,7 +32,7 @@ class ItemCreatePromptService
         }
 
         try {
-            $allFields = $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
+            $allFields = $this->jiraService->getCreateMetaFields($context->state->projectKey, $context->state->issueTypeId);
         } catch (\Throwable) {
             return null;
         }
@@ -44,16 +40,7 @@ class ItemCreatePromptService
         foreach ($extraRequiredFieldIds as $fieldId) {
             $fieldId = (string) $fieldId;
             $name = (string) ($allFields[$fieldId]['name'] ?? $fieldId);
-            $value = $this->getPromptedValueForExtraField(
-                $fieldId,
-                $name,
-                $projectKey,
-                $issueTypeId,
-                $typeExplicitlyProvided,
-                $summary,
-                $descriptionAdf,
-                $allFields,
-            );
+            $value = $this->getPromptedValueForExtraField($fieldId, $name, $context, $allFields);
             if ($value !== null) {
                 $result += $value;
             }
@@ -64,32 +51,18 @@ class ItemCreatePromptService
 
     /**
      * @param array<string, mixed> $allFields
-     * @param array<string, mixed>|null $descriptionAdf
      *
      * @return array<string, mixed>|null
      */
     public function getPromptedValueForExtraField(
         string $fieldId,
         string $name,
-        string $projectKey,
-        string $issueTypeId,
-        bool $typeExplicitlyProvided,
-        string $summary,
-        ?array $descriptionAdf,
+        ExtraFieldPromptContext $context,
         array $allFields,
     ): ?array {
         $standardKind = $this->fieldResolver->extraFieldStandardKind(strtolower($fieldId), strtolower($name));
         if ($standardKind !== null) {
-            return $this->getValueForStandardExtraField(
-                $standardKind,
-                $fieldId,
-                $projectKey,
-                $issueTypeId,
-                $typeExplicitlyProvided,
-                $summary,
-                $descriptionAdf,
-                $allFields,
-            );
+            return $this->getValueForStandardExtraField($standardKind, $context, $allFields);
         }
         $value = $this->prompt->ask(MessageRef::key('item.create.prompt_custom_field', ['name' => $name]));
         if ($value === null || trim($value) === '') {
@@ -101,29 +74,20 @@ class ItemCreatePromptService
 
     /**
      * @param array<string, mixed> $allFields
-     * @param array<string, mixed>|null $descriptionAdf
      *
      * @return array<string, mixed>|null
      */
-    public function getValueForStandardExtraField(
-        string $kind,
-        string $fieldId,
-        string $projectKey,
-        string $issueTypeId,
-        bool $typeExplicitlyProvided,
-        string $summary,
-        ?array $descriptionAdf,
-        array $allFields,
-    ): ?array {
-        unset($fieldId);
+    public function getValueForStandardExtraField(string $kind, ExtraFieldPromptContext $context, array $allFields): ?array
+    {
+        $state = $context->state;
 
         return match ($kind) {
-            StudIssueKeys::PROJECT => [StudIssueKeys::PROJECT => [StudIssueKeys::KEY => $projectKey]],
+            StudIssueKeys::PROJECT => [StudIssueKeys::PROJECT => [StudIssueKeys::KEY => $state->projectKey]],
             StudIssueKeys::REPORTER => [StudIssueKeys::REPORTER => [StudIssueKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()]],
             StudIssueKeys::ASSIGNEE => [StudIssueKeys::ASSIGNEE => [StudIssueKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()]],
-            StudIssueKeys::ISSUE_TYPE => $this->promptIssueTypeValue($projectKey, $issueTypeId, $typeExplicitlyProvided, $allFields),
-            StudIssueKeys::TITLE => [StudIssueKeys::TITLE => $summary],
-            StudIssueKeys::DESCRIPTION => ($v = $this->promptDescriptionValue($descriptionAdf)) !== null ? [StudIssueKeys::DESCRIPTION => $v] : null,
+            StudIssueKeys::ISSUE_TYPE => $this->promptIssueTypeValue($state->projectKey, $state->issueTypeId, $context->typeExplicitlyProvided, $allFields),
+            StudIssueKeys::TITLE => [StudIssueKeys::TITLE => (string) $state->fields[StudIssueKeys::TITLE]],
+            StudIssueKeys::DESCRIPTION => ($v = $this->promptDescriptionValue($context->descriptionAdf)) !== null ? [StudIssueKeys::DESCRIPTION => $v] : null,
             default => null,
         };
     }
