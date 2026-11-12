@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\ConfluencePageContent;
+use App\DTO\ConfluencePageTarget;
 use App\DTO\ConfluencePushInput;
 use App\Exception\ApiException;
 use App\Handler\ConfluencePushHandler;
@@ -48,11 +50,8 @@ class ConfluencePushHandlerTest extends CommandTestCase
         $this->wiki->expects(self::once())
             ->method('createPage')
             ->with(
-                '1',
-                'My Page',
-                '{"type":"doc","version":1,"content":[]}',
-                null,
-                'current'
+                new ConfluencePageTarget('1'),
+                new ConfluencePageContent('My Page', '{"type":"doc","version":1,"content":[]}')
             )
             ->willReturn([
                 'id' => '12345',
@@ -93,8 +92,7 @@ class ConfluencePushHandlerTest extends CommandTestCase
             ->method('updatePage')
             ->with(
                 '12345',
-                'New Title',
-                '{"type":"doc","version":1,"content":[]}',
+                new ConfluencePageContent('New Title', '{"type":"doc","version":1,"content":[]}'),
                 3
             )
             ->willReturn([
@@ -130,7 +128,7 @@ class ConfluencePushHandlerTest extends CommandTestCase
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
         $this->wiki->expects(self::once())
             ->method('updatePage')
-            ->with('12345', 'Existing Title', self::anything(), 2)
+            ->with('12345', self::callback(static fn (ConfluencePageContent $content): bool => $content->title === 'Existing Title'), 2)
             ->willReturn([
                 'id' => '12345',
                 'title' => 'Existing Title',
@@ -327,7 +325,10 @@ class ConfluencePushHandlerTest extends CommandTestCase
         $this->converter->expects(self::once())->method('convert')->with('# Doc')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
         $this->wiki->expects(self::once())
             ->method('createPage')
-            ->with('42', 'My Doc', self::anything(), $parentId, 'current')
+            ->with(
+                new ConfluencePageTarget('42', $parentId),
+                self::callback(static fn (ConfluencePageContent $content): bool => $content->title === 'My Doc')
+            )
             ->willReturn([
                 'id' => '999',
                 'title' => 'My Doc',
@@ -378,19 +379,18 @@ class ConfluencePushHandlerTest extends CommandTestCase
         $this->wiki->expects(self::once())
             ->method('createPage')
             ->with(
-                '1',
-                'Title',
-                self::callback(function (string $adfJson) use ($accountId, $displayName): bool {
+                new ConfluencePageTarget('1'),
+                self::callback(function (ConfluencePageContent $content) use ($accountId, $displayName): bool {
+                    $adfJson = $content->adfJsonString;
                     $adf = json_decode($adfJson, true);
 
-                    return is_array($adf)
+                    return $content->title === 'Title'
+                        && is_array($adf)
                         && isset($adf['content'])
                         && str_contains($adfJson, $accountId)
                         && str_contains($adfJson, 'Contact:')
                         && str_contains($adfJson, $displayName);
-                }),
-                null,
-                'current'
+                })
             )
             ->willReturn([
                 'id' => '1',
@@ -440,7 +440,10 @@ class ConfluencePushHandlerTest extends CommandTestCase
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
         $this->wiki->expects(self::once())
             ->method('createPage')
-            ->with('1', $title, self::anything(), $parentId, 'current')
+            ->with(
+                new ConfluencePageTarget('1', $parentId),
+                self::callback(static fn (ConfluencePageContent $content): bool => $content->title === $title)
+            )
             ->willThrowException(
                 new ApiException('Bad request', 'title already exists', 400)
             );
@@ -450,7 +453,7 @@ class ConfluencePushHandlerTest extends CommandTestCase
             ->willReturn([['id' => 'child1', 'title' => $title]]);
         $this->wiki->expects(self::once())
             ->method('updatePage')
-            ->with('child1', $title, self::anything(), 3)
+            ->with('child1', self::callback(static fn (ConfluencePageContent $content): bool => $content->title === $title), 3)
             ->willReturn([
                 'id' => 'child1',
                 'title' => $title,
@@ -485,9 +488,10 @@ class ConfluencePushHandlerTest extends CommandTestCase
             ->method('updatePage')
             ->with(
                 '12345',
-                'New Title',
-                self::callback(function (string $adfJson): bool {
-                    return str_contains($adfJson, 'Contact:') && str_contains($adfJson, 'Jane Doe');
+                self::callback(function (ConfluencePageContent $content): bool {
+                    return $content->title === 'New Title'
+                        && str_contains($content->adfJsonString, 'Contact:')
+                        && str_contains($content->adfJsonString, 'Jane Doe');
                 }),
                 2
             )
@@ -568,7 +572,7 @@ class ConfluencePushHandlerTest extends CommandTestCase
             ->willReturn([['id' => 'child1', 'title' => $title]]);
         $this->wiki->expects(self::once())
             ->method('updatePage')
-            ->with('child1', $title, self::anything(), 3)
+            ->with('child1', self::callback(static fn (ConfluencePageContent $content): bool => $content->title === $title), 3)
             ->willReturn([
                 'id' => 'child1',
                 'title' => $title,
@@ -716,15 +720,15 @@ class ConfluencePushHandlerTest extends CommandTestCase
         $this->wiki->expects(self::once())
             ->method('createPage')
             ->with(
-                '1',
-                'Title',
-                self::callback(function (string $adfJson): bool {
-                    $adf = json_decode($adfJson, true);
+                new ConfluencePageTarget('1'),
+                self::callback(function (ConfluencePageContent $content): bool {
+                    $adf = json_decode($content->adfJsonString, true);
 
-                    return isset($adf['content']) && is_array($adf['content']) && count($adf['content']) >= 2;
-                }),
-                null,
-                'current'
+                    return $content->title === 'Title'
+                        && isset($adf['content'])
+                        && is_array($adf['content'])
+                        && count($adf['content']) >= 2;
+                })
             )
             ->willReturn([
                 'id' => '1',

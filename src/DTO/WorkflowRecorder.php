@@ -52,7 +52,7 @@ final class WorkflowRecorder implements WorkflowEntryRecorder
     public function addErrorWithDetails(int $verbosity, MessageRef|string $userMessage, string $technicalDetails): void
     {
         $this->messages[] = ResponseMessage::error($userMessage, $technicalDetails !== '' ? $technicalDetails : null);
-        $this->add('errorWithDetails', $verbosity, $userMessage, $technicalDetails);
+        $this->entries[] = new WorkflowOutputEntry('errorWithDetails', $verbosity, $userMessage, $technicalDetails);
     }
 
     /**
@@ -201,10 +201,9 @@ final class WorkflowRecorder implements WorkflowEntryRecorder
         string $type,
         int $verbosity,
         MessageRef|string|array $message,
-        ?string $technicalDetails = null,
         WorkflowChannel $channel = WorkflowChannel::Default,
     ): void {
-        $this->entries[] = new WorkflowOutputEntry($type, $verbosity, $message, $technicalDetails, channel: $channel);
+        $this->entries[] = new WorkflowOutputEntry($type, $verbosity, $message, channel: $channel);
     }
 
     /**

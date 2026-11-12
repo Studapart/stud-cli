@@ -8,6 +8,7 @@ use App\Config\ProjectStudConfigKeys;
 use App\Enum\IssueTrackerProvider;
 use App\Exception\IssueTrackerException;
 use App\Exception\IssueTrackerResolutionException;
+use App\Service\IssueTrackerClients;
 use App\Service\IssueTrackerFactory;
 use App\Service\JiraApiClient;
 use App\Service\JiraAttachmentService;
@@ -308,7 +309,7 @@ class IssueTrackerFactoryTest extends TestCase
         $jira = $this->createStub(JiraApiClient::class);
         $attachments = $this->createStub(JiraAttachmentService::class);
 
-        $provider = $this->factory->create(IssueTrackerProvider::Jira->value, $jira, $attachments);
+        $provider = $this->factory->create(IssueTrackerProvider::Jira->value, new IssueTrackerClients($jira, $attachments));
 
         $this->assertInstanceOf(JiraIssueTrackerAdapter::class, $provider);
     }
@@ -317,7 +318,7 @@ class IssueTrackerFactoryTest extends TestCase
     {
         $linearApiClient = $this->createStub(\App\Service\LinearApiClient::class);
 
-        $provider = $this->factory->create(IssueTrackerProvider::Linear->value, linearApiClient: $linearApiClient);
+        $provider = $this->factory->create(IssueTrackerProvider::Linear->value, new IssueTrackerClients(null, null, $linearApiClient));
 
         $this->assertInstanceOf(LinearIssueTrackerAdapter::class, $provider);
     }
@@ -326,14 +327,14 @@ class IssueTrackerFactoryTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        $this->factory->create(IssueTrackerProvider::Linear->value);
+        $this->factory->create(IssueTrackerProvider::Linear->value, new IssueTrackerClients(null, null));
     }
 
     public function testCreateRequiresJiraDependenciesForJiraType(): void
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        $this->factory->create(IssueTrackerProvider::Jira->value);
+        $this->factory->create(IssueTrackerProvider::Jira->value, new IssueTrackerClients(null, null));
     }
 
     public function testCreateForProviderThrowsWhenJiraClientsMissing(): void
@@ -341,7 +342,7 @@ class IssueTrackerFactoryTest extends TestCase
         $this->expectException(IssueTrackerException::class);
         $this->expectExceptionMessage('issue_tracker_provider.missing_jira_configuration');
 
-        $this->factory->createForProvider(IssueTrackerProvider::Jira->value, null, null, null);
+        $this->factory->createForProvider(IssueTrackerProvider::Jira->value, new IssueTrackerClients(null, null));
     }
 
     public function testCreateForProviderThrowsWhenLinearClientMissing(): void
@@ -349,7 +350,7 @@ class IssueTrackerFactoryTest extends TestCase
         $this->expectException(IssueTrackerException::class);
         $this->expectExceptionMessage('issue_tracker_provider.missing_linear_api_key');
 
-        $this->factory->createForProvider(IssueTrackerProvider::Linear->value, null, null, null);
+        $this->factory->createForProvider(IssueTrackerProvider::Linear->value, new IssueTrackerClients(null, null));
     }
 
     public function testResolveTypeRejectsUnknownOverride(): void

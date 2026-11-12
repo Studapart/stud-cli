@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\ConfluencePageContent;
+use App\DTO\ConfluencePageTarget;
 use App\DTO\ConfluencePushInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
@@ -58,8 +60,7 @@ class ConfluencePushHandler implements ConfluenceAware
         try {
             $updated = $this->wiki->updatePage(
                 $input->pageId,
-                $title,
-                $adfJson,
+                new ConfluencePageContent($title, $adfJson),
                 $versionNumber
             );
         } catch (ApiException $e) {
@@ -106,11 +107,8 @@ class ConfluencePushHandler implements ConfluenceAware
         $adfJson = $this->buildAdfJsonForCreate($input, $content);
 
         return $this->executeCreateWithDuplicateFallback(
-            $spaceId,
-            $parentId,
-            $title,
-            $adfJson,
-            $input->status,
+            new ConfluencePageTarget($spaceId, $parentId, $input->status),
+            new ConfluencePageContent($title, $adfJson),
             $baseUrl
         );
     }
@@ -204,26 +202,19 @@ class ConfluencePushHandler implements ConfluenceAware
      * Call createPage; on duplicate title under parent try update; otherwise return error.
      */
     protected function executeCreateWithDuplicateFallback(
-        string $spaceId,
-        ?string $parentId,
-        string $title,
-        string $adfJson,
-        ?string $status,
+        ConfluencePageTarget $target,
+        ConfluencePageContent $content,
         string $baseUrl
     ): ConfluencePushResponse {
+        $parentId = $target->parentId;
+
         try {
-            $created = $this->wiki->createPage(
-                $spaceId,
-                $title,
-                $adfJson,
-                $parentId,
-                $status
-            );
+            $created = $this->wiki->createPage($target, $content);
         } catch (ApiException $e) {
             if ($parentId !== null && $e->getStatusCode() === 400) {
                 $details = $e->getTechnicalDetails();
                 if (str_contains($details, 'title already exists') || str_contains($details, 'same TITLE')) {
-                    $updated = $this->tryUpdateExistingPageUnderParent($parentId, $title, $adfJson, $baseUrl);
+                    $updated = $this->tryUpdateExistingPageUnderParent($parentId, $content->title, $content->adfJsonString, $baseUrl);
                     if ($updated !== null) {
                         return $updated;
                     }
@@ -282,8 +273,7 @@ class ConfluencePushHandler implements ConfluenceAware
                 try {
                     $updated = $this->wiki->updatePage(
                         $child['id'],
-                        $title,
-                        $adfJson,
+                        new ConfluencePageContent($title, $adfJson),
                         $versionNumber
                     );
                 } catch (ApiException) {

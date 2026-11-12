@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Response;
 
+use App\DTO\ConfigValidateIntegrationPing;
+use App\DTO\ConfigValidatePingResults;
 use App\Response\ConfigValidateResponse;
 use PHPUnit\Framework\TestCase;
 
@@ -12,10 +14,10 @@ class ConfigValidateResponseTest extends TestCase
     public function testCreateAllOk(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::ok(),
+            ),
         );
 
         $this->assertTrue($response->isSuccess());
@@ -28,12 +30,11 @@ class ConfigValidateResponseTest extends TestCase
     public function testCreateLinearFailMakesResponseNotSuccess(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_FAIL,
-            'Unauthorized',
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::fail('Unauthorized'),
+            ),
         );
 
         $this->assertFalse($response->isSuccess());
@@ -44,10 +45,10 @@ class ConfigValidateResponseTest extends TestCase
     public function testCreateJiraFailMakesResponseNotSuccess(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_FAIL,
-            'Connection refused',
-            ConfigValidateResponse::STATUS_OK,
-            null
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::fail('Connection refused'),
+                ConfigValidateIntegrationPing::ok(),
+            ),
         );
 
         $this->assertFalse($response->isSuccess());
@@ -58,10 +59,10 @@ class ConfigValidateResponseTest extends TestCase
     public function testCreateGitFailMakesResponseNotSuccess(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_FAIL,
-            'Unauthorized'
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::fail('Unauthorized'),
+            ),
         );
 
         $this->assertFalse($response->isSuccess());
@@ -72,10 +73,10 @@ class ConfigValidateResponseTest extends TestCase
     public function testCreateBothSkippedIsSuccess(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_SKIPPED,
-            null,
-            ConfigValidateResponse::STATUS_SKIPPED,
-            null
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::skipped(),
+                ConfigValidateIntegrationPing::skipped(),
+            ),
         );
 
         $this->assertTrue($response->isSuccess());
@@ -96,10 +97,10 @@ class ConfigValidateResponseTest extends TestCase
     public function testWithAdditionalMessagesMergesDiagnostics(): void
     {
         $response = ConfigValidateResponse::create(
-            ConfigValidateResponse::STATUS_OK,
-            null,
-            ConfigValidateResponse::STATUS_OK,
-            null,
+            new ConfigValidatePingResults(
+                ConfigValidateIntegrationPing::ok(),
+                ConfigValidateIntegrationPing::ok(),
+            ),
         )->withAdditionalMessages([
             \App\DTO\ResponseMessage::warning(\App\DTO\MessageRef::key('config.validate.warn_gitlab_token_missing')),
         ]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Responder;
 
+use App\DTO\IssueProviderLabels;
 use App\DTO\WorkItem;
 use App\Responder\IssueListJsonSerializer;
 use PHPUnit\Framework\TestCase;
@@ -72,7 +73,7 @@ class IssueListJsonSerializerTest extends TestCase
         $issue = new WorkItem('1', 'SCI-1', 'Test', 'Open', 'user', 'desc', [], 'Story');
 
         $summary = $this->serializer->serializeSummary($issue, 'https://jira.example.com', false, 'linear');
-        $list = $this->serializer->serializeList([$issue], 'https://jira.example.com', false, ['linear'], true);
+        $list = $this->serializer->serializeList([$issue], 'https://jira.example.com', false, new IssueProviderLabels(['linear'], true));
 
         $this->assertSame('linear', $summary['provider']);
         $this->assertSame('linear', $list[0]['provider']);

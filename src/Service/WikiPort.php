@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\ConfluencePageContent;
+use App\DTO\ConfluencePageTarget;
 use App\Exception\ApiException;
 
 /**
@@ -32,8 +34,7 @@ interface WikiPort
      */
     public function updatePage(
         string $pageId,
-        string $title,
-        string $adfJsonString,
+        ConfluencePageContent $content,
         int $versionNumber,
         string $versionMessage = 'Updated via stud-cli',
     ): array;
@@ -51,13 +52,7 @@ interface WikiPort
      * @return array{id: string, title: string, _links: array{webui: string}}
      * @throws ApiException
      */
-    public function createPage(
-        string $spaceId,
-        string $title,
-        string $adfJsonString,
-        ?string $parentId = null,
-        string $status = 'current',
-    ): array;
+    public function createPage(ConfluencePageTarget $target, ConfluencePageContent $content): array;
 
     /**
      * @return array<int, array{id: string, title: string}>

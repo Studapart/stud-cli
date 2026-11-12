@@ -47,6 +47,30 @@ class FetchHintIssueTrackerPortTest extends TestCase
         }
     }
 
+    public function testGetIssueRethrowsOriginalExceptionWhenHintIsNull(): void
+    {
+        $inner = $this->createMock(IssueTrackerPort::class);
+        $inner->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-1', false)
+            ->willThrowException(new ApiException('not found', 'HTTP 404', 404));
+
+        $port = \App\Tests\Support\ConstructorFixtures::fetchHintPort(
+            $inner,
+            new IssueTrackerFetchFailureHintBuilder(),
+            new \App\DTO\FetchHintContext(IssueTrackerProvider::Jira->value, 'jira', [], []),
+        );
+
+        try {
+            $port->getIssue('SCI-1');
+            $this->fail('Expected ApiException');
+        } catch (ApiException $e) {
+            $this->assertNull($e->getResolutionHint());
+            $this->assertSame('not found', $e->getMessage());
+            $this->assertSame(404, $e->getStatusCode());
+        }
+    }
+
     public function testGetIssuePassesThroughSuccess(): void
     {
         $issue = new WorkItem('1', 'SCI-1', 'Title', 'Open', 'Ada', 'Desc', [], 'Task');

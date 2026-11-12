@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\ExtraFieldPromptContext;
+use App\DTO\IssueCreateContent;
 use App\DTO\IssueCreationState;
 use App\DTO\ItemCreateInput;
 use App\DTO\MessageRef;
@@ -80,7 +82,11 @@ class ItemCreateHandler implements JiraAware
 
         $description = $this->getDescription($input->descriptionOption);
         $requiredFieldIds = $this->fieldFlow->fields->getRequiredFieldIdsFromMeta($allFieldsMeta);
-        $fields = $this->fieldFlow->fields->buildBaseFields($projectKey, $issueTypeId, $summary, $description, $input->descriptionFormat, $input->parentKey);
+        $fields = $this->fieldFlow->fields->buildBaseFields(
+            $projectKey,
+            $issueTypeId,
+            new IssueCreateContent($summary, $description, $input->descriptionFormat, $input->parentKey),
+        );
 
         return new IssueCreationState($projectKey, $issueTypeId, $allFieldsMeta, $requiredFieldIds, $fields);
     }
@@ -139,13 +145,7 @@ class ItemCreateHandler implements JiraAware
             'parentKey' => $parentKeyTrimmed,
         ];
         $fillIssueType = $typeExplicitlyProvided || ! $interactive;
-        $extraRequired = $this->fieldFlow->fields->resolveStandardFieldsAndExtraRequired(
-            $state->requiredFieldIds,
-            $state->allFieldsMeta,
-            $state->fields,
-            $fieldValues,
-            $fillIssueType
-        );
+        $extraRequired = $this->fieldFlow->fields->resolveStandardFieldsAndExtraRequired($state, $fieldValues, $fillIssueType);
         $this->fieldFlow->fields->defaultAssigneeWhenFieldPresent($state->allFieldsMeta, $state->fields, null);
 
         if ($extraRequired === []) {
@@ -154,33 +154,21 @@ class ItemCreateHandler implements JiraAware
 
         return $this->promptAndMergeExtraFields(
             $interactive,
-            $state,
-            $typeExplicitlyProvided,
-            $descriptionAdf,
+            new ExtraFieldPromptContext($state, $typeExplicitlyProvided, $descriptionAdf),
             $extraRequired
         );
     }
 
     /**
      * @param list<string> $extraRequired
-     * @param array<string, mixed>|null $descriptionAdf
      */
     protected function promptAndMergeExtraFields(
         bool $interactive,
-        IssueCreationState $state,
-        bool $typeExplicitlyProvided,
-        ?array $descriptionAdf,
+        ExtraFieldPromptContext $context,
         array $extraRequired
     ): ?ItemCreateResponse {
-        $prompted = $this->promptForExtraRequiredFields(
-            $interactive,
-            $state->projectKey,
-            $state->issueTypeId,
-            $typeExplicitlyProvided,
-            (string) $state->fields[StudIssueKeys::TITLE],
-            $descriptionAdf,
-            $extraRequired
-        );
+        $state = $context->state;
+        $prompted = $this->prompts->service->promptForExtraRequiredFields($interactive, $context, $extraRequired);
         if ($prompted === null) {
             $fieldsList = $this->fieldFlow->fields->getExtraRequiredFieldsList(
                 $state->projectKey,
@@ -208,14 +196,7 @@ class ItemCreateHandler implements JiraAware
     ): ItemCreateResponse {
         if (! $this->provider instanceof IssueTrackerLabelGroupsCapable
             && $this->fieldFlow->jira->isJiraBacked($this->provider)) {
-            return $this->fieldFlow->deferral->create(
-                $this->provider,
-                $fields,
-                $state->fieldInputsForUpdate,
-                $state->payloadKeyToInputKey,
-                $state->allFieldsMeta,
-                $skippedOptionalFields,
-            );
+            return $this->fieldFlow->deferral->create($this->provider, $state, $skippedOptionalFields);
         }
 
         return $this->createDirectly($fields, $skippedOptionalFields);
@@ -317,32 +298,6 @@ class ItemCreateHandler implements JiraAware
         // @codeCoverageIgnoreEnd
 
         return '';
-    }
-
-    /**
-     * @param list<string> $extraRequiredFieldIds
-     * @param array<string, mixed>|null $descriptionAdf
-     *
-     * @return array<string, mixed>|null
-     */
-    protected function promptForExtraRequiredFields(
-        bool $interactive,
-        string $projectKey,
-        string $issueTypeId,
-        bool $typeExplicitlyProvided,
-        string $summary,
-        ?array $descriptionAdf,
-        array $extraRequiredFieldIds
-    ): ?array {
-        return $this->prompts->service->promptForExtraRequiredFields(
-            $interactive,
-            $projectKey,
-            $issueTypeId,
-            $typeExplicitlyProvided,
-            $summary,
-            $descriptionAdf,
-            $extraRequiredFieldIds,
-        );
     }
 
     /**

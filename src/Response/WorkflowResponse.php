@@ -34,7 +34,6 @@ final class WorkflowResponse extends AbstractResponse
         array $entries = [],
         array $messages = [],
         ?int $pullNumber = null,
-        ?bool $rewritten = null,
     ): self {
         $error = null;
         foreach ($messages as $message) {
@@ -45,7 +44,7 @@ final class WorkflowResponse extends AbstractResponse
             }
         }
 
-        return new self($exitCode, $entries, $error, $messages, $pullNumber, $rewritten);
+        return new self($exitCode, $entries, $error, $messages, $pullNumber);
     }
 
     public function withRewritten(?bool $rewritten): self

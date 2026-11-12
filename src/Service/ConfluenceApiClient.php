@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\ConfluencePageContent;
+use App\DTO\ConfluencePageTarget;
 use App\Exception\ApiException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -166,31 +168,23 @@ class ConfluenceApiClient
     /**
      * Create a new page.
      *
-     * @param string $spaceId Numeric space ID
-     * @param string $title Page title
-     * @param string $adfJsonString Stringified ADF document (atlas_doc_format)
-     * @param string|null $parentId Optional parent page ID
-     * @param string $status Page status: "current" (published) or "draft"
+     * @param ConfluencePageTarget $target Space, optional parent page and status ("current" or "draft")
+     * @param ConfluencePageContent $content Page title and stringified ADF document (atlas_doc_format)
      * @return array{id: string, title: string, _links: array{webui: string}}
      */
-    public function createPage(
-        string $spaceId,
-        string $title,
-        string $adfJsonString,
-        ?string $parentId = null,
-        string $status = 'current'
-    ): array {
+    public function createPage(ConfluencePageTarget $target, ConfluencePageContent $content): array
+    {
         $body = [
-            'spaceId' => $spaceId,
-            'title' => $title,
-            'status' => $status,
+            'spaceId' => $target->spaceId,
+            'title' => $content->title,
+            'status' => $target->status,
             'body' => [
                 'representation' => 'atlas_doc_format',
-                'value' => $adfJsonString,
+                'value' => $content->adfJsonString,
             ],
         ];
-        if ($parentId !== null && $parentId !== '') {
-            $body['parentId'] = $parentId;
+        if ($target->parentId !== null && $target->parentId !== '') {
+            $body['parentId'] = $target->parentId;
         }
 
         $response = $this->client->request('POST', self::API_PREFIX . '/pages', [
@@ -265,23 +259,21 @@ class ConfluenceApiClient
      * Update an existing page.
      *
      * @param string $pageId Page ID
-     * @param string $title Page title
-     * @param string $adfJsonString Stringified ADF document
+     * @param ConfluencePageContent $content Page title and stringified ADF document
      * @param int $versionNumber New version number (current + 1)
      * @param string $versionMessage Optional version message
      * @return array{id: string, title: string, _links: array{webui: string}}
      */
     public function updatePage(
         string $pageId,
-        string $title,
-        string $adfJsonString,
+        ConfluencePageContent $content,
         int $versionNumber,
         string $versionMessage = 'Updated via stud-cli'
     ): array {
         $response = $this->client->request('PUT', self::API_PREFIX . '/pages/' . $pageId, [
             'json' => [
                 'id' => $pageId,
-                'title' => $title,
+                'title' => $content->title,
                 'status' => 'current',
                 'version' => [
                     'number' => $versionNumber,
@@ -289,7 +281,7 @@ class ConfluenceApiClient
                 ],
                 'body' => [
                     'representation' => 'atlas_doc_format',
-                    'value' => $adfJsonString,
+                    'value' => $content->adfJsonString,
                 ],
             ],
         ]);

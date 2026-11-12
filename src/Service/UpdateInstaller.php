@@ -36,14 +36,13 @@ final class UpdateInstaller
         return $this->fileService->getBinaryPath($binaryPath);
     }
 
-    public function replaceBinary(WorkflowEntryRecorder $recorder, string $tempFile, UpdateTarget $target, string $tagName): int
+    public function replaceBinary(WorkflowEntryRecorder $recorder, string $tempFile, UpdateTarget $target): int
     {
         return $this->fileService->replaceBinary(
             $recorder,
             $tempFile,
             $this->resolveBinaryPath($target->binaryPath),
             $target->currentVersion,
-            $tagName,
         );
     }
 

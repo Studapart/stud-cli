@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\DTO\ConfluencePageContent;
+use App\DTO\ConfluencePageTarget;
 use App\Exception\ApiException;
 use App\Service\ConfluenceApiClient;
 use App\Service\ConfluencePageMapper;
@@ -184,9 +186,8 @@ class ConfluenceApiClientTest extends TestCase
             ->willReturn($responseMock);
 
         $result = $this->confluenceService->createPage(
-            '1',
-            'My Page',
-            '{"type":"doc","version":1,"content":[]}'
+            new ConfluencePageTarget('1'),
+            new ConfluencePageContent('My Page', '{"type":"doc","version":1,"content":[]}')
         );
 
         self::assertSame('12345', $result['id']);
@@ -219,10 +220,8 @@ class ConfluenceApiClientTest extends TestCase
             ->willReturn($responseMock);
 
         $result = $this->confluenceService->createPage(
-            '1',
-            'Child',
-            '{}',
-            '67890'
+            new ConfluencePageTarget('1', '67890'),
+            new ConfluencePageContent('Child', '{}')
         );
 
         self::assertSame('67890', $result['id']);
@@ -292,7 +291,7 @@ class ConfluenceApiClientTest extends TestCase
         $this->expectException(ApiException::class);
         $this->expectExceptionMessage('Could not create Confluence page.');
 
-        $this->confluenceService->createPage('1', 'Title', '{}');
+        $this->confluenceService->createPage(new ConfluencePageTarget('1'), new ConfluencePageContent('Title', '{}'));
     }
 
     public function testUpdatePageThrowsOnNon200(): void
@@ -312,7 +311,7 @@ class ConfluenceApiClientTest extends TestCase
         $this->expectException(ApiException::class);
         $this->expectExceptionMessage('Could not update Confluence page "12345".');
 
-        $this->confluenceService->updatePage('12345', 'Title', '{}', 2);
+        $this->confluenceService->updatePage('12345', new ConfluencePageContent('Title', '{}'), 2);
     }
 
     public function testUpdatePageSendsCorrectPayloadAndReturnsMapped(): void
@@ -346,8 +345,7 @@ class ConfluenceApiClientTest extends TestCase
 
         $result = $this->confluenceService->updatePage(
             '12345',
-            'Updated Title',
-            '{"type":"doc","version":1,"content":[]}',
+            new ConfluencePageContent('Updated Title', '{"type":"doc","version":1,"content":[]}'),
             4
         );
 
@@ -518,7 +516,7 @@ class ConfluenceApiClientTest extends TestCase
             ->with('POST', 'api/v2/pages', self::anything())
             ->willReturn($responseMock);
 
-        $result = $this->confluenceService->createPage('1', 'Under Folder', '{}');
+        $result = $this->confluenceService->createPage(new ConfluencePageTarget('1'), new ConfluencePageContent('Under Folder', '{}'));
 
         self::assertSame('999', $result['id']);
         self::assertSame('Under Folder', $result['title']);

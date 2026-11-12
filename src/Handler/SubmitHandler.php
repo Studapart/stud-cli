@@ -77,7 +77,10 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
         }
         $this->explicitSubmitLabels = $plannedLabels['existing'];
 
-        return $this->finish($this->createPullRequest($prTitle, $headBranch, $prBody, $options, $plannedLabels['create']));
+        $baseBranchName = str_replace('origin/', '', $this->git->baseBranch);
+        $prRequestData = new PullRequestData($prTitle, $headBranch, $baseBranchName, $prBody, $options->draft, $options->assignToAuthor);
+
+        return $this->finish($this->createPullRequest($prRequestData, $options, $plannedLabels['create']));
     }
 
     private function finish(int $exitCode): WorkflowResponse
@@ -245,7 +248,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
      *
      * @param array<string> $finalLabels
      */
-    protected function createPullRequest(string $prTitle, string $headBranch, string $prBody, SubmitOptions $options, array $finalLabels): int
+    protected function createPullRequest(PullRequestData $prRequestData, SubmitOptions $options, array $finalLabels): int
     {
         $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.creating'), WorkflowChannel::Git);
 
@@ -256,8 +259,6 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
                 return 0;
             }
 
-            $baseBranchName = str_replace('origin/', '', $this->git->baseBranch);
-            $prRequestData = new PullRequestData($prTitle, $headBranch, $baseBranchName, $prBody, $options->draft, $options->assignToAuthor);
             $prData = $this->githubProvider->createPullRequest($prRequestData);
             $this->recordCreatedPullRequest($this->githubProvider, $prData, $finalLabels);
 
@@ -271,7 +272,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
             return 1;
         } catch (ApiException $e) {
             if ($e->getStatusCode() === 422 && str_contains(strtolower($e->getTechnicalDetails()), 'pull request already exists')) {
-                return $this->handleExistingPr($headBranch, $options, $this->explicitSubmitLabels);
+                return $this->handleExistingPr($prRequestData->head, $options, $this->explicitSubmitLabels);
             }
             $this->recorder()->addErrorWithDetails(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,

@@ -316,7 +316,7 @@ public function processData($data) {
 **Exemption**: DTO, Response, and Value Object constructors using promoted `readonly` properties are exempt from the 4-argument limit. These serve as pure data containers with no behavioral complexity; splitting them into sub-objects would add ceremony without reducing cognitive load.
 
 **Enforcement**:
-- PHPMD fails the build when a method has more than 4 arguments. A new promoted readonly DTO, Response, or Value Object constructor that needs the exemption carries `@SuppressWarnings(PHPMD.ExcessiveParameterList)`.
+- PHPMD fails the build when a method has more than 4 arguments. A new promoted readonly DTO, Response, or Value Object constructor that needs the exemption carries `@SuppressWarnings("PHPMD.ExcessiveParameterList")`. Quote the rule name. PHPStan rejects the unquoted form.
 - Methods with many arguments should be refactored using:
   - Parameter objects (DTOs)
   - Builder pattern

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\Contract\WorkflowEntryRecorder;
+use App\DTO\BranchRenamePostActions;
 use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
@@ -294,7 +295,10 @@ class BranchRenameHandler implements GitRepositoryAware
      */
     protected function handlePostRenameActions(?array $pr, string $targetBranch, string $newBranchName, bool $quiet = false): void
     {
-        $this->prCoordinator->handlePostRenameActions($this->recorder, $pr, $targetBranch, $newBranchName, $quiet);
+        $this->prCoordinator->handlePostRenameActions(
+            $this->recorder,
+            new BranchRenamePostActions($pr, $targetBranch, $newBranchName, $quiet),
+        );
     }
 
     protected function handleExplicitName(string $explicitName): ?string
