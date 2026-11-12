@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
-use App\Config\EffectiveIssueTrackerCredentials;
-use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\DTO\ItemListConfigs;
 use App\DTO\MessageRef;
@@ -15,7 +13,7 @@ use App\Enum\IssueTrackerProvider;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ItemListResponse;
-use App\Service\GlobalConfigProviderResolver;
+use App\Service\DualTrackerPolicy;
 use App\Service\IssueTrackerPortSupplier;
 use App\Service\ProjectScopeKeyResolver;
 
@@ -25,7 +23,7 @@ class ItemListHandler implements JiraAware, LinearAware
         private readonly IssueTrackerPortSupplier $portSupplier,
         private readonly ItemListConfigs $configs,
         private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
-        private readonly GlobalConfigProviderResolver $globalProviderResolver = new GlobalConfigProviderResolver(),
+        private readonly DualTrackerPolicy $dualTracker = new DualTrackerPolicy(),
     ) {
     }
 
@@ -175,21 +173,7 @@ class ItemListHandler implements JiraAware, LinearAware
 
     private function shouldDualAutoAggregate(): bool
     {
-        $stored = ProjectStudConfigKeys::readIssueTrackerProvider($this->configs->project);
-        $isAuto = $stored === null || $stored === IssueTrackerProvider::Auto->value;
-        if (! $isAuto) {
-            return false;
-        }
-
-        $credentials = (new EffectiveIssueTrackerCredentials())->overlay($this->configs->global, $this->configs->project);
-        $providers = $this->globalProviderResolver->resolveIssueTrackerProviders($credentials);
-        if (! $this->globalProviderResolver->collectsJira($providers)
-            || ! $this->globalProviderResolver->collectsLinear($providers)) {
-            return false;
-        }
-
-        return GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, $credentials)
-            && GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Linear, $credentials);
+        return $this->dualTracker->isDualAuto($this->configs->global, $this->configs->project);
     }
 
     private function projectKeyForProvider(string $provider, ?string $project): ?string

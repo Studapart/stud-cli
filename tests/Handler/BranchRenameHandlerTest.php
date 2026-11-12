@@ -1178,7 +1178,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $handler = $this->createBranchRenameHandler($prompt, false);
 
         $handlerReflection = new \ReflectionClass($handler);
-        $method = $handlerReflection->getMethod('updatePullRequestAfterRename');
+        $method = $handlerReflection->getMethod('createPullRequestAfterRename');
         \App\Util\ReflectionAccessor::ensureAccessible($method);
         $recorderProperty = $handlerReflection->getProperty('recorder');
         \App\Util\ReflectionAccessor::ensureAccessible($recorderProperty);

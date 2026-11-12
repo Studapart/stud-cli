@@ -326,6 +326,16 @@ class IssueFieldResolverTest extends CommandTestCase
         $this->assertSame(['accountId' => 'user-id'], $state->fields['reporter']);
     }
 
+    public function testJiraFieldReadsAreSkippedWhenJiraIsNotConfigured(): void
+    {
+        $resolver = new IssueFieldResolver(null, new DurationParser());
+
+        $this->assertNull($resolver->resolveIssueTypeId('OPS', 'Story'));
+        $this->assertSame('Team', $resolver->getExtraRequiredFieldsList('OPS', '10001', ['Team']));
+        $fields = $resolver->buildBaseFields('OPS', '10001', new IssueCreateContent('Summary', 'body'));
+        $this->assertArrayNotHasKey('description', $fields);
+    }
+
     private function bindSubject(): void
     {
         $this->durationParser = new DurationParser();

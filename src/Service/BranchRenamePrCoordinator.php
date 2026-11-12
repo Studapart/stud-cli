@@ -51,9 +51,15 @@ class BranchRenamePrCoordinator
     }
 
     /**
+     * Renaming pushes the new branch name and deletes the old one, so the existing pull request
+     * cannot follow the rename. A new pull request is created instead.
+     *
+     * GitHub's "Update a pull request" endpoint does not accept a `head` branch (checked 2026-11-12).
+     * This may change, so re-check before reintroducing a PATCH.
+     *
      * @param array<string, mixed> $pr
      */
-    public function updatePullRequestAfterRename(
+    public function createPullRequestAfterRename(
         WorkflowEntryRecorder $recorder,
         array $pr,
         string $oldName,
@@ -66,6 +72,7 @@ class BranchRenamePrCoordinator
         $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.creating_new_pr'), WorkflowChannel::Git);
 
         $submitResult = $this->submitHandler->handle(new SubmitOptions());
+        $recorder->absorbResponse($submitResult);
         if ($submitResult->exitCode !== 0) {
             $recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.pr_creation_failed'));
 
@@ -104,7 +111,7 @@ class BranchRenamePrCoordinator
         BranchRenamePostActions $input,
     ): void {
         if ($input->pr !== null && $this->githubProvider !== null) {
-            $this->updatePullRequestAfterRename($recorder, $input->pr, $input->targetBranch, $input->newBranchName);
+            $this->createPullRequestAfterRename($recorder, $input->pr, $input->targetBranch, $input->newBranchName);
         }
 
         $recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.success', ['oldName' => $input->targetBranch, 'newName' => $input->newBranchName]));

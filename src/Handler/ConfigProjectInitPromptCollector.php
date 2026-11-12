@@ -41,37 +41,49 @@ class ConfigProjectInitPromptCollector
             $patches = array_merge($patches, $this->promptIssueTrackerProvider($existing));
         }
 
-        $effectiveProvider = $this->resolveEffectiveIssueTrackerProvider(
-            $this->mergeProjectConfig($existing, $patches),
-            $globalIssueTrackerProviders,
-        );
+        $trackers = $this->resolveTrackers($this->mergeProjectConfig($existing, $patches), $globalIssueTrackerProviders);
 
         $patches = array_merge($patches, $this->promptProjectKey($existing));
         $mergedAfterProjectKey = $this->mergeProjectConfig($existing, $patches);
-        if ($this->shouldRunLinearTeamKeyPrompt($effectiveProvider, $globalIssueTrackerProviders)) {
+        if ($trackers->linearTeamKey) {
             $patches = array_merge($patches, $this->promptLinearTeamKey($mergedAfterProjectKey));
             $mergedAfterProjectKey = $this->mergeProjectConfig($existing, $patches);
         }
-        if ($this->shouldRunJiraPrompts($effectiveProvider)) {
+        if ($trackers->jira) {
             $patches = array_merge($patches, $this->promptJiraDefaultProject($existing));
             $patches = array_merge($patches, $this->promptConfluenceDefaultSpace($existing));
             $patches = array_merge($patches, $this->promptTransitionFromWorkflow($mergedAfterProjectKey, $recorder));
         }
-        if ($this->shouldRunLinearPrompts($effectiveProvider, $globalIssueTrackerProviders)) {
+        if ($trackers->linear) {
             $patches = array_merge($patches, $this->promptLinearFields($mergedAfterProjectKey, $recorder));
         }
         $patches = array_merge($patches, $this->gitPrompts->baseBranchPatches($existing, $recorder));
         $patches = array_merge($patches, $this->promptLabelDefaults($existing));
         $patches = array_merge($patches, $this->gitPrompts->hostingPatches($existing, $recorder));
         $credentialPrompts = new ProjectIssueTrackerCredentialPrompts($this->prompt);
-        if ($this->shouldRunJiraPrompts($effectiveProvider)) {
+        if ($trackers->jira) {
             $patches = array_merge($patches, $credentialPrompts->jiraPatches($existing));
         }
-        if ($this->shouldRunLinearPrompts($effectiveProvider, $globalIssueTrackerProviders)) {
+        if ($trackers->linear) {
             $patches = array_merge($patches, $credentialPrompts->linearPatches());
         }
 
         return $patches;
+    }
+
+    /**
+     * @param array<string, mixed> $mergedConfig
+     * @param list<string> $globalIssueTrackerProviders
+     */
+    protected function resolveTrackers(array $mergedConfig, array $globalIssueTrackerProviders): ProjectInitTrackers
+    {
+        $effectiveProvider = $this->resolveEffectiveIssueTrackerProvider($mergedConfig, $globalIssueTrackerProviders);
+
+        return new ProjectInitTrackers(
+            jira: $this->shouldRunJiraPrompts($effectiveProvider),
+            linear: $this->shouldRunLinearPrompts($effectiveProvider, $globalIssueTrackerProviders),
+            linearTeamKey: $this->shouldRunLinearTeamKeyPrompt($effectiveProvider, $globalIssueTrackerProviders),
+        );
     }
 
     /**

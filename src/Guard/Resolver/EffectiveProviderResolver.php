@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Guard\Resolver;
 
-use App\Config\EffectiveIssueTrackerCredentials;
-use App\Config\GlobalStudConfigKeys;
-use App\Config\ProjectStudConfigKeys;
 use App\Enum\IssueTrackerProvider;
+use App\Service\DualTrackerPolicy;
 use App\Service\GlobalConfigProviderResolver;
 use App\Service\IssueTrackerResolver;
 
@@ -22,6 +20,7 @@ class EffectiveProviderResolver
     public function __construct(
         private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),
         private readonly IssueTrackerResolver $issueTrackerResolver = new IssueTrackerResolver(),
+        private readonly DualTrackerPolicy $dualTracker = new DualTrackerPolicy(),
     ) {
     }
 
@@ -77,7 +76,7 @@ class EffectiveProviderResolver
             return ['providers' => [$active['provider']], 'ambiguous' => false];
         }
 
-        if ($dualAutoAggregate && $this->isProjectAuto($projectConfig) && $this->isDualPmWithCredentials($globalConfig, $projectConfig)) {
+        if ($dualAutoAggregate && $this->dualTracker->isDualAuto($globalConfig, $projectConfig)) {
             return [
                 'providers' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
                 'ambiguous' => false,
@@ -88,35 +87,5 @@ class EffectiveProviderResolver
             'providers' => $this->globalResolver->resolveIssueTrackerProviders($globalConfig),
             'ambiguous' => true,
         ];
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    private function isProjectAuto(array $projectConfig): bool
-    {
-        $stored = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
-        if ($stored === null) {
-            return true;
-        }
-
-        return $stored === IssueTrackerProvider::Auto->value;
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
-    private function isDualPmWithCredentials(array $globalConfig, array $projectConfig = []): bool
-    {
-        $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
-        $providers = $this->globalResolver->resolveIssueTrackerProviders($globalConfig);
-        if (! $this->globalResolver->collectsJira($providers)
-            || ! $this->globalResolver->collectsLinear($providers)) {
-            return false;
-        }
-
-        return GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, $globalConfig)
-            && GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Linear, $globalConfig);
     }
 }

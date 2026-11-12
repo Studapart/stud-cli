@@ -11,7 +11,7 @@ use App\Service\Prompt\PromptInterface;
 class ItemCreatePromptService
 {
     public function __construct(
-        private readonly JiraApiClient $jiraService,
+        private readonly ?JiraApiClient $jiraService,
         private readonly IssueFieldResolver $fieldResolver,
         private readonly PromptInterface $prompt,
     ) {
@@ -27,7 +27,7 @@ class ItemCreatePromptService
         ExtraFieldPromptContext $context,
         array $extraRequiredFieldIds,
     ): ?array {
-        if (! $interactive) {
+        if (! $interactive || $this->jiraService === null) {
             return null;
         }
 
@@ -83,8 +83,8 @@ class ItemCreatePromptService
 
         return match ($kind) {
             StudIssueKeys::PROJECT => [StudIssueKeys::PROJECT => [StudIssueKeys::KEY => $state->projectKey]],
-            StudIssueKeys::REPORTER => [StudIssueKeys::REPORTER => [StudIssueKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()]],
-            StudIssueKeys::ASSIGNEE => [StudIssueKeys::ASSIGNEE => [StudIssueKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()]],
+            StudIssueKeys::REPORTER => $this->accountField(StudIssueKeys::REPORTER),
+            StudIssueKeys::ASSIGNEE => $this->accountField(StudIssueKeys::ASSIGNEE),
             StudIssueKeys::ISSUE_TYPE => $this->promptIssueTypeValue($state->projectKey, $state->issueTypeId, $context->typeExplicitlyProvided, $allFields),
             StudIssueKeys::TITLE => [StudIssueKeys::TITLE => (string) $state->fields[StudIssueKeys::TITLE]],
             StudIssueKeys::DESCRIPTION => ($v = $this->promptDescriptionValue($context->descriptionAdf)) !== null ? [StudIssueKeys::DESCRIPTION => $v] : null,
@@ -113,6 +113,9 @@ class ItemCreatePromptService
 
     public function chooseIssueTypeInteractively(string $projectKey): ?string
     {
+        if ($this->jiraService === null) {
+            return null;
+        }
         $issueTypes = $this->jiraService->getCreateMetaIssueTypes($projectKey);
         if ($issueTypes === []) {
             return null;
@@ -139,10 +142,24 @@ class ItemCreatePromptService
             return $descriptionAdf;
         }
         $answer = $this->prompt->ask(MessageRef::key('item.create.prompt_description_required'));
-        if ($answer === null || trim($answer) === '') {
+        if ($answer === null || trim($answer) === '' || $this->jiraService === null) {
             return null;
         }
 
         return $this->jiraService->plainTextToDescriptionAdf(trim($answer));
+    }
+
+    /**
+     * Builds the account payload for reporter or assignee. Null when Jira is not configured.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function accountField(string $field): ?array
+    {
+        if ($this->jiraService === null) {
+            return null;
+        }
+
+        return [$field => [StudIssueKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()]];
     }
 }
