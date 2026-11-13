@@ -48,8 +48,7 @@ class ItemCreateResponder
         if (! $response->isSuccess() || $response->key === null) {
             return null;
         }
-        $baseUrl = rtrim($this->jiraConfig['JIRA_URL'] ?? '', '/');
-        $url = $baseUrl !== '' ? $baseUrl . '/browse/' . $response->key : $response->self;
+        $url = $this->successUrl($response);
         $message = $this->translator->trans('item.create.success', [
             'key' => $response->key,
             'url' => $url,
@@ -63,6 +62,21 @@ class ItemCreateResponder
         $this->noteFieldList('item.create.note_update_warnings', $response->updateWarnings);
 
         return null;
+    }
+
+    /**
+     * A Jira result links to the browse page. A Linear result already carries its own URL.
+     */
+    protected function successUrl(ItemCreateResponse $response): string
+    {
+        $baseUrl = rtrim($this->jiraConfig['JIRA_URL'] ?? '', '/');
+        $self = $response->self ?? '';
+        $foreignUrl = $baseUrl !== '' && str_starts_with($self, 'http') && ! str_starts_with($self, $baseUrl);
+        if ($baseUrl !== '' && ! $foreignUrl) {
+            return $baseUrl . '/browse/' . $response->key;
+        }
+
+        return $self;
     }
 
     /**
