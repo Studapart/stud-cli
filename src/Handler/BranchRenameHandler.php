@@ -187,9 +187,9 @@ class BranchRenameHandler implements GitRepositoryAware
     /**
      * @param array<string, mixed> $pr
      */
-    protected function updatePullRequestAfterRename(array $pr, string $oldName, string $newName): void
+    protected function createPullRequestAfterRename(array $pr, string $oldName, string $newName): void
     {
-        $this->prCoordinator->updatePullRequestAfterRename($this->recorder, $pr, $oldName, $newName);
+        $this->prCoordinator->createPullRequestAfterRename($this->recorder, $pr, $oldName, $newName);
     }
 
     protected function commentOnNewPullRequest(string $oldName, string $newName): void

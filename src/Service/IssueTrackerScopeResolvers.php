@@ -8,7 +8,7 @@ final class IssueTrackerScopeResolvers
 {
     public function __construct(
         public readonly ProjectScopeKeyResolver $scope = new ProjectScopeKeyResolver(),
-        public readonly GlobalConfigProviderResolver $global = new GlobalConfigProviderResolver(),
+        public readonly DualTrackerPolicy $dualTracker = new DualTrackerPolicy(),
     ) {
     }
 }

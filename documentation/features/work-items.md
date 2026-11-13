@@ -48,7 +48,7 @@ Essential `items:*` commands that accept `--provider` include `items:show`, `ite
 |---------|-------|---------------|--------------|-------|
 | `items:list` | `ls` | Yes — merges Jira + Linear | Yes | Agent JSON may include per-issue `provider` when both ran |
 | `items:show` | `sh` | No — key resolves provider | Yes | |
-| `items:create` | `ic` | No | Yes | |
+| `items:create` | `ic` | No — project lookup picks Jira, then Linear. Jira is skipped when it is not configured. A pinned Linear create continues to Linear when the Jira lookup errors | Yes | |
 | `items:update` | `iu` | No | Yes | |
 | `items:start` | `start` | No | Yes | |
 | `items:transition` | `tx` | No — key or **current branch** resolves provider | Yes | Omitting the key peeks `PROJ-123` from the branch name for dual-PM `auto` |

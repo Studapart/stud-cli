@@ -38,7 +38,7 @@ echo '{"gitProvider":"github"}' | stud config:project-init --agent
 - `stud pr:comment` / `stud pc`: comment on the active pull request
 - `stud pr:comments` / `stud pcs`: fetch PR conversations
 - `stud branches:list` and `stud branches:clean`: include PR state
-- `stud branch:rename`: update PR context where supported
+- `stud branch:rename`: when the branch has an open PR, creates a new PR for the renamed branch and comments on it with the old and new names. GitHub's "Update a pull request" endpoint does not accept a new head branch (checked 2026-11-12; GitHub may change this later), so the existing PR is not renamed.
 
 ## GitHub Actions
 

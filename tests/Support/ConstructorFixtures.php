@@ -13,11 +13,11 @@ use App\Handler\ItemCreatePrompts;
 use App\Handler\ItemListHandler;
 use App\Handler\ReleaseHandler;
 use App\Handler\SubmitHandler;
+use App\Service\DualTrackerPolicy;
 use App\Service\FetchHintIssueTrackerPort;
 use App\Service\FileSystem;
 use App\Service\GitHostingPort;
 use App\Service\GitRepository;
-use App\Service\GlobalConfigProviderResolver;
 use App\Service\IssueTrackerClients;
 use App\Service\IssueTrackerFactory;
 use App\Service\IssueTrackerFetchFailureHintBuilder;
@@ -25,6 +25,7 @@ use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
 use App\Service\IssueTrackerResolver;
 use App\Service\IssueTrackerScopeResolvers;
+use App\Service\ItemCreatePortSource;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ProjectScopeKeyResolver;
 use App\Service\Prompt\PromptInterface;
@@ -55,13 +56,13 @@ final class ConstructorFixtures
         IssueTrackerPortSupplier $portSupplier,
         ItemListConfigs $configs,
         ?ProjectScopeKeyResolver $scopeKeyResolver = null,
-        ?GlobalConfigProviderResolver $globalProviderResolver = null,
+        ?DualTrackerPolicy $dualTracker = null,
     ): ItemListHandler {
         return new ItemListHandler(
             $portSupplier,
             $configs,
             $scopeKeyResolver ?? new ProjectScopeKeyResolver(),
-            $globalProviderResolver ?? new GlobalConfigProviderResolver(),
+            $dualTracker ?? new DualTrackerPolicy(),
         );
     }
 
@@ -85,7 +86,7 @@ final class ConstructorFixtures
         IssueTrackerPort $provider,
         ItemCreateFieldFlow $fieldFlow,
     ): ItemCreateHandler {
-        return new ItemCreateHandler($projectResolver, $prompts, $provider, $fieldFlow);
+        return new ItemCreateHandler($projectResolver, $prompts, ItemCreatePortSource::pinned($provider), $fieldFlow);
     }
 
     public static function fetchHintPort(

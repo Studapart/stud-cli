@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\DTO\ItemCreateMatch;
+use App\DTO\MessageRef;
 use App\DTO\Project;
 use App\Exception\ApiException;
+use App\Exception\IssueTrackerException;
 use App\Service\GitRepository;
 use App\Service\ItemCreateLinearLookup;
 use App\Service\ItemCreateProjectResolver;
@@ -65,8 +68,9 @@ class ItemCreateProjectResolverTest extends TestCase
 
         $project = $this->createResolver($this->linearApiClient)->ensureProjectExists(false, 'SCI');
 
-        $this->assertInstanceOf(Project::class, $project);
+        $this->assertInstanceOf(ItemCreateMatch::class, $project);
         $this->assertSame('ENG', $project->key);
+        $this->assertSame('linear', $project->provider);
     }
 
     public function testResolveLinearScopeKeyPrefersConfiguredLinearTeamKey(): void
@@ -129,8 +133,73 @@ class ItemCreateProjectResolverTest extends TestCase
 
         $project = $this->createResolver($this->linearApiClient, $logger)->ensureProjectExists(false, 'SCI');
 
-        $this->assertInstanceOf(Project::class, $project);
+        $this->assertInstanceOf(ItemCreateMatch::class, $project);
         $this->assertSame('SCI', $project->key);
+        $this->assertSame('linear', $project->provider);
+    }
+
+    public function testEnsureProjectExistsTagsJiraProjectWithJiraProvider(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->with('SCI')
+            ->willReturn(new Project('SCI', 'Stud CLI'));
+
+        $project = $this->createResolver()->ensureProjectExists(false, 'SCI');
+
+        $this->assertSame('jira', $project?->provider);
+    }
+
+    public function testEnsureProjectExistsLooksUpARePromptedKeyInJiraThenLinear(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->gitRepository->method('readProjectConfig')->willReturn([]);
+
+        $this->jiraApiClient->expects($this->exactly(2))
+            ->method('getProject')
+            ->willReturnCallback(function (string $key): Project {
+                throw new ApiException("Project \"{$key}\" not found.", 'details', 404);
+            });
+        $this->linearApiClient->expects($this->exactly(2))
+            ->method('getTeamByKey')
+            ->willReturnCallback(function (string $key): ?Project {
+                return $key === 'ENG' ? new Project('ENG', 'Engineering') : null;
+            });
+        $this->prompt->expects($this->once())
+            ->method('ask')
+            ->willReturn('ENG');
+
+        $project = $this->createResolver($this->linearApiClient)->ensureProjectExists(true, 'BAD');
+
+        $this->assertInstanceOf(ItemCreateMatch::class, $project);
+        $this->assertSame('ENG', $project->key);
+        $this->assertSame('linear', $project->provider);
+    }
+
+    public function testEnsureProjectExistsUsesTheTypedKeyWhenConfigAlreadyNamesALinearTeam(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->gitRepository->method('readProjectConfig')->willReturn(['linearTeamKey' => 'ENG']);
+
+        $this->jiraApiClient->expects($this->exactly(2))
+            ->method('getProject')
+            ->willThrowException(new ApiException('Not found', 'details', 404));
+        $this->linearApiClient->expects($this->exactly(2))
+            ->method('getTeamByKey')
+            ->willReturnCallback(function (string $key): ?Project {
+                return $key === 'OPS' ? new Project('OPS', 'Operations') : null;
+            });
+        $this->prompt->expects($this->once())->method('ask')->willReturn('OPS');
+
+        $project = $this->createResolver($this->linearApiClient)->ensureProjectExists(true, 'BAD');
+
+        $this->assertSame('OPS', $project?->key);
+        $this->assertSame('linear', $project?->provider);
     }
 
     public function testEnsureProjectExistsReturnsNullWhenNeitherJiraNorLinearResolve(): void
@@ -148,5 +217,112 @@ class ItemCreateProjectResolverTest extends TestCase
             ->willReturn(null);
 
         $this->assertNull($this->createResolver($this->linearApiClient)->ensureProjectExists(false, 'MISSING'));
+    }
+
+    public function testEnsureProjectExistsSkipsJiraWhenItIsNotConfigured(): void
+    {
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->linearApiClient->expects($this->once())
+            ->method('getTeamByKey')
+            ->with('OPS')
+            ->willReturn(new Project('OPS', 'Operations'));
+
+        $resolver = new ItemCreateProjectResolver(
+            $this->gitRepository,
+            null,
+            $this->prompt,
+            new ItemCreateLinearLookup($this->linearApiClient),
+        );
+        $this->gitRepository->method('readProjectConfig')->willReturn([]);
+
+        $match = $resolver->ensureProjectExists(false, 'OPS');
+
+        $this->assertInstanceOf(ItemCreateMatch::class, $match);
+        $this->assertSame('OPS', $match->key);
+        $this->assertSame('linear', $match->provider);
+    }
+
+    public function testEnsureProjectExistsStopsOnJiraAuthenticationFailure(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->willThrowException(new ApiException('Unauthorized', 'details', 401));
+        $this->linearApiClient->expects($this->never())->method('getTeamByKey');
+        $this->prompt->expects($this->never())->method('ask');
+
+        $result = $this->createResolver($this->linearApiClient)->ensureProjectExists(true, 'SCI');
+
+        $this->assertInstanceOf(MessageRef::class, $result);
+        $this->assertSame('issue_tracker_provider.missing_jira_configuration', $result->key);
+    }
+
+    public function testEnsureProjectExistsDoesNotTryLinearWhenJiraFailsForAnotherReason(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->willThrowException(new ApiException('Unavailable', 'details', 500));
+        $this->linearApiClient->expects($this->never())->method('getTeamByKey');
+
+        $result = $this->createResolver($this->linearApiClient)->ensureProjectExists(false, 'SCI');
+
+        $this->assertInstanceOf(MessageRef::class, $result);
+        $this->assertSame('item.create.error_project_not_found', $result->key);
+        $this->assertSame(['key' => 'SCI'], $result->parameters);
+    }
+
+    public function testEnsureProjectExistsReturnsTheLinearCredentialMessageWhenLinearRejectsAuth(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->willThrowException(new ApiException('Not found', 'details', 404));
+        $this->linearApiClient->expects($this->once())
+            ->method('getTeamByKey')
+            ->willThrowException(IssueTrackerException::missingLinearApiKey());
+
+        $result = $this->createResolver($this->linearApiClient)->ensureProjectExists(false, 'SCI');
+
+        $this->assertInstanceOf(MessageRef::class, $result);
+        $this->assertSame('issue_tracker_provider.missing_linear_api_key', $result->key);
+    }
+
+    public function testEnsureProjectExistsReturnsTheLinearCredentialMessageWhenLinearReturnsUnauthorized(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->willThrowException(new ApiException('Not found', 'details', 404));
+        $this->linearApiClient->expects($this->once())
+            ->method('getTeamByKey')
+            ->willThrowException(new ApiException('Unauthorized', 'details', 401));
+
+        $result = $this->createResolver($this->linearApiClient)->ensureProjectExists(false, 'SCI');
+
+        $this->assertInstanceOf(MessageRef::class, $result);
+        $this->assertSame('issue_tracker_provider.missing_linear_api_key', $result->key);
+    }
+
+    public function testEnsureProjectExistsReturnsNotFoundWhenTheLinearLookupFails(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->willThrowException(new ApiException('Not found', 'details', 404));
+        $this->linearApiClient->expects($this->once())
+            ->method('getTeamByKey')
+            ->willThrowException(new ApiException('Linear GraphQL request failed.', 'details', 500));
+
+        $result = $this->createResolver($this->linearApiClient)->ensureProjectExists(true, 'SCI');
+
+        $this->assertInstanceOf(MessageRef::class, $result);
+        $this->assertSame('item.create.error_project_not_found', $result->key);
     }
 }

@@ -11,7 +11,7 @@ use App\DTO\MessageRef;
 class IssueFieldResolver
 {
     public function __construct(
-        private readonly JiraApiClient $jiraService,
+        private readonly ?JiraApiClient $jiraService,
         private readonly DurationParser $durationParser
     ) {
     }
@@ -31,7 +31,7 @@ class IssueFieldResolver
     public function resolveIssueTypeId(string $projectKey, string $typeName): ?string
     {
         try {
-            $issueTypes = $this->jiraService->getCreateMetaIssueTypes($projectKey);
+            $issueTypes = $this->jiraService?->getCreateMetaIssueTypes($projectKey) ?? [];
         } catch (\Throwable) {
             return null;
         }
@@ -56,7 +56,7 @@ class IssueFieldResolver
             StudIssueKeys::TITLE => $content->summary,
         ];
         $description = $content->description;
-        if ($description !== null && $description !== '') {
+        if ($description !== null && $description !== '' && $this->jiraService !== null) {
             $descriptionFormat = $content->descriptionFormat;
             $format = ($descriptionFormat !== null && trim($descriptionFormat) !== '') ? trim($descriptionFormat) : 'plain';
             $fields[StudIssueKeys::DESCRIPTION] = $this->jiraService->descriptionToAdf($description, $format);
@@ -126,8 +126,8 @@ class IssueFieldResolver
         }
         match ($nameLower) {
             StudIssueKeys::PROJECT => $fields[StudIssueKeys::PROJECT] = [StudIssueKeys::KEY => $fieldValues['projectKey']],
-            StudIssueKeys::REPORTER => $fields[StudIssueKeys::REPORTER] = [StudIssueKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()],
-            StudIssueKeys::ASSIGNEE => $fields[StudIssueKeys::ASSIGNEE] = [StudIssueKeys::ACCOUNT_ID => $fieldValues['assigneeOption'] ?? $this->jiraService->getCurrentUserAccountId()],
+            StudIssueKeys::REPORTER => $fields[StudIssueKeys::REPORTER] = [StudIssueKeys::ACCOUNT_ID => $this->jiraService?->getCurrentUserAccountId()],
+            StudIssueKeys::ASSIGNEE => $fields[StudIssueKeys::ASSIGNEE] = [StudIssueKeys::ACCOUNT_ID => $fieldValues['assigneeOption'] ?? $this->jiraService?->getCurrentUserAccountId()],
             'summary' => $fields[StudIssueKeys::TITLE] = $fieldValues['title'],
             StudIssueKeys::DESCRIPTION => $fields[StudIssueKeys::DESCRIPTION] = $fieldValues['descriptionAdf'] ?? [],
             'issue type', 'issuetype' => $fields[StudIssueKeys::ISSUE_TYPE] = [StudIssueKeys::ID => $fieldValues['issueTypeId']],
@@ -153,7 +153,7 @@ class IssueFieldResolver
             if (strtolower($name) === StudIssueKeys::ASSIGNEE) {
                 $accountId = $assigneeOption !== null
                     ? $assigneeOption
-                    : $this->jiraService->getCurrentUserAccountId();
+                    : $this->jiraService?->getCurrentUserAccountId();
                 $fields[StudIssueKeys::ASSIGNEE] = [StudIssueKeys::ACCOUNT_ID => $accountId];
 
                 break;
@@ -283,6 +283,10 @@ class IssueFieldResolver
      */
     public function getExtraRequiredFieldsList(string $projectKey, string $issueTypeId, array $extraRequiredFieldIds): string
     {
+        if ($this->jiraService === null) {
+            return implode(', ', $extraRequiredFieldIds);
+        }
+
         try {
             $allFields = $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
         } catch (\Throwable) {

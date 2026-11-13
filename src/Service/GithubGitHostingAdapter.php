@@ -304,23 +304,6 @@ class GithubGitHostingAdapter implements GitHostingPort
     }
 
     /**
-     * Attempts to update the head branch of a pull request.
-     *
-     * @param int $pullNumber The pull request number
-     * @param string $newHead The new head branch (format: owner:branch-name or just branch-name)
-     * @return array<string, mixed> Updated PR data
-     * @throws \RuntimeException If the API doesn't support this operation or returns an error
-     */
-    public function updatePullRequestHead(int $pullNumber, string $newHead): array
-    {
-        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}";
-
-        return $this->apiClient->request('PATCH', $apiUrl, "Failed to update pull request head for PR #{$pullNumber}.", [
-            'json' => ['head' => $newHead],
-        ])->toArray();
-    }
-
-    /**
      * @return PullRequestComment[]
      */
     public function getPullRequestComments(int $issueNumber): array
