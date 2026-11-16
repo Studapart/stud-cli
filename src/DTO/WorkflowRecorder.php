@@ -192,6 +192,9 @@ final class WorkflowRecorder implements WorkflowEntryRecorder
     {
         $this->entries = array_merge($this->entries, $response->entries);
         $this->messages = array_merge($this->messages, $response->getMessages());
+        if ($this->pullNumber === null && $response->pullNumber !== null) {
+            $this->pullNumber = $response->pullNumber;
+        }
     }
 
     /**

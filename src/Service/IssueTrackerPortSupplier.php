@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Config\EffectiveIssueTrackerCredentials;
-use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
@@ -78,8 +77,7 @@ class IssueTrackerPortSupplier
             return $this->resolveForProvider($explicitProvider, $globalConfig, $projectConfig);
         }
 
-        $effectiveConfig = $this->withProjectCredentials($globalConfig, $projectConfig);
-        if ($this->shouldInferProviderFromScope($effectiveConfig, $projectConfig)) {
+        if ($this->scopes->dualTracker->isDualAuto($globalConfig, $projectConfig)) {
             $inferred = $this->scopes->scope->resolveProviderForDiscoveryScope($scopeKey, $projectConfig);
             if (! $inferred['ok']) {
                 return $inferred;
@@ -138,36 +136,6 @@ class IssueTrackerPortSupplier
         }
 
         return $stored;
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
-    private function shouldInferProviderFromScope(array $globalConfig, array $projectConfig): bool
-    {
-        if (! $this->isDualPmConfigured($globalConfig)) {
-            return false;
-        }
-
-        $stored = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
-
-        return $stored === null || $stored === IssueTrackerProvider::Auto->value;
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     */
-    private function isDualPmConfigured(array $globalConfig): bool
-    {
-        $providers = $this->scopes->global->resolveIssueTrackerProviders($globalConfig);
-        if (! $this->scopes->global->collectsJira($providers)
-            || ! $this->scopes->global->collectsLinear($providers)) {
-            return false;
-        }
-
-        return GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, $globalConfig)
-            && GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Linear, $globalConfig);
     }
 
     /**

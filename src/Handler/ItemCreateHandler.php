@@ -8,7 +8,10 @@ use App\DTO\ExtraFieldPromptContext;
 use App\DTO\IssueCreateContent;
 use App\DTO\IssueCreationState;
 use App\DTO\ItemCreateInput;
+use App\DTO\ItemCreateMatch;
+use App\DTO\ItemCreateTarget;
 use App\DTO\MessageRef;
+use App\Enum\IssueTrackerProvider;
 use App\Exception\ApiException;
 use App\Exception\IssueTrackerException;
 use App\Exception\LinearTypeLabelException;
@@ -17,6 +20,7 @@ use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\ItemCreateResponse;
 use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\IssueTrackerPort;
+use App\Service\ItemCreatePortSource;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\StudIssueKeys;
 
@@ -25,18 +29,22 @@ class ItemCreateHandler implements JiraAware
     public function __construct(
         private readonly ItemCreateProjectResolver $projectResolver,
         private readonly ItemCreatePrompts $prompts,
-        private readonly IssueTrackerPort $provider,
+        private readonly ItemCreatePortSource $portSource,
         private readonly ItemCreateFieldFlow $fieldFlow,
     ) {
     }
 
     public function handle(bool $interactive, ItemCreateInput $input): ItemCreateResponse
     {
-        $projectKeyOrError = $this->resolveProjectKeyOrError($interactive, $input->project);
-        if ($projectKeyOrError instanceof ItemCreateResponse) {
-            return $projectKeyOrError;
+        $matchOrError = $this->resolveProjectOrError($interactive, $input->project);
+        if ($matchOrError instanceof ItemCreateResponse) {
+            return $matchOrError;
         }
-        $projectKey = $projectKeyOrError;
+        $portOrError = $this->portSource->portFor($matchOrError->provider);
+        if ($portOrError instanceof MessageRef) {
+            return ItemCreateResponse::error($portOrError);
+        }
+        $target = new ItemCreateTarget($portOrError, $matchOrError->key, $matchOrError->provider);
         $type = $this->fieldFlow->fields->resolveIssueTypeName($input->type, $input->parentKey);
 
         $summary = $this->resolveSummary($interactive, $input->summary);
@@ -44,7 +52,7 @@ class ItemCreateHandler implements JiraAware
             return ItemCreateResponse::error(MessageRef::key('item.create.error_no_summary'));
         }
 
-        $stateOrError = $this->resolveTypeMetadata($projectKey, $type, $summary, $input);
+        $stateOrError = $this->resolveTypeMetadata($target, $type, $summary, $input);
         if ($stateOrError instanceof ItemCreateResponse) {
             return $stateOrError;
         }
@@ -56,17 +64,19 @@ class ItemCreateHandler implements JiraAware
 
         $skippedOptionalFields = $this->fieldFlow->options->apply($stateOrError, $input);
 
-        return $this->createIssueAndReturnResponse($stateOrError->fields, $skippedOptionalFields, $stateOrError);
+        return $this->createIssueAndReturnResponse($target->port, $stateOrError->fields, $skippedOptionalFields, $stateOrError);
     }
 
     protected function resolveTypeMetadata(
-        string $projectKey,
+        ItemCreateTarget $target,
         string $type,
         string $summary,
         ItemCreateInput $input
     ): IssueCreationState|ItemCreateResponse {
-        if ($this->provider instanceof IssueTrackerLabelGroupsCapable) {
-            return $this->resolveLabelGroupsCapableCreateMetadata($projectKey, $type, $summary, $input);
+        $provider = $target->port;
+        $projectKey = $target->projectKey;
+        if ($this->fieldFlow->jira->unwrap($provider) instanceof IssueTrackerLabelGroupsCapable) {
+            return $this->resolveLabelGroupsCapableCreateMetadata($target, $type, $summary, $input);
         }
 
         $issueTypeId = $this->fieldFlow->fields->resolveIssueTypeId($projectKey, $type);
@@ -75,7 +85,7 @@ class ItemCreateHandler implements JiraAware
         }
 
         try {
-            $allFieldsMeta = $this->provider->getCreateMetaFields($projectKey, $issueTypeId);
+            $allFieldsMeta = $provider->getCreateMetaFields($projectKey, $issueTypeId);
         } catch (\Throwable) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => 'Could not fetch field metadata']));
         }
@@ -92,15 +102,19 @@ class ItemCreateHandler implements JiraAware
     }
 
     protected function resolveLabelGroupsCapableCreateMetadata(
-        string $projectKey,
+        ItemCreateTarget $target,
         string $type,
         string $summary,
         ItemCreateInput $input,
     ): IssueCreationState|ItemCreateResponse {
-        $linearScopeKey = $this->projectResolver->resolveLinearScopeKey($projectKey) ?? $projectKey;
+        $provider = $target->port;
+        $projectKey = $target->projectKey;
+        $linearScopeKey = $target->provider === IssueTrackerProvider::Linear->value
+            ? $projectKey
+            : ($this->projectResolver->resolveLinearScopeKey($projectKey) ?? $projectKey);
 
         try {
-            $allFieldsMeta = $this->provider->getCreateMetaFields($linearScopeKey, $type);
+            $allFieldsMeta = $provider->getCreateMetaFields($linearScopeKey, $type);
         } catch (\Throwable) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => 'Could not fetch field metadata']));
         }
@@ -116,7 +130,7 @@ class ItemCreateHandler implements JiraAware
             $format = ($input->descriptionFormat !== null && trim($input->descriptionFormat) !== '')
                 ? trim($input->descriptionFormat)
                 : 'plain';
-            $fields[StudIssueKeys::DESCRIPTION] = $this->provider->formatDescription($description, $format);
+            $fields[StudIssueKeys::DESCRIPTION] = $provider->formatDescription($description, $format);
         }
 
         if ($input->parentKey !== null && trim($input->parentKey) !== '') {
@@ -190,26 +204,27 @@ class ItemCreateHandler implements JiraAware
      * @param list<string> $skippedOptionalFields
      */
     protected function createIssueAndReturnResponse(
+        IssueTrackerPort $provider,
         array $fields,
         array $skippedOptionalFields,
         IssueCreationState $state,
     ): ItemCreateResponse {
-        if (! $this->provider instanceof IssueTrackerLabelGroupsCapable
-            && $this->fieldFlow->jira->isJiraBacked($this->provider)) {
-            return $this->fieldFlow->deferral->create($this->provider, $state, $skippedOptionalFields);
+        if (! $provider instanceof IssueTrackerLabelGroupsCapable
+            && $this->fieldFlow->jira->isJiraBacked($provider)) {
+            return $this->fieldFlow->deferral->create($provider, $state, $skippedOptionalFields);
         }
 
-        return $this->createDirectly($fields, $skippedOptionalFields);
+        return $this->createDirectly($provider, $fields, $skippedOptionalFields);
     }
 
     /**
      * @param array<string, mixed> $fields
      * @param list<string> $skippedOptionalFields
      */
-    protected function createDirectly(array $fields, array $skippedOptionalFields): ItemCreateResponse
+    protected function createDirectly(IssueTrackerPort $provider, array $fields, array $skippedOptionalFields): ItemCreateResponse
     {
         try {
-            $result = $this->provider->create($fields);
+            $result = $provider->create($fields);
 
             return ItemCreateResponse::success($result['key'], $result['self'], $skippedOptionalFields);
         } catch (LinearTypeLabelException $e) {
@@ -229,20 +244,39 @@ class ItemCreateHandler implements JiraAware
     }
 
     /**
-     * @return ItemCreateResponse|string
+     * @return ItemCreateResponse|ItemCreateMatch
      */
-    protected function resolveProjectKeyOrError(bool $interactive, ?string $project): ItemCreateResponse|string
+    protected function resolveProjectOrError(bool $interactive, ?string $project): ItemCreateResponse|ItemCreateMatch
     {
         $projectKey = $this->projectResolver->resolveProjectKey($interactive, $project);
         if ($projectKey === null) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_no_project'));
         }
-        $projectDto = $this->projectResolver->ensureProjectExists($interactive, $projectKey);
-        if ($projectDto === null) {
+        $match = $this->projectResolver->ensureProjectExists($interactive, $projectKey, $this->pinnedLinearTracker());
+        if ($match instanceof MessageRef) {
+            return ItemCreateResponse::error($match);
+        }
+        if ($match === null) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_project_not_found', ['key' => $projectKey]));
         }
 
-        return $projectDto->key;
+        return $match;
+    }
+
+    /**
+     * The tracker already chosen for this run, when that choice is Linear.
+     */
+    protected function pinnedLinearTracker(): ?string
+    {
+        $port = $this->portSource->pinnedPort();
+        if ($port === null) {
+            return null;
+        }
+        if ($this->fieldFlow->jira->unwrap($port) instanceof IssueTrackerLabelGroupsCapable) {
+            return IssueTrackerProvider::Linear->value;
+        }
+
+        return null;
     }
 
     protected function resolveSummary(bool $interactive, ?string $summary): ?string

@@ -149,6 +149,7 @@ use App\Service\CommandReferenceGenerator;
 use App\Service\ConfigRemediationService;
 use App\Service\ConfluenceApiClient;
 use App\Service\ConfluenceWikiAdapter;
+use App\Service\DualTrackerPolicy;
 use App\Service\FetchHintIssueTrackerPort;
 use App\Service\FileSystem;
 use App\Service\GitBranchService;
@@ -167,6 +168,7 @@ use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
 use App\Service\IssueTrackerResolver;
 use App\Service\ItemCreateLinearLookup;
+use App\Service\ItemCreatePortSource;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
 use App\Service\JiraApiClient;
@@ -681,11 +683,21 @@ function _get_branch_clean_handler(): BranchCleanHandler
     );
 }
 
+function _get_item_create_port_source(?string $providerOverride): ItemCreatePortSource
+{
+    $globalConfig = _get_config();
+    $projectConfig = _project_config_or_empty();
+    if ((new DualTrackerPolicy())->createTakesTrackerFromLookup($providerOverride, $globalConfig, $projectConfig)) {
+        return ItemCreatePortSource::lookedUp(_get_issue_tracker_port_supplier(), $globalConfig, $projectConfig);
+    }
+
+    return ItemCreatePortSource::pinned(_require_issue_tracker($providerOverride));
+}
+
 function _get_item_create_handler(?string $providerOverride = null): ItemCreateHandler
 {
     $prompt = _get_prompt();
-    $jiraService = _get_jira_api_client();
-    $provider = _require_issue_tracker($providerOverride);
+    $jiraService = _get_jira_api_client_if_configured();
 
     $workItemLabels = \App\Config\ProjectStudConfigKeys::readLabelList(
         _project_config_or_empty(),
@@ -693,7 +705,7 @@ function _get_item_create_handler(?string $providerOverride = null): ItemCreateH
     );
 
     $fieldsParser = _get_fields_parser();
-    $fieldResolver = _get_issue_field_resolver();
+    $fieldResolver = new \App\Service\IssueFieldResolver($jiraService, _get_duration_parser());
 
     return new ItemCreateHandler(
         new ItemCreateProjectResolver(
@@ -703,7 +715,7 @@ function _get_item_create_handler(?string $providerOverride = null): ItemCreateH
             new ItemCreateLinearLookup(_get_linear_api_client(), _get_logger()),
         ),
         new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($jiraService, $fieldResolver, $prompt), $prompt),
-        $provider,
+        _get_item_create_port_source($providerOverride),
         new \App\Handler\ItemCreateFieldFlow(
             $fieldResolver,
             new \App\Service\ItemCreateFieldsOptionApplier($fieldsParser, $workItemLabels),
@@ -935,7 +947,7 @@ function _get_github_provider(): ?GithubGitHostingAdapter
 
 function _get_issue_tracker_factory(): IssueTrackerFactory
 {
-    return new IssueTrackerFactory();
+    return new IssueTrackerFactory(gitRepository: _get_git_repository());
 }
 
 /**
@@ -1128,11 +1140,6 @@ function _get_agent_message_renderer(): MessageRenderer
 function _get_duration_parser(): \App\Service\DurationParser
 {
     return new \App\Service\DurationParser();
-}
-
-function _get_issue_field_resolver(): \App\Service\IssueFieldResolver
-{
-    return new \App\Service\IssueFieldResolver(_get_jira_api_client(), _get_duration_parser());
 }
 
 function _get_fields_parser(): \App\Service\FieldsParser
@@ -3062,7 +3069,7 @@ function items_create(
     $handler = _get_item_create_handler($providerOverride ?? $provider);
     $input = new ItemCreateInput($project, $type, $summary, $description, $descriptionFormat, $parent, $fields, $fieldsMap);
     $response = $handler->handle($interactive, $input);
-    $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config(), _get_logger());
+    $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config_or_empty(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);

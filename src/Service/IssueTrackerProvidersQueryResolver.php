@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use App\Config\EffectiveIssueTrackerCredentials;
-use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\Enum\IssueTrackerProvider;
 
@@ -16,7 +14,7 @@ final class IssueTrackerProvidersQueryResolver
 {
     public function __construct(
         private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
-        private readonly GlobalConfigProviderResolver $globalProviderResolver = new GlobalConfigProviderResolver(),
+        private readonly DualTrackerPolicy $dualTracker = new DualTrackerPolicy(),
     ) {
     }
 
@@ -45,7 +43,7 @@ final class IssueTrackerProvidersQueryResolver
             return $this->resolveForScope(trim($scopeKey), $globalConfig, $projectConfig);
         }
 
-        if ($this->shouldDualAutoAggregate($globalConfig, $projectConfig)) {
+        if ($this->dualTracker->isDualAuto($globalConfig, $projectConfig)) {
             return [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value];
         }
 
@@ -72,27 +70,10 @@ final class IssueTrackerProvidersQueryResolver
             return [IssueTrackerProvider::Linear->value];
         }
 
-        if ($this->shouldDualAutoAggregate($globalConfig, $projectConfig)) {
+        if ($this->dualTracker->isDualAuto($globalConfig, $projectConfig)) {
             return [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value];
         }
 
         return [];
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
-    private function shouldDualAutoAggregate(array $globalConfig, array $projectConfig): bool
-    {
-        $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
-        $providers = $this->globalProviderResolver->resolveIssueTrackerProviders($globalConfig);
-        if (! $this->globalProviderResolver->collectsJira($providers)
-            || ! $this->globalProviderResolver->collectsLinear($providers)) {
-            return false;
-        }
-
-        return GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, $globalConfig)
-            && GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Linear, $globalConfig);
     }
 }

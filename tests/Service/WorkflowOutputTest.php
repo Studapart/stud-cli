@@ -54,6 +54,17 @@ final class WorkflowOutputTest extends TestCase
         self::assertNull($response->pullNumber);
     }
 
+    public function testAbsorbResponseContinuesTheSequence(): void
+    {
+        $other = new \App\DTO\WorkflowRecorder();
+        $other->addText(\App\Contract\WorkflowEntryRecorder::VERBOSITY_NORMAL, 'created pull request');
+        $output = new WorkflowOutput($this->createStub(PromptInterface::class));
+
+        $output->absorbResponse($other->toResponse(0));
+
+        self::assertCount(1, $output->getEntries());
+    }
+
     public function testSetPullNumberCarriesIntoResponse(): void
     {
         $output = new WorkflowOutput($this->createStub(PromptInterface::class));
