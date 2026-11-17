@@ -6,6 +6,50 @@ namespace App\Service;
 
 class WorkflowCommandMap
 {
+    private const WORKFLOW_SIMPLE_COMMANDS = [
+        'please' => [
+            'alias' => 'pl',
+            'description_key' => 'help.command_please',
+            'options' => [
+                ['name' => '--flatten', 'shortcut' => null, 'description_key' => 'help.option_flatten', 'argument' => null],
+            ],
+            'arguments' => [],
+        ],
+        'flatten' => [
+            'alias' => 'ft',
+            'description_key' => 'help.command_flatten',
+            'options' => [],
+            'arguments' => [],
+        ],
+        'sync' => [
+            'alias' => 'sy',
+            'description_key' => 'sync.help_description',
+            'options' => [],
+            'arguments' => [],
+        ],
+        'switch' => [
+            'alias' => 'sw',
+            'description_key' => 'branch.switch.help_description',
+            'options' => [
+                ['name' => '--sync', 'shortcut' => '-s', 'description_key' => 'branch.switch.option_sync', 'argument' => null],
+                ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
+            ],
+            'arguments' => ['<key>'],
+        ],
+        'cache:clear' => [
+            'alias' => 'cc',
+            'description_key' => 'help.command_cache_clear',
+            'options' => [],
+            'arguments' => [],
+        ],
+        'status' => [
+            'alias' => 'ss',
+            'description_key' => 'help.command_status',
+            'options' => [],
+            'arguments' => [],
+        ],
+    ];
+
     /**
      * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
      */
@@ -65,59 +109,9 @@ class WorkflowCommandMap
     private static function workflowCommands(): array
     {
         return array_merge(
-            self::workflowSimpleCommands(),
+            self::WORKFLOW_SIMPLE_COMMANDS,
             self::workflowSubmitCommands(),
         );
-    }
-
-    /**
-     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
-     */
-    private static function workflowSimpleCommands(): array
-    {
-        return [
-            'please' => [
-                'alias' => 'pl',
-                'description_key' => 'help.command_please',
-                'options' => [
-                    ['name' => '--flatten', 'shortcut' => null, 'description_key' => 'help.option_flatten', 'argument' => null],
-                ],
-                'arguments' => [],
-            ],
-            'flatten' => [
-                'alias' => 'ft',
-                'description_key' => 'help.command_flatten',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'sync' => [
-                'alias' => 'sy',
-                'description_key' => 'sync.help_description',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'switch' => [
-                'alias' => 'sw',
-                'description_key' => 'branch.switch.help_description',
-                'options' => [
-                    ['name' => '--sync', 'shortcut' => '-s', 'description_key' => 'branch.switch.option_sync', 'argument' => null],
-                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
-                ],
-                'arguments' => ['<key>'],
-            ],
-            'cache:clear' => [
-                'alias' => 'cc',
-                'description_key' => 'help.command_cache_clear',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'status' => [
-                'alias' => 'ss',
-                'description_key' => 'help.command_status',
-                'options' => [],
-                'arguments' => [],
-            ],
-        ];
     }
 
     /**

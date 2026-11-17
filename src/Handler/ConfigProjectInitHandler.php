@@ -8,13 +8,11 @@ use App\Config\AgentInputAliases;
 use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\ProjectStudConfigFieldMap;
 use App\Config\ProjectStudConfigKeys;
-use App\Config\SecretKeyPolicy;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\WorkflowRecorder;
 use App\Enum\IssueTrackerProvider;
 use App\Response\ConfigProjectInitResponse;
 use App\Service\GitRepository;
-use App\Service\GitSetupService;
 
 /**
  * Creates or merges project-level stud config (.git/stud.config) via agent JSON or interactive prompts.
@@ -23,8 +21,9 @@ class ConfigProjectInitHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly GitSetupService $gitSetupService,
+        private readonly ConfigProjectInitPatchWriter $patchWriter,
         private readonly ConfigProjectInitPromptCollector $promptCollector,
+        private readonly ConfigProjectInitAgentInput $agentInput,
     ) {
     }
 
@@ -45,120 +44,26 @@ class ConfigProjectInitHandler
 
         if ($isAgent) {
             $rawAgentInput = AgentInputAliases::normalize($rawAgentInput);
-            $reserved = $this->findReservedAgentKeys($rawAgentInput);
-            if ($reserved !== []) {
-                return ConfigProjectInitResponse::error('config.project_init.reserved_keys', [
-                    '%keys%' => implode(', ', $reserved),
-                ]);
-            }
-            $unknown = $this->findUnknownAgentKeys($rawAgentInput);
-            if ($unknown !== []) {
-                return ConfigProjectInitResponse::error('config.project_init.unknown_keys', [
-                    '%keys%' => implode(', ', $unknown),
-                ]);
-            }
-            $transitionErr = $this->validateAgentTransitionIdInput($rawAgentInput);
-            if ($transitionErr !== null) {
-                return ConfigProjectInitResponse::error($transitionErr);
+            $agentInputError = $this->agentInput->validate($rawAgentInput);
+            if ($agentInputError !== null) {
+                return $agentInputError;
             }
         }
 
         $patches = $isAgent
-            ? $this->extractAgentValuePatches($rawAgentInput)
+            ? $this->agentInput->patches($rawAgentInput)
             : $this->gatherInteractivePatches($recorder ?? new WorkflowRecorder());
         $this->normalizeInputKeyPatches($patches);
 
         $yamlPatches = $this->normalizeToYamlPatches($patches);
         $this->normalizeBaseBranchStorageForm($yamlPatches);
         $yamlPatches = $this->dropWhitespaceOnlyStringPatches($yamlPatches);
-        if ($yamlPatches === []) {
-            $existing = $this->gitRepository->readProjectConfig();
-
-            return ConfigProjectInitResponse::success(false, SecretKeyPolicy::redact($existing));
+        $validationError = $this->validateYamlPatches($yamlPatches);
+        if ($validationError !== null) {
+            return $validationError;
         }
 
-        $normalizedError = $this->validateYamlPatches($yamlPatches);
-        if ($normalizedError !== null) {
-            return $normalizedError;
-        }
-
-        if (isset($yamlPatches['baseBranch']) && ! $skipBaseBranchRemoteCheck) {
-            try {
-                $this->gitSetupService->validateBaseBranchOnRemote((string) $yamlPatches['baseBranch']);
-            } catch (\RuntimeException $e) {
-                return ConfigProjectInitResponse::error('config.project_init.base_branch_error', [
-                    '%message%' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        $existing = $this->gitRepository->readProjectConfig();
-        $merged = $existing;
-        foreach ($yamlPatches as $key => $value) {
-            $merged[$key] = $value;
-        }
-
-        $this->gitRepository->writeProjectConfig($merged);
-        $written = $this->gitRepository->readProjectConfig();
-
-        return ConfigProjectInitResponse::success(true, SecretKeyPolicy::redact($written));
-    }
-
-    /**
-     * @param array<string, mixed> $rawAgentInput
-     * @return list<string>
-     */
-    protected function findUnknownAgentKeys(array $rawAgentInput): array
-    {
-        $allowed = ProjectStudConfigFieldMap::allowedInputKeys();
-        $unknown = [];
-        foreach (array_keys($rawAgentInput) as $key) {
-            if (! in_array($key, $allowed, true)) {
-                $unknown[] = (string) $key;
-            }
-        }
-        sort($unknown);
-
-        return $unknown;
-    }
-
-    /**
-     * @param array<string, mixed> $rawAgentInput
-     * @return list<string>
-     */
-    protected function findReservedAgentKeys(array $rawAgentInput): array
-    {
-        $found = [];
-        foreach (ProjectStudConfigFieldMap::RESERVED_YAML_KEYS as $key) {
-            if (array_key_exists($key, $rawAgentInput)) {
-                $found[] = $key;
-            }
-        }
-        sort($found);
-
-        return $found;
-    }
-
-    /**
-     * @param array<string, mixed> $rawAgentInput
-     */
-    protected function validateAgentTransitionIdInput(array $rawAgentInput): ?string
-    {
-        if (! array_key_exists('transitionId', $rawAgentInput)) {
-            return null;
-        }
-        $v = $rawAgentInput['transitionId'];
-        if ($v === null) {
-            return null;
-        }
-        if (is_int($v) && $v >= 0) {
-            return null;
-        }
-        if (is_string($v) && ctype_digit(trim($v))) {
-            return null;
-        }
-
-        return 'config.project_init.invalid_transition_id';
+        return $this->patchWriter->write($yamlPatches, $skipBaseBranchRemoteCheck);
     }
 
     /**
@@ -319,98 +224,5 @@ class ConfigProjectInitHandler
     protected function gatherInteractivePatches(WorkflowEntryRecorder $recorder): array
     {
         return $this->promptCollector->collect($recorder);
-    }
-
-    /**
-     * @param array<string, mixed> $rawAgentInput
-     * @return array<string, mixed>
-     */
-    protected function extractAgentValuePatches(array $rawAgentInput): array
-    {
-        $out = [];
-        foreach (array_keys(ProjectStudConfigFieldMap::INPUT_TO_YAML) as $key) {
-            if (! array_key_exists($key, $rawAgentInput)) {
-                continue;
-            }
-            $value = $rawAgentInput[$key];
-            if ($value === null) {
-                continue;
-            }
-            $coerced = $this->coerceAgentValue($key, $value);
-            if (is_string($coerced) && trim($coerced) === '') {
-                continue;
-            }
-            if (is_array($coerced) && $coerced === []) {
-                continue;
-            }
-            $out[$key] = $coerced;
-        }
-
-        return $out;
-    }
-
-    protected function coerceAgentValue(string $key, mixed $value): mixed
-    {
-        if ($key === 'transitionId') {
-            return (int) $value;
-        }
-
-        if ($key === 'gitProvider' && is_string($value)) {
-            return strtolower(trim($value));
-        }
-
-        if ($key === 'issueTrackerProvider' && is_string($value)) {
-            return strtolower(trim($value));
-        }
-
-        if ($key === 'linearTypeBranchPrefixes' && is_array($value)) {
-            return $this->normalizeLinearTypeBranchPrefixes($value);
-        }
-
-        if (in_array($key, [ProjectStudConfigKeys::WORK_ITEM_LABELS, ProjectStudConfigKeys::PULL_REQUEST_LABELS], true)) {
-            return $this->coerceLabelListValue($value);
-        }
-
-        if (is_string($value)) {
-            return trim($value);
-        }
-
-        return $value;
-    }
-
-    protected function coerceLabelListValue(mixed $value): mixed
-    {
-        if (! is_array($value)) {
-            return $value;
-        }
-        foreach ($value as $label) {
-            if (! is_string($label)) {
-                return $value;
-            }
-        }
-
-        return ProjectStudConfigKeys::normalizeLabelList($value);
-    }
-
-    /**
-     * @param array<mixed, mixed> $prefixes
-     * @return array<string, string>
-     */
-    protected function normalizeLinearTypeBranchPrefixes(array $prefixes): array
-    {
-        $out = [];
-        foreach ($prefixes as $typeLabel => $prefix) {
-            if (! is_string($typeLabel) || ! is_string($prefix)) {
-                continue;
-            }
-            $label = trim($typeLabel);
-            $normalizedPrefix = trim($prefix);
-            if ($label === '' || $normalizedPrefix === '') {
-                continue;
-            }
-            $out[$label] = $normalizedPrefix;
-        }
-
-        return $out;
     }
 }

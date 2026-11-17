@@ -42,8 +42,11 @@ final class FilterShowResponse extends AbstractResponse
         return new self(true, null, $issues, $filterName, $issueProviders, $multiProvider, $messages);
     }
 
-    public static function error(MessageRef|string $error): self
+    /**
+     * @param list<ResponseMessage> $messages
+     */
+    public static function error(MessageRef|string $error, array $messages = []): self
     {
-        return new self(false, $error, [], '');
+        return new self(false, $error, [], '', [], false, $messages);
     }
 }

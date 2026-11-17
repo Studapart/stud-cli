@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler\GlobalInit;
 
 use App\Contract\WorkflowEntryRecorder;
+use App\DTO\InitPromptField;
 use App\DTO\MessageRef;
 use App\Handler\InitPromptInputHelper;
 use App\Service\GitTokenPromptResolver;
@@ -16,12 +17,15 @@ use App\Service\Prompt\PromptInterface;
  */
 class GitProviderTokensCollector
 {
+    private readonly GitProviderTokenResolver $tokenResolver;
+
     public function __construct(
         private readonly GlobalConfigProviderResolver $providerResolver,
-        private readonly InitPromptInputHelper $inputHelper,
-        private readonly GitTokenPromptResolver $gitTokenPromptResolver,
-        private readonly PromptInterface $prompt,
+        InitPromptInputHelper $inputHelper,
+        GitTokenPromptResolver $gitTokenPromptResolver,
+        PromptInterface $prompt,
     ) {
+        $this->tokenResolver = new GitProviderTokenResolver($inputHelper, $gitTokenPromptResolver, $prompt);
     }
 
     /**
@@ -29,10 +33,9 @@ class GitProviderTokensCollector
      */
     public function collect(GlobalInitPromptContext $context): array
     {
-        $gitProviders = $context->gitProviders;
         $existing = $context->existingConfig;
-        $collectsGithub = $this->providerResolver->collectsGithub($gitProviders);
-        $collectsGitlab = $this->providerResolver->collectsGitlab($gitProviders);
+        $collectsGithub = $this->providerResolver->collectsGithub($context->gitProviders);
+        $collectsGitlab = $this->providerResolver->collectsGitlab($context->gitProviders);
 
         if (($collectsGithub || $collectsGitlab) && ! $context->isAgent) {
             $context->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.git.title'));
@@ -43,33 +46,17 @@ class GitProviderTokensCollector
             ]);
         }
 
-        $githubTokenPrompt = MessageRef::key('config.init.git.github_token_prompt', [], 'Enter your GitHub PAT (leave blank to keep existing or skip)');
-        $gitlabTokenPrompt = MessageRef::key('config.init.git.gitlab_token_prompt', [], 'Enter your GitLab PAT (leave blank to keep existing or skip)');
-
-        $githubTokenInput = $collectsGithub
-            ? ($context->isAgent ? ($context->rawAgentInput['githubToken'] ?? null) : $this->prompt->askHidden($githubTokenPrompt))
-            : null;
-        $gitlabTokenInput = $collectsGitlab
-            ? ($context->isAgent ? ($context->rawAgentInput['gitlabToken'] ?? null) : $this->prompt->askHidden($gitlabTokenPrompt))
-            : null;
-
         return [
-            'GITHUB_TOKEN' => $collectsGithub
-                ? $this->gitTokenPromptResolver->resolveForGlobalInit(
-                    is_string($githubTokenInput) ? $githubTokenInput : null,
-                    'GITHUB_TOKEN',
-                    $existing,
-                    (string) $githubTokenPrompt,
-                )
-                : $this->inputHelper->nonEmptyStoredString(is_string($existing['GITHUB_TOKEN'] ?? null) ? $existing['GITHUB_TOKEN'] : null),
-            'GITLAB_TOKEN' => $collectsGitlab
-                ? $this->gitTokenPromptResolver->resolveForGlobalInit(
-                    is_string($gitlabTokenInput) ? $gitlabTokenInput : null,
-                    'GITLAB_TOKEN',
-                    $existing,
-                    (string) $gitlabTokenPrompt,
-                )
-                : $this->inputHelper->nonEmptyStoredString(is_string($existing['GITLAB_TOKEN'] ?? null) ? $existing['GITLAB_TOKEN'] : null),
+            'GITHUB_TOKEN' => $this->tokenResolver->resolve($collectsGithub, $context, 'GITHUB_TOKEN', new InitPromptField(
+                'githubToken',
+                $existing['GITHUB_TOKEN'] ?? null,
+                MessageRef::key('config.init.git.github_token_prompt', [], 'Enter your GitHub PAT (leave blank to keep existing or skip)'),
+            )),
+            'GITLAB_TOKEN' => $this->tokenResolver->resolve($collectsGitlab, $context, 'GITLAB_TOKEN', new InitPromptField(
+                'gitlabToken',
+                $existing['GITLAB_TOKEN'] ?? null,
+                MessageRef::key('config.init.git.gitlab_token_prompt', [], 'Enter your GitLab PAT (leave blank to keep existing or skip)'),
+            )),
         ];
     }
 }

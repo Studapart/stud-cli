@@ -61,26 +61,15 @@ class UpdateHandler
         }
 
         $pharAsset = $this->releaseFlow->fetcher->findPharAsset($release, $this->recorder());
-        if (! $pharAsset) {
-            return $this->recorder()->toResponse(1);
-        }
-
-        $tempFile = $this->downloadPhar($pharAsset);
+        $tempFile = $pharAsset ? $this->downloadPhar($pharAsset) : null;
         if ($tempFile === null) {
             return $this->recorder()->toResponse(1);
         }
 
-        $verificationResult = $this->installer->verifyHash($this->recorder(), $tempFile, $pharAsset, $quiet);
-        if ($verificationResult === false) {
-            return $this->recorder()->toResponse($this->cleanupAndReturn($tempFile, 1));
+        $exitCode = $this->installer->verifyHash($this->recorder(), $tempFile, $pharAsset, $quiet) ? $this->runPrerequisiteMigrations() : 1;
+        if ($exitCode !== 0) {
+            return $this->recorder()->toResponse($this->cleanupAndReturn($tempFile, $exitCode));
         }
-
-        $migrationResult = $this->runPrerequisiteMigrations();
-        // @codeCoverageIgnoreStart
-        if ($migrationResult !== 0) {
-            return $this->recorder()->toResponse($this->cleanupAndReturn($tempFile, $migrationResult));
-        }
-        // @codeCoverageIgnoreEnd
 
         return $this->recorder()->toResponse($this->installer->replaceBinary($this->recorder(), $tempFile, $this->target));
     }

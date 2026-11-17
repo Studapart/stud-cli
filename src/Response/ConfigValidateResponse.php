@@ -89,39 +89,20 @@ final class ConfigValidateResponse extends AbstractResponse
         ?string $gitProvider = null,
         array $messages = [],
     ): self {
-        $jira = $pings->jira;
-        $git = $pings->git;
-        $linear = $pings->linear;
-
-        $integrations = [];
-        if ($jira->status !== self::STATUS_SKIPPED) {
-            $integrations['jira'] = $jira;
-        }
-        if ($linear->status !== self::STATUS_SKIPPED) {
-            $integrations['linear'] = $linear;
-        }
-        if ($git->status !== self::STATUS_SKIPPED && $gitProvider !== null) {
-            $integrations[$gitProvider] = $git;
-        }
-
-        $success = ($jira->status !== self::STATUS_FAIL)
-            && ($git->status !== self::STATUS_FAIL)
-            && ($linear->status !== self::STATUS_FAIL);
-
-        $globalRollup = $success ? ConfigReadinessEvaluator::ROLLUP_OK : ConfigReadinessEvaluator::ROLLUP_FAIL;
+        $success = ! $pings->hasFailure();
 
         return new self(
             $success,
             $success ? null : 'config.validate.error_readiness_failed',
-            $globalRollup,
+            $success ? ConfigReadinessEvaluator::ROLLUP_OK : ConfigReadinessEvaluator::ROLLUP_FAIL,
             ConfigReadinessEvaluator::ROLLUP_NOT_APPLICABLE,
-            $integrations,
-            $jira->status,
-            $jira->message,
-            $git->status,
-            $git->message,
-            $linear->status,
-            $linear->message,
+            $pings->checkedIntegrations($gitProvider),
+            $pings->jira->status,
+            $pings->jira->message,
+            $pings->git->status,
+            $pings->git->message,
+            $pings->linear->status,
+            $pings->linear->message,
             $gitProvider,
             $messages,
         );

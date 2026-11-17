@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\MessageRef;
 use App\DTO\WorkItem;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\FilterShowHandler;
 use App\Response\FilterShowResponse;
 use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
+use App\Service\IssueTrackerProviderFanOut;
+use App\Service\IssueTrackerProvidersQueryResolver;
 use App\Tests\CommandTestCase;
 
 class FilterShowHandlerTest extends CommandTestCase
@@ -78,7 +81,7 @@ class FilterShowHandlerTest extends CommandTestCase
         $portSupplier = $this->createStub(\App\Service\IssueTrackerPortSupplier::class);
         $portSupplier->method('resolve')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
         $portSupplier->method('resolveForProvider')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
-        $handler = new FilterShowHandler($portSupplier, [], []);
+        $handler = $this->createHandler($portSupplier, [], []);
 
         $this->issueTracker->expects($this->once())->method('runFilterOrView')->willReturn([]);
 
@@ -94,7 +97,7 @@ class FilterShowHandlerTest extends CommandTestCase
             'ok' => false,
             'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured'),
         ]);
-        $handler = new FilterShowHandler($portSupplier, [], []);
+        $handler = $this->createHandler($portSupplier, [], []);
 
         $response = $handler->handle('My Filter', null);
 
@@ -108,7 +111,7 @@ class FilterShowHandlerTest extends CommandTestCase
             'ok' => false,
             'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured'),
         ]);
-        $handler = new FilterShowHandler($supplier, [], []);
+        $handler = $this->createHandler($supplier, [], []);
 
         $response = $handler->handle('My Filter', 'jira');
 
@@ -151,7 +154,7 @@ class FilterShowHandlerTest extends CommandTestCase
             },
         );
 
-        $handler = new FilterShowHandler(
+        $handler = $this->createHandler(
             $supplier,
             $this->dualGlobalConfig(),
             $this->dualProjectConfig(),
@@ -186,7 +189,7 @@ class FilterShowHandlerTest extends CommandTestCase
             },
         );
 
-        $handler = new FilterShowHandler(
+        $handler = $this->createHandler(
             $supplier,
             $this->dualGlobalConfig(),
             ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI', 'linearTeamKey' => 'ENG'],
@@ -196,6 +199,133 @@ class FilterShowHandlerTest extends CommandTestCase
 
         $this->assertTrue($response->isSuccess());
         $this->assertCount(1, $response->issues);
+    }
+
+    public function testHandleDualAutoReturnsFetchErrorWhenOtherProviderIsEmpty(): void
+    {
+        $jiraPort = $this->createStub(IssueTrackerPort::class);
+        $jiraPort->method('runFilterOrView')->willThrowException(new \RuntimeException('Jira down'));
+        $linearPort = $this->createStub(IssueTrackerPort::class);
+        $linearPort->method('runFilterOrView')->willReturn([]);
+
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
+        $supplier->method('resolveForProvider')->willReturnCallback(
+            static function (string $provider, mixed ...$ignored) use ($jiraPort, $linearPort): array {
+                return match ($provider) {
+                    IssueTrackerProvider::Jira->value => ['ok' => true, 'provider' => 'jira', 'port' => $jiraPort],
+                    IssueTrackerProvider::Linear->value => ['ok' => true, 'provider' => 'linear', 'port' => $linearPort],
+                    default => ['ok' => false, 'error' => 'unknown'],
+                };
+            },
+        );
+
+        $handler = $this->createHandler(
+            $supplier,
+            $this->dualGlobalConfig(),
+            ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI', 'linearTeamKey' => 'ENG'],
+        );
+
+        $response = $handler->handle('Shared Filter', null);
+
+        $this->assertFalse($response->isSuccess());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'filter.show.error_fetch');
+        $this->assertSame('Jira down', $message->parameters['error']);
+    }
+
+    public function testHandleDualAutoReturnsResolutionErrorWhenOtherProviderIsEmpty(): void
+    {
+        $linearPort = $this->createStub(IssueTrackerPort::class);
+        $linearPort->method('runFilterOrView')->willReturn([]);
+
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
+        $supplier->method('resolveForProvider')->willReturnCallback(
+            static function (string $provider, mixed ...$ignored) use ($linearPort): array {
+                return match ($provider) {
+                    IssueTrackerProvider::Jira->value => ['ok' => false, 'error' => MessageRef::key('issue_tracker_provider.not_configured')],
+                    IssueTrackerProvider::Linear->value => ['ok' => true, 'provider' => 'linear', 'port' => $linearPort],
+                    default => ['ok' => false, 'error' => 'unknown'],
+                };
+            },
+        );
+
+        $handler = $this->createHandler(
+            $supplier,
+            $this->dualGlobalConfig(),
+            ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI', 'linearTeamKey' => 'ENG'],
+        );
+
+        $response = $handler->handle('Shared Filter', null);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef($response->getErrorMessage(), 'issue_tracker_provider.not_configured');
+        $this->assertFalse($response->hasDiagnostics());
+    }
+
+    public function testHandleDualAutoKeepsLaterFetchFailuresOnTheError(): void
+    {
+        $jiraPort = $this->createStub(IssueTrackerPort::class);
+        $jiraPort->method('runFilterOrView')->willThrowException(new \RuntimeException('Jira down'));
+        $linearPort = $this->createStub(IssueTrackerPort::class);
+        $linearPort->method('runFilterOrView')->willThrowException(new \RuntimeException('Linear down'));
+
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
+        $supplier->method('resolveForProvider')->willReturnCallback(
+            static function (string $provider, mixed ...$ignored) use ($jiraPort, $linearPort): array {
+                return match ($provider) {
+                    IssueTrackerProvider::Jira->value => ['ok' => true, 'provider' => 'jira', 'port' => $jiraPort],
+                    IssueTrackerProvider::Linear->value => ['ok' => true, 'provider' => 'linear', 'port' => $linearPort],
+                    default => ['ok' => false, 'error' => 'unknown'],
+                };
+            },
+        );
+
+        $handler = $this->createHandler(
+            $supplier,
+            $this->dualGlobalConfig(),
+            ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI', 'linearTeamKey' => 'ENG'],
+        );
+
+        $response = $handler->handle('Shared Filter', null);
+
+        $this->assertFalse($response->isSuccess());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'filter.show.error_fetch');
+        $this->assertSame('Jira down', $message->parameters['error']);
+        $warnings = $response->getWarnings();
+        $this->assertCount(1, $warnings);
+        $later = $this->assertMessageRef($warnings[0]->message, 'filter.show.error_fetch');
+        $this->assertSame('Linear down', $later->parameters['error']);
+    }
+
+    public function testHandleDualAutoKeepsResolutionWarningBesideAFetchFailure(): void
+    {
+        $jiraPort = $this->createStub(IssueTrackerPort::class);
+        $jiraPort->method('runFilterOrView')->willThrowException(new \RuntimeException('Jira down'));
+
+        $supplier = $this->createStub(IssueTrackerPortSupplier::class);
+        $supplier->method('resolveForProvider')->willReturnCallback(
+            static function (string $provider, mixed ...$ignored) use ($jiraPort): array {
+                return match ($provider) {
+                    IssueTrackerProvider::Jira->value => ['ok' => true, 'provider' => 'jira', 'port' => $jiraPort],
+                    IssueTrackerProvider::Linear->value => ['ok' => false, 'error' => MessageRef::key('issue_tracker_provider.not_configured')],
+                    default => ['ok' => false, 'error' => 'unknown'],
+                };
+            },
+        );
+
+        $handler = $this->createHandler(
+            $supplier,
+            $this->dualGlobalConfig(),
+            ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI', 'linearTeamKey' => 'ENG'],
+        );
+
+        $response = $handler->handle('Shared Filter', null);
+
+        $this->assertFalse($response->isSuccess());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'filter.show.error_fetch');
+        $this->assertSame('Jira down', $message->parameters['error']);
+        $warnings = $response->getWarnings();
+        $this->assertCount(1, $warnings);
+        $this->assertMessageRef($warnings[0]->message, 'issue_tracker_provider.not_configured');
     }
 
     /**
@@ -231,10 +361,27 @@ class FilterShowHandlerTest extends CommandTestCase
         $portSupplier->method('resolveForProvider')
             ->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
 
-        $this->handler = new FilterShowHandler(
+        $this->handler = $this->createHandler(
             $portSupplier,
             ['ISSUE_TRACKER_PROVIDERS' => ['jira']],
             ['issueTrackerProvider' => 'jira'],
         );
+    }
+
+    /**
+     * @param array<string, mixed> $globalConfig
+     * @param array<string, mixed> $projectConfig
+     */
+    private function createHandler(
+        IssueTrackerPortSupplier $portSupplier,
+        array $globalConfig = [],
+        array $projectConfig = [],
+    ): FilterShowHandler {
+        return new FilterShowHandler(new IssueTrackerProviderFanOut(
+            $portSupplier,
+            $globalConfig,
+            $projectConfig,
+            new IssueTrackerProvidersQueryResolver(),
+        ));
     }
 }

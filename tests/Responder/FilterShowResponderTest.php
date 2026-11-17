@@ -2,11 +2,14 @@
 
 namespace App\Tests\Responder;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
 use App\DTO\WorkItem;
 use App\Enum\OutputFormat;
 use App\Responder\FilterShowResponder;
 use App\Response\FilterShowResponse;
 use App\Service\ColorHelper;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -169,6 +172,59 @@ class FilterShowResponderTest extends CommandTestCase
         $this->assertNotNull($result);
         $this->assertFalse($result->success);
         $this->assertSame('API error', $result->error);
+        $this->assertSame([], $result->diagnostics);
+    }
+
+    public function testRespondJsonIncludesFurtherFetchFailures(): void
+    {
+        $response = FilterShowResponse::error(
+            'Jira down',
+            [ResponseMessage::warning(MessageRef::key('filter.show.error_fetch', ['error' => 'Linear down']))],
+        );
+
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
+        $this->assertArrayHasKey('warnings', $result->diagnostics);
+        $this->assertCount(1, $result->diagnostics['warnings']);
+        $this->assertStringContainsString('Linear down', (string) $result->diagnostics['warnings'][0]['message']);
+    }
+
+    public function testRespondLogsFurtherFailuresOnTheCli(): void
+    {
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('warning')
+            ->with(Logger::VERBOSITY_NORMAL, $this->isInstanceOf(MessageRef::class));
+        $logger->expects($this->never())->method('note');
+        $logger->expects($this->never())->method('section');
+        $responder = new FilterShowResponder(
+            new ResponderHelper($this->translationService, null),
+            ['JIRA_URL' => 'https://jira.example.com'],
+            $logger,
+        );
+        $response = FilterShowResponse::error(
+            'Jira down',
+            [ResponseMessage::warning(MessageRef::key('filter.show.error_fetch', ['error' => 'Linear down']))],
+        );
+
+        $this->assertNull($responder->respond($this->io, $response));
+    }
+
+    public function testRespondSkipsTheEmptyNoteWhenTheFilterFails(): void
+    {
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->never())->method('warning');
+        $logger->expects($this->never())->method('note');
+        $logger->expects($this->never())->method('section');
+        $responder = new FilterShowResponder(
+            new ResponderHelper($this->translationService, null),
+            ['JIRA_URL' => 'https://jira.example.com'],
+            $logger,
+        );
+
+        $this->assertNull($responder->respond($this->io, FilterShowResponse::error('filter missing')));
     }
 
     private function bindSubject(): void

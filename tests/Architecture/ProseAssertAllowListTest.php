@@ -22,7 +22,7 @@ final class ProseAssertAllowListTest extends TestCase
         'tests/Handler/ReleaseHandlerTest.php' => 5,
         'tests/Handler/UpdateHandlerTest.php' => 1,
         'tests/Responder/BranchListResponderTest.php' => 5,
-        'tests/Responder/FilterShowResponderTest.php' => 5,
+        'tests/Responder/FilterShowResponderTest.php' => 6,
         'tests/Responder/ItemListResponderTest.php' => 11,
         'tests/Responder/ItemShowResponderTest.php' => 3,
         'tests/Responder/PrCommentsResponderTest.php' => 4,

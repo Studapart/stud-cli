@@ -9,22 +9,21 @@ use App\Response\AgentJsonResponse;
 use App\Response\ItemUploadResponse;
 use App\Service\Logger;
 use App\Service\ResponderHelper;
-use App\View\Column;
-use App\View\PageViewConfig;
-use App\View\Section;
-use App\View\TableBlock;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemUploadResponder
 {
+    private readonly AttachmentFilesTable $filesTable;
+
     /**
      * @param array<string, mixed> $jiraConfig
      */
     public function __construct(
         private readonly ResponderHelper $helper,
-        private readonly array $jiraConfig,
+        array $jiraConfig,
         private readonly Logger $logger,
     ) {
+        $this->filesTable = new AttachmentFilesTable($helper, $logger, $jiraConfig);
     }
 
     public function respond(
@@ -47,26 +46,7 @@ class ItemUploadResponder
         if ($response->files === []) {
             $this->logger->note(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('item.upload.none'));
         } else {
-            $rows = [];
-            foreach ($response->files as $row) {
-                $obj = new \stdClass();
-                $obj->filename = $row['filename'];
-                $obj->path = $row['path'];
-                $rows[] = $obj;
-            }
-
-            $viewConfig = new PageViewConfig([
-                new Section(
-                    '',
-                    [
-                        new TableBlock([
-                            new Column('filename', 'item.upload.col_filename', fn ($item) => $item->filename),
-                            new Column('path', 'item.upload.col_path', fn ($item) => $item->path),
-                        ]),
-                    ]
-                ),
-            ], $this->helper->translator, $this->helper->colorHelper);
-            $viewConfig->render($rows, $this->logger, ['jiraConfig' => $this->jiraConfig]);
+            $this->filesTable->render($response->files, 'item.upload.col_filename', 'item.upload.col_path');
         }
 
         $this->renderPerFileErrors($response);

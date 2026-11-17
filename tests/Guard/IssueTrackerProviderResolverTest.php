@@ -216,9 +216,11 @@ final class IssueTrackerProviderResolverTest extends TestCase
             throw new \RuntimeException('boom');
         });
         $resolver = new IssueTrackerProviderResolver(
-            new \App\Guard\Resolver\IssueTrackerResolutionDeps(
-                factory: $factory,
-                resolver: new \App\Service\IssueTrackerResolver(factory: $factory),
+            configuredResolver: new \App\Guard\Resolver\ConfiguredProviderResolver(
+                new \App\Guard\Resolver\IssueTrackerResolutionDeps(
+                    factory: $factory,
+                    resolver: new \App\Service\IssueTrackerResolver(factory: $factory),
+                ),
             ),
         );
 
@@ -239,7 +241,9 @@ final class IssueTrackerProviderResolverTest extends TestCase
         $factory->method('resolveType')->willThrowException(
             IssueTrackerResolutionException::unknownPrefix('OPS', 'SCI (jira)'),
         );
-        $resolver = new IssueTrackerProviderResolver(new \App\Guard\Resolver\IssueTrackerResolutionDeps(factory: $factory));
+        $resolver = new IssueTrackerProviderResolver(
+            new \App\Guard\Resolver\ProviderHintResolver(new \App\Guard\Resolver\IssueTrackerResolutionDeps(factory: $factory)),
+        );
 
         $result = $resolver->resolve(new ProviderResolutionRequest(
             commandName: 'items:show',
@@ -266,9 +270,11 @@ final class IssueTrackerProviderResolverTest extends TestCase
             return IssueTrackerProvider::Jira->value;
         });
         $resolver = new IssueTrackerProviderResolver(
-            new \App\Guard\Resolver\IssueTrackerResolutionDeps(
-                factory: $factory,
-                resolver: new \App\Service\IssueTrackerResolver(factory: $factory),
+            configuredResolver: new \App\Guard\Resolver\ConfiguredProviderResolver(
+                new \App\Guard\Resolver\IssueTrackerResolutionDeps(
+                    factory: $factory,
+                    resolver: new \App\Service\IssueTrackerResolver(factory: $factory),
+                ),
             ),
         );
 
@@ -332,9 +338,11 @@ final class IssueTrackerProviderResolverTest extends TestCase
             throw IssueTrackerResolutionException::unknownPrefix('OPS', 'SCI (jira)');
         });
         $resolver = new IssueTrackerProviderResolver(
-            new \App\Guard\Resolver\IssueTrackerResolutionDeps(
-                factory: $factory,
-                resolver: new \App\Service\IssueTrackerResolver(factory: $factory),
+            configuredResolver: new \App\Guard\Resolver\ConfiguredProviderResolver(
+                new \App\Guard\Resolver\IssueTrackerResolutionDeps(
+                    factory: $factory,
+                    resolver: new \App\Service\IssueTrackerResolver(factory: $factory),
+                ),
             ),
         );
 

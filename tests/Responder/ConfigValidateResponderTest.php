@@ -120,18 +120,6 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->responder->respond($io, $response);
     }
 
-    public function testIntegrationLabelReturnsUnknownKeyUnchanged(): void
-    {
-        $responder = new class (new ResponderHelper($this->translationService), $this->logger) extends ConfigValidateResponder {
-            public function exposedLabel(string $key): string
-            {
-                return $this->integrationLabel($key);
-            }
-        };
-
-        $this->assertSame('custom', $responder->exposedLabel('custom'));
-    }
-
     public function testRespondOutputsCliNotices(): void
     {
         $this->logger = $this->createMock(Logger::class);

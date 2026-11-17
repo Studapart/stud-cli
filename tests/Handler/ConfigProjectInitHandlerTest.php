@@ -7,7 +7,9 @@ namespace App\Tests\Handler;
 use App\Config\SecretKeyPolicy;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
+use App\Handler\ConfigProjectInitAgentInput;
 use App\Handler\ConfigProjectInitHandler;
+use App\Handler\ConfigProjectInitPatchWriter;
 use App\Handler\ConfigProjectInitPromptCollector;
 use App\Response\ConfigProjectInitResponse;
 use App\Service\GitRepository;
@@ -23,7 +25,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], false, false);
 
         $this->assertFalse($response->isSuccess());
@@ -38,7 +40,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['badKey' => 'x'], false, true);
 
         $this->assertFalse($response->isSuccess());
@@ -53,7 +55,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['migration_version' => '9'], false, true);
 
         $this->assertFalse($response->isSuccess());
@@ -68,7 +70,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['transitionId' => 1.5], false, true);
 
         $this->assertFalse($response->isSuccess());
@@ -83,7 +85,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], false, true);
 
         $this->assertTrue($response->isSuccess());
@@ -113,7 +115,7 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['projectKey' => 'sci', 'baseBranch' => 'origin/main'], false, true);
 
         $this->assertTrue($response->isSuccess());
@@ -135,7 +137,7 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['baseBranch' => 'feature-x'], true, true);
 
         $this->assertTrue($response->isSuccess());
@@ -149,7 +151,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['transitionId' => -1], false, true);
 
         $this->assertFalse($response->isSuccess());
@@ -164,7 +166,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['gitProvider' => 'bitbucket'], false, true);
 
         $this->assertFalse($response->isSuccess());
@@ -186,7 +188,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['jiraDefaultProject' => 'xyz'], false, true);
 
         $this->assertTrue($response->isSuccess());
@@ -209,7 +211,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
         $prompts->expects($this->once())->method('collect')->willReturn(['projectKey' => 'abc']);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], true, false);
 
         $this->assertTrue($response->isSuccess());
@@ -228,7 +230,7 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['baseBranch' => 'gone'], false, true);
 
         $this->assertFalse($response->isSuccess());
@@ -250,7 +252,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['gitProvider' => '  GITLAB  '], true, true);
 
         $this->assertTrue($response->isSuccess());
@@ -265,7 +267,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['projectKey' => null], false, true);
 
         $this->assertTrue($response->isSuccess());
@@ -287,7 +289,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['transitionId' => '  7  '], true, true);
 
         $this->assertTrue($response->isSuccess());
@@ -308,7 +310,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['projectKey' => '  zzz  '], true, true);
 
         $this->assertTrue($response->isSuccess());
@@ -323,7 +325,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['transitionId' => null], false, true);
 
         $this->assertTrue($response->isSuccess());
@@ -345,7 +347,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['transitionId' => 42], true, true);
 
         $this->assertTrue($response->isSuccess());
@@ -360,7 +362,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['notAProjectInitField' => 'x'], false, true);
 
         $this->assertFalse($response->isSuccess());
@@ -382,7 +384,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['githubToken' => 99], true, true);
 
         $this->assertTrue($response->isSuccess());
@@ -398,7 +400,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['githubToken' => '   '], true, true);
 
         $this->assertTrue($response->isSuccess());
@@ -415,7 +417,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['projectKey' => '   '], true, true);
 
         $this->assertTrue($response->isSuccess());
@@ -449,7 +451,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([
             'issueTrackerProvider' => IssueTrackerProvider::Linear->value,
             'projectKey' => 'SCI',
@@ -477,7 +479,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['workItemProvider' => IssueTrackerProvider::Linear->value], false, true);
 
         $this->assertTrue($response->isSuccess());
@@ -492,7 +494,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['issueTrackerProvider' => 'asana'], false, true);
 
         $this->assertFalse($response->isSuccess());
@@ -507,7 +509,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['linearTypeBranchPrefixes' => 'not-a-map'], false, true);
 
         $this->assertFalse($response->isSuccess());
@@ -522,7 +524,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['linearTypeBranchPrefixes' => ['' => 'feat']], false, true);
 
         $this->assertTrue($response->isSuccess());
@@ -538,7 +540,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle(['linearTypeBranchPrefixes' => ['' => 'feat', 'Story' => '']], false, true);
 
         $this->assertTrue($response->isSuccess());
@@ -560,7 +562,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitSetup = $this->createStub(GitSetupService::class);
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([
             'linearTypeBranchPrefixes' => [' Story ' => ' feat ', 99 => 'fix'],
         ], true, true);
@@ -577,7 +579,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
         $prompts->method('collect')->willReturn(['linearTypeBranchPrefixes' => ['' => 'feat']]);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], true, false);
 
         $this->assertFalse($response->isSuccess());
@@ -593,7 +595,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
         $prompts->method('collect')->willReturn(['linearTypeBranchPrefixes' => ['Story' => '']]);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], true, false);
 
         $this->assertFalse($response->isSuccess());
@@ -616,7 +618,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
         $prompts->method('collect')->willReturn(['projectKey' => 'SCI', 'notInFieldMap' => 'x']);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], false, false);
 
         $this->assertTrue($response->isSuccess());
@@ -633,7 +635,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
         $prompts->method('collect')->willReturn(['projectKey' => '   ']);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], false, false);
 
         $this->assertTrue($response->isSuccess());
@@ -650,7 +652,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $prompts = $this->createStub(ConfigProjectInitPromptCollector::class);
         $prompts->method('collect')->willReturn(['transitionId' => -1]);
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], false, false);
 
         $this->assertFalse($response->isSuccess());
@@ -668,7 +670,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
         $prompts->expects($this->never())->method('collect');
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([], false, true);
 
         $this->assertTrue($response->isSuccess());
@@ -724,7 +726,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
         $prompts->expects($this->never())->method('collect');
 
-        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $handler = $this->createHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([
             'projectKey' => 'SCI',
             'transitionId' => $transitionId,
@@ -756,7 +758,7 @@ class ConfigProjectInitHandlerTest extends TestCase
                 'pullRequestLabels' => ['AI-Generated', 'RFR'],
             ]);
 
-        $handler = new ConfigProjectInitHandler(
+        $handler = $this->createHandler(
             $gitRepository,
             $this->createStub(GitSetupService::class),
             $this->createStub(ConfigProjectInitPromptCollector::class),
@@ -777,7 +779,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturn(['workItemLabels' => ['Keep'], 'pullRequestLabels' => ['Keep']]);
         $gitRepository->expects($this->never())->method('writeProjectConfig');
 
-        $handler = new ConfigProjectInitHandler(
+        $handler = $this->createHandler(
             $gitRepository,
             $this->createStub(GitSetupService::class),
             $this->createStub(ConfigProjectInitPromptCollector::class),
@@ -800,7 +802,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturn([]);
         $gitRepository->expects($this->never())->method('writeProjectConfig');
 
-        $handler = new ConfigProjectInitHandler(
+        $handler = $this->createHandler(
             $gitRepository,
             $this->createStub(GitSetupService::class),
             $this->createStub(ConfigProjectInitPromptCollector::class),
@@ -818,7 +820,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturn([]);
         $gitRepository->expects($this->never())->method('writeProjectConfig');
 
-        $handler = new ConfigProjectInitHandler(
+        $handler = $this->createHandler(
             $gitRepository,
             $this->createStub(GitSetupService::class),
             $this->createStub(ConfigProjectInitPromptCollector::class),
@@ -848,7 +850,7 @@ class ConfigProjectInitHandlerTest extends TestCase
                 'LINEAR_API_KEY' => 'lin',
             ]);
 
-        $handler = new ConfigProjectInitHandler(
+        $handler = $this->createHandler(
             $gitRepository,
             $this->createStub(GitSetupService::class),
             $this->createStub(ConfigProjectInitPromptCollector::class),
@@ -875,7 +877,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturn(['JIRA_URL' => 'https://keep.example']);
         $gitRepository->expects($this->never())->method('writeProjectConfig');
 
-        $handler = new ConfigProjectInitHandler(
+        $handler = $this->createHandler(
             $gitRepository,
             $this->createStub(GitSetupService::class),
             $this->createStub(ConfigProjectInitPromptCollector::class),
@@ -888,6 +890,19 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $this->assertTrue($response->isSuccess());
         $this->assertFalse($response->updated);
+    }
+
+    private function createHandler(
+        GitRepository $gitRepository,
+        GitSetupService $gitSetup,
+        ConfigProjectInitPromptCollector $prompts,
+    ): ConfigProjectInitHandler {
+        return new ConfigProjectInitHandler(
+            $gitRepository,
+            new ConfigProjectInitPatchWriter($gitRepository, $gitSetup),
+            $prompts,
+            new ConfigProjectInitAgentInput(),
+        );
     }
 
     /**

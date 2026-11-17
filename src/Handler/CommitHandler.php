@@ -13,12 +13,15 @@ use App\Exception\GitTimeoutException;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\CommandResponse;
+use App\Service\CommitMessageComposer;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 
 class CommitHandler implements GitRepositoryAware, JiraAware
 {
+    private readonly CommitMessageComposer $messageComposer;
+
     /**
      * @param IssueTrackerPort|\Closure(): IssueTrackerPort $issueTracker
      *        Closure defers provider resolution until a work-item fetch is required
@@ -27,8 +30,9 @@ class CommitHandler implements GitRepositoryAware, JiraAware
         private readonly GitRepository $gitRepository,
         private readonly IssueTrackerPort|\Closure $issueTracker,
         private readonly string $baseBranch,
-        private readonly PromptInterface $prompt
+        PromptInterface $prompt
     ) {
+        $this->messageComposer = new CommitMessageComposer($prompt);
     }
 
     public function handle(mixed $isNew, mixed $message = null, mixed $stageAll = null, mixed $quiet = false): CommandResponse|int
@@ -44,13 +48,13 @@ class CommitHandler implements GitRepositoryAware, JiraAware
             );
         }
 
-        if (! empty($message)) {
-            return $this->commitWithMessage($message, $stageAll);
-        }
-
         $latestLogicalSha = $this->resolveLatestLogicalSha($isNew);
         if ($latestLogicalSha !== null) {
-            return $this->commitFixupForSha($latestLogicalSha, $stageAll);
+            return $this->commitFixupForSha($latestLogicalSha, $stageAll, $message);
+        }
+
+        if (! empty($message)) {
+            return $this->commitWithMessage($message, $stageAll);
         }
 
         return $this->commitWithJiraPrompt($stageAll, $quiet);
@@ -85,7 +89,7 @@ class CommitHandler implements GitRepositoryAware, JiraAware
         return $sha;
     }
 
-    protected function commitFixupForSha(string $latestLogicalSha, bool $stageAll): CommandResponse
+    protected function commitFixupForSha(string $latestLogicalSha, bool $stageAll, ?string $unusedMessage = null): CommandResponse
     {
         if (! $stageAll && ! $this->hasStagedChanges()) {
             return CommandResponse::error(MessageRef::key('commit.no_staged_changes'));
@@ -101,9 +105,15 @@ class CommitHandler implements GitRepositoryAware, JiraAware
             return $gitError;
         }
 
+        $messages = [];
+        if ($unusedMessage !== null && $unusedMessage !== '') {
+            $messages[] = ResponseMessage::notice(MessageRef::key('commit.note_message_unused'));
+        }
+
         return CommandResponse::success(
             MessageRef::key('commit.fixup_success', ['sha' => $latestLogicalSha]),
             ['fixupSha' => $latestLogicalSha],
+            $messages,
         );
     }
 
@@ -120,22 +130,7 @@ class CommitHandler implements GitRepositoryAware, JiraAware
         if ($issueResult instanceof CommandResponse) {
             return $issueResult;
         }
-        $issue = $issueResult;
-
-        $detectedType = $this->getCommitTypeFromIssueType($issue->issueType);
-        $defaultScope = ! empty($issue->components) ? $issue->components[0] : null;
-        if ($quiet) {
-            $type = $detectedType;
-            $scope = $defaultScope;
-            $summary = $issue->title;
-        } else {
-            [$type, $scope, $summary] = $this->promptTypeScopeSummary($issue, $detectedType, $defaultScope);
-            $type = $type ?? $detectedType;
-            $scope = $scope ?? $defaultScope;
-            $summary = $summary ?? $issue->title;
-        }
-
-        $commitMessage = "{$type}" . ($scope ? "({$scope})" : '') . ": {$summary} [{$key}]";
+        $commitMessage = $this->messageComposer->compose($issueResult, $key, $quiet);
 
         if (! $stageAll && ! $this->hasStagedChanges()) {
             return CommandResponse::error(MessageRef::key('commit.no_staged_changes'), $messages);
@@ -183,31 +178,6 @@ class CommitHandler implements GitRepositoryAware, JiraAware
         }
 
         return ($this->issueTracker)();
-    }
-
-    /**
-     * @return array{0: string|null, 1: string|null, 2: string|null}
-     */
-    protected function promptTypeScopeSummary(WorkItem $issue, string $detectedType, ?string $defaultScope): array
-    {
-        $scopePrompt = ! empty($issue->components)
-            ? MessageRef::key('commit.scope_auto', ['scope' => $defaultScope])
-            : MessageRef::key('commit.scope_prompt');
-        $type = $this->prompt->ask(MessageRef::key('commit.type_prompt', ['type' => $detectedType]), $detectedType);
-        $scope = $this->prompt->ask($scopePrompt, $defaultScope);
-        $summary = $this->prompt->ask(MessageRef::key('commit.summary_prompt'), $issue->title);
-
-        return [$type, $scope, $summary];
-    }
-
-    protected function getCommitTypeFromIssueType(string $issueType): string
-    {
-        return match (strtolower($issueType)) {
-            'bug' => 'fix',
-            'story', 'epic' => 'feat',
-            'task', 'sub-task' => 'chore',
-            default => 'feat',
-        };
     }
 
     protected function hasStagedChanges(): bool

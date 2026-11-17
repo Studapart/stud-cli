@@ -17,4 +17,32 @@ final class ConfigValidatePingResults
         public readonly ConfigValidateIntegrationPing $linear = new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_SKIPPED),
     ) {
     }
+
+    /**
+     * Checked pings keyed by integration. Git is keyed by its provider and omitted when no provider is known.
+     *
+     * @return array<string, ConfigValidateIntegrationPing>
+     */
+    public function checkedIntegrations(?string $gitProvider): array
+    {
+        $integrations = [];
+        if ($this->jira->status !== ConfigValidateResponse::STATUS_SKIPPED) {
+            $integrations['jira'] = $this->jira;
+        }
+        if ($this->linear->status !== ConfigValidateResponse::STATUS_SKIPPED) {
+            $integrations['linear'] = $this->linear;
+        }
+        if ($this->git->status !== ConfigValidateResponse::STATUS_SKIPPED && $gitProvider !== null) {
+            $integrations[$gitProvider] = $this->git;
+        }
+
+        return $integrations;
+    }
+
+    public function hasFailure(): bool
+    {
+        return $this->jira->status === ConfigValidateResponse::STATUS_FAIL
+            || $this->git->status === ConfigValidateResponse::STATUS_FAIL
+            || $this->linear->status === ConfigValidateResponse::STATUS_FAIL;
+    }
 }
