@@ -73,7 +73,7 @@ jobs:
           - platform: linux-amd64
             runner: ubuntu-latest
           - platform: darwin-arm64
-            runner: macos-14
+            runner: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.1] - 2026-11-19
+
+### Fixed
+
+- **Release workflow uses a supported macOS runner:** The `darwin-arm64` portable build runs on `macos-15`. GitHub retired the `macos-14` image on 2026-11-02, so a job that still requested it failed before it started.
+
 ## [5.1.0] - 2026-11-19
 
 - **Update switches to the new version before removing the old one (SCI-239):** `stud update` installs the new version as its own file, then switches `~/.local/bin/stud` to it, for both PHAR and portable installs. The running copy is never deleted or overwritten. Agreeing to remove older versions only records a consent marker under `~/.local/share/stud-portable/`, and a later `stud` command that runs the new version removes the older copies, warns on failure, and retries on the next run. Declined and quiet updates record nothing. A PHAR running outside `~/.local/bin/stud` is still replaced in place, unless `~/.local/bin/stud` links to it; then the update stops and `setup-stud.sh --phar --force` fixes it. The detached removal shell is gone, and `setup-stud.sh --phar` now installs the versioned layout. Re-running `setup-stud.sh --phar` over a plain PHAR at `~/.local/bin/stud` that is not on `PATH` or cannot report its version now needs `--force`, as the portable installer already does. The new behaviour applies from the update after this release is installed, because the update that installs it still runs the previous updater.
