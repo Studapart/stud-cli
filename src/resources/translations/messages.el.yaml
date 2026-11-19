@@ -694,6 +694,7 @@ commit:
   found_logical: 'Βρέθηκε λογικό commit SHA: %sha%'
   creating_fixup: Δημιουργία fixup commit για %sha%...
   fixup_success: ✅ Οι αλλαγές αποθηκεύτηκαν ως fixup για το commit %sha%.
+  note_message_unused: "Το δοθέν μήνυμα commit δεν χρησιμοποιήθηκε. Η αλλαγή αποθηκεύτηκε ως fixup."
   note_no_logical: Δεν βρέθηκε προηγούμενο λογικό commit ή χρησιμοποιήθηκε το flag --new. Έναρξη διαδραστικού βοηθού...
   note_clean_working_tree: Το δέντρο εργασίας είναι καθαρό. Ακύρωση commit.
   error_no_key: 'Δεν ήταν δυνατή η εύρεση κλειδιού Jira στο όνομα του τρέχοντος κλάδου σας.
@@ -897,7 +898,7 @@ help:
   option_items_download_path: "Κατάλογος προορισμού σχετικός με το cwd (δημιουργείται αν λείπει)· προεπιλογή .cursor/stud-downloads"
   option_items_upload_file: "Τοπική διαδρομή αρχείου σχετική με το cwd· επαναλάβετε -f/--file για πολλά αρχεία"
   option_commit_new: Δημιουργία νέου λογικού commit αντί για fixup
-  option_commit_message: Παράκαμψη του διαδραστικού prompt και χρήση του παρεχόμενου μηνύματος για το commit
+  option_commit_message: Μήνυμα για ένα νέο λογικό commit. Αν υπάρχει ήδη, δώστε --new, αλλιώς η αλλαγή αποθηκεύεται ως fixup
   option_commit_all: Προετοιμασία όλων των αλλαγών πριν από το commit (επιστρέφει την παλιά συμπεριφορά)
   option_push_no_please: "Μετά από αποτυχημένο κανονικό push, να μην εκτελείται ή να προσφέρεται το stud please"
   option_flatten: "Συγχώνευση των fixup commits όταν είναι ασφαλές"

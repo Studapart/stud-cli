@@ -24,6 +24,7 @@ use App\Response\WorkflowResponse;
 use App\Service\GitHostingPort;
 use App\Service\IssueTrackerPort;
 use App\Service\SubmitAssembly;
+use App\Service\SubmitBranchInspector;
 use App\Service\SubmitGit;
 
 class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, ProjectBaseBranchAware, JiraAware
@@ -35,12 +36,15 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
 
     private ?bool $pendingRewritten = null;
 
+    private readonly SubmitBranchInspector $branchInspector;
+
     public function __construct(
         private readonly SubmitGit $git,
         private readonly IssueTrackerPort $provider,
         private readonly ?GitHostingPort $githubProvider,
         private readonly SubmitAssembly $assembly,
     ) {
+        $this->branchInspector = new SubmitBranchInspector($git);
     }
 
     private function recorder(): WorkflowEntryRecorder
@@ -120,14 +124,12 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
      */
     protected function runSubmitPreflight(bool $alreadyPublished = false): array
     {
-        $gitStatus = $this->git->repository->getPorcelainStatus();
-        if (! empty($gitStatus)) {
+        if (! empty($this->git->repository->getPorcelainStatus())) {
             $this->recorder()->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.note_dirty_working'));
         }
 
         $branch = $this->git->repository->getCurrentBranchName();
-        $baseBranchName = str_replace('origin/', '', $this->git->baseBranch);
-        if ($branch === $baseBranchName || in_array($branch, ['main', 'master'], true)) {
+        if ($this->branchInspector->isBaseBranch($branch)) {
             $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_base_branch'));
 
             return ['exitCode' => 1];
@@ -138,16 +140,14 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
         }
 
         $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.finding_commit'), WorkflowChannel::Git);
-        $ancestorSha = $this->git->repository->getMergeBase($this->git->baseBranch, 'HEAD');
-        $firstCommitSha = $this->git->repository->findFirstLogicalSha($ancestorSha);
-        if ($firstCommitSha === null) {
+        $firstLogicalMessage = $this->branchInspector->firstLogicalCommitMessage();
+        if ($firstLogicalMessage === null) {
             $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_no_logical'));
 
             return ['exitCode' => 1];
         }
 
-        $firstLogicalMessage = $this->git->repository->getCommitMessage($firstCommitSha);
-        $jiraKey = $this->resolveJiraKey($firstLogicalMessage);
+        $jiraKey = $this->branchInspector->resolveIssueKey($firstLogicalMessage);
         if ($jiraKey === null) {
             $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_no_jira_key'));
 
@@ -189,17 +189,6 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
         }
 
         return trim($commitMessage);
-    }
-
-    private function resolveJiraKey(string $commitMessage): ?string
-    {
-        $jiraKey = $this->git->repository->getIssueKeyFromBranchName();
-        if ($jiraKey === null || $jiraKey === '') {
-            preg_match('/(?i)\[([a-z]+-\d+)]/', $commitMessage, $matches);
-            $jiraKey = $matches[1] ?? null;
-        }
-
-        return $jiraKey;
     }
 
     /**

@@ -694,6 +694,7 @@ commit:
   found_logical: 'Logische commit SHA gevonden: %sha%'
   creating_fixup: Fixup commit aanmaken voor %sha%...
   fixup_success: ✅ Wijzigingen opgeslagen als fixup voor commit %sha%.
+  note_message_unused: "Het opgegeven commitbericht is niet gebruikt. De wijziging is opgeslagen als fixup."
   note_no_logical: Geen vorige logische commit gevonden of --new flag gebruikt. Interactieve prompt starten...
   note_clean_working_tree: Werkboom is schoon. Commit afbreken.
   error_no_key: 'Kon geen Jira-sleutel vinden in uw huidige branchnaam.
@@ -958,7 +959,7 @@ help:
   option_items_download_path: "Doelmap relatief aan cwd (aangemaakt indien nodig); standaard .cursor/stud-downloads"
   option_items_upload_file: "Lokaal bestandspad relatief aan cwd; herhaal -f/--file voor meerdere bestanden"
   option_commit_new: Maak een nieuwe logische commit in plaats van een fixup
-  option_commit_message: Omzeil de interactieve prompt en gebruik het opgegeven bericht voor de commit
+  option_commit_message: Bericht voor een nieuwe logische commit. Bij een bestaande logische commit, geef --new mee, anders wordt de wijziging als fixup opgeslagen
   option_commit_all: Stage alle wijzigingen voordat u commit (herstelt het oude gedrag)
   option_push_no_please: "Na een mislukte normale push stud please niet uitvoeren of aanbieden"
   option_flatten: "Fixup-commits samenvoegen wanneer dat veilig is"

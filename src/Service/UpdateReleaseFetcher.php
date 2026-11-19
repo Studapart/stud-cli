@@ -13,12 +13,15 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class UpdateReleaseFetcher
 {
+    private readonly ReleaseAssetDownloader $assetDownloader;
+
     public function __construct(
         private readonly UpdateRepositoryContext $repository,
         private readonly string $currentVersion,
-        private readonly FileSystem $fileSystem,
+        FileSystem $fileSystem,
         private readonly ?HttpClientInterface $httpClient = null,
     ) {
+        $this->assetDownloader = new ReleaseAssetDownloader($repository, $fileSystem, $httpClient);
     }
 
     /**
@@ -152,8 +155,6 @@ class UpdateReleaseFetcher
      */
     public function downloadPhar(array $pharAsset, WorkflowEntryRecorder $recorder, callable $logVerbose): ?string
     {
-        $tempFile = sys_get_temp_dir() . '/stud.phar.new';
-
         $assetId = $pharAsset['id'] ?? null;
         if (! $assetId) {
             $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_asset_id'));
@@ -161,29 +162,11 @@ class UpdateReleaseFetcher
             return null;
         }
 
-        $apiUrl = "https://api.github.com/repos/{$this->repository->owner}/{$this->repository->name}/releases/assets/{$assetId}";
+        $apiUrl = $this->assetDownloader->assetUrl($assetId);
         $logVerbose('Downloading from', $apiUrl);
 
         try {
-            $headers = [
-                'User-Agent' => 'stud-cli',
-                'Accept' => 'application/octet-stream',
-            ];
-
-            if ($this->repository->token) {
-                $headers['Authorization'] = 'Bearer ' . $this->repository->token;
-            }
-
-            // @codeCoverageIgnoreStart
-            $downloadClient = $this->httpClient ?? HttpClient::create(HttpClientDefaults::withTransferLimits([
-                'headers' => $headers,
-            ]));
-            // @codeCoverageIgnoreEnd
-
-            $response = $downloadClient->request('GET', $apiUrl);
-            $this->fileSystem->filePutContents($tempFile, $response->getContent());
-
-            return $tempFile;
+            return $this->assetDownloader->download($apiUrl);
         } catch (\Exception $e) {
             // @codeCoverageIgnoreStart
             $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_download', ['error' => $e->getMessage()]));

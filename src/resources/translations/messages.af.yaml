@@ -694,6 +694,7 @@ commit:
   found_logical: 'Logiese commit SHA gevind: %sha%'
   creating_fixup: Skep fixup commit vir %sha%...
   fixup_success: ✅ Veranderinge gestoor as fixup vir commit %sha%.
+  note_message_unused: "Die gegewe commitboodskap is nie gebruik nie. Die verandering is as fixup gestoor."
   note_no_logical: Geen vorige logiese commit gevind of --new vlag gebruik. Begin interaktiewe prompter...
   note_clean_working_tree: Werksboom is skoon. Breek commit af.
   error_no_key: 'Kon nie ''n Jira sleutel in jou huidige tak naam vind nie.
@@ -897,7 +898,7 @@ help:
   option_items_download_path: "Teikenmap relatief tot cwd (geskep indien nodig); verstek .cursor/stud-downloads"
   option_items_upload_file: "Plaaslike lêerpad relatief tot cwd; herhaal -f/--file vir meerdere lêers"
   option_commit_new: Skep 'n nuwe logiese commit in plaas van 'n fixup
-  option_commit_message: Omseil die interaktiewe prompter en gebruik die verskafde boodskap vir die commit
+  option_commit_message: Boodskap vir 'n nuwe logiese commit. Met 'n bestaande logiese commit, gee --new of die verandering word as 'n fixup gestoor
   option_commit_all: Stage alle veranderinge voordat u commit (herstel die ou gedrag)
   option_push_no_please: "Na 'n mislukte normale stoot, moenie stud please uitvoer of aanbied nie"
   option_flatten: "Squash fixup-commits wanneer dit veilig is"

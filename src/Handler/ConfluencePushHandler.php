@@ -265,28 +265,17 @@ class ConfluencePushHandler implements ConfluenceAware
             if ($child['title'] === $title) {
                 try {
                     $page = $this->wiki->getPage($child['id']);
-                } catch (ApiException) {
-                    return null;
-                }
-                $versionNumber = $page['version']['number'] + 1;
-
-                try {
                     $updated = $this->wiki->updatePage(
                         $child['id'],
                         new ConfluencePageContent($title, $adfJson),
-                        $versionNumber
+                        $page['version']['number'] + 1
                     );
                 } catch (ApiException) {
                     return null;
                 }
                 $url = $this->buildPageUrl($baseUrl, $updated['_links']['webui']);
 
-                return ConfluencePushResponse::success(
-                    $updated['id'],
-                    $updated['title'],
-                    $url,
-                    'updated'
-                );
+                return ConfluencePushResponse::success($updated['id'], $updated['title'], $url, 'updated');
             }
         }
 

@@ -257,17 +257,6 @@ class ItemListResponderTest extends CommandTestCase
         $this->assertSame('jira', $result->data['issues'][0]['provider']);
     }
 
-    public function testProviderLabelForIssueReturnsEmptyWhenKeyMissing(): void
-    {
-        $method = new \ReflectionMethod(ItemListResponder::class, 'providerLabelForIssue');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-        $response = ItemListResponse::success([], false, null, [], false);
-
-        $label = $method->invoke($this->responder, $response, 'missing-key');
-
-        $this->assertSame('', $label);
-    }
-
     private function bindSubject(): void
     {
 

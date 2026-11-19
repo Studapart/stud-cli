@@ -10,19 +10,18 @@ use App\Response\ProjectsWorkflowResponse;
 use App\Service\Logger;
 use App\Service\MessageRenderer;
 use App\Service\ResponderHelper;
-use App\View\Column;
-use App\View\PageViewConfig;
-use App\View\Section;
-use App\View\TableBlock;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ProjectsWorkflowResponder
 {
+    private readonly ProjectsWorkflowTable $table;
+
     public function __construct(
         private readonly ResponderHelper $helper,
         private readonly Logger $logger,
         private readonly ?MessageRenderer $messageRenderer = null,
     ) {
+        $this->table = new ProjectsWorkflowTable($helper, $logger);
     }
 
     public function respond(SymfonyStyle $io, ProjectsWorkflowResponse $response, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse
@@ -48,22 +47,7 @@ class ProjectsWorkflowResponder
             return null;
         }
 
-        $viewConfig = new PageViewConfig([
-            new Section(
-                '',
-                [
-                    new TableBlock([
-                        new Column('id', 'project.workflow.column_id', fn (array $item) => $item['id']),
-                        new Column('name', 'project.workflow.column_name', fn (array $item) => $item['name']),
-                        new Column('targetStatus', 'project.workflow.column_target_status', fn (array $item) => $item['targetStatus'] ?? ''),
-                        new Column('type', 'project.workflow.column_type', fn (array $item) => $item['type'] ?? ''),
-                        new Column('provider', 'project.workflow.column_provider', fn (array $item) => $item['provider']),
-                    ]),
-                ]
-            ),
-        ], $this->helper->translator, $this->helper->colorHelper);
-
-        $viewConfig->render($response->stateChanges, $this->logger);
+        $this->table->render($response->stateChanges);
 
         return null;
     }

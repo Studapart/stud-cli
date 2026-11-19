@@ -694,6 +694,7 @@ commit:
   found_logical: 'Đã tìm thấy commit logic SHA: %sha%'
   creating_fixup: Đang tạo commit fixup cho %sha%...
   fixup_success: ✅ Các thay đổi đã được lưu dưới dạng fixup cho commit %sha%.
+  note_message_unused: "Thông điệp commit đã cung cấp không được dùng. Thay đổi được lưu dưới dạng fixup."
   note_no_logical: Không tìm thấy commit logic trước đó hoặc đã sử dụng cờ --new. Đang bắt đầu trình nhắc tương tác...
   note_clean_working_tree: Cây làm việc sạch. Hủy commit.
   error_no_key: 'Không tìm thấy khóa Jira trong tên nhánh hiện tại của bạn.
@@ -897,7 +898,7 @@ help:
   option_items_download_path: "Thư mục đích tương đối với cwd (tự tạo nếu cần); mặc định .cursor/stud-downloads"
   option_items_upload_file: "Đường dẫn tệp cục bộ tương đối cwd; lặp -f/--file cho nhiều tệp"
   option_commit_new: Tạo một commit logic mới thay vì fixup
-  option_commit_message: Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit
+  option_commit_message: Thông điệp cho một commit logic mới. Nếu đã có commit logic, truyền --new, nếu không thay đổi được lưu dưới dạng fixup
   option_commit_all: Stage tất cả các thay đổi trước khi commit (khôi phục hành vi cũ)
   option_push_no_please: "Sau khi push thường thất bại, không chạy hoặc hỏi stud please"
   option_flatten: "Gộp các commit fixup khi an toàn"

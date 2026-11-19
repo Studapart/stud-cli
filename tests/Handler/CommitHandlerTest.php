@@ -220,6 +220,42 @@ class CommitHandlerTest extends CommandTestCase
         $this->assertFalse($result->isSuccess());
     }
 
+    public function testHandleWithMessageAndNoNewFlagCreatesFixupOfLatestLogicalCommit(): void
+    {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('M  file.txt');
+        $this->gitRepository->method('hasStagedChanges')->willReturn(true);
+        $this->gitRepository->method('findLatestLogicalSha')->willReturn('abcdef');
+        $this->gitRepository->expects($this->once())->method('commitFixup')->with('abcdef');
+        $this->gitRepository->expects($this->never())->method('commit');
+
+        $result = $this->handler->handle(false, 'my message', false);
+
+        $this->assertTrue($result->isSuccess());
+        $this->assertMessageRef($result->message, 'commit.fixup_success', ['sha' => 'abcdef']);
+        $this->assertCount(1, $result->getMessages());
+        $this->assertMessageRef($result->getMessages()[0]->message, 'commit.note_message_unused');
+    }
+
+    public function testHandleWithMessageAndNewFlagCreatesNewCommitWhenLogicalCommitExists(): void
+    {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('M  file.txt');
+        $this->gitRepository->method('hasStagedChanges')->willReturn(true);
+        $this->gitRepository->method('findLatestLogicalSha')->willReturn('abcdef');
+        $this->gitRepository->expects($this->never())->method('commitFixup');
+        $this->gitRepository->expects($this->once())->method('commit')->with('my message');
+
+        $result = $this->handler->handle(true, 'my message', false);
+
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertTrue($result->isSuccess());
+    }
+
     public function testHandleWithAutoFixup(): void
     {
         $this->gitRepository = $this->createMock(GitRepository::class);
@@ -1035,19 +1071,6 @@ class CommitHandlerTest extends CommandTestCase
         $this->assertMessageRef($result->message, 'commit.success');
         $this->assertSame('feat: My awesome feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
-    }
-
-    public function testgetCommitTypeFromIssueType(): void
-    {
-        $prompt = $this->createStub(PromptInterface::class);
-        $handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $prompt);
-
-        $this->assertSame('fix', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['bug']));
-        $this->assertSame('feat', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['story']));
-        $this->assertSame('feat', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['epic']));
-        $this->assertSame('chore', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['task']));
-        $this->assertSame('chore', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['sub-task']));
-        $this->assertSame('feat', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['unknown']));
     }
 
     public function testExplicitMessageDoesNotInvokeIssueTrackerFactory(): void

@@ -90,7 +90,7 @@ class ItemCreateResponderTest extends CommandTestCase
 
     public function testRespondJsonReturnsCreatedIssueData(): void
     {
-        $response = ItemCreateResponse::success('PROJ-1', 'https://jira.example.com/issue/PROJ-1', []);
+        $response = ItemCreateResponse::success('PROJ-1', 'https://jira.example.com/issue/PROJ-1', [], [], []);
         $io = $this->createStub(SymfonyStyle::class);
         $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
 
@@ -98,7 +98,11 @@ class ItemCreateResponderTest extends CommandTestCase
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
-        $this->assertSame('PROJ-1', $result->data['key']);
+        $this->assertSame([
+            'key' => 'PROJ-1',
+            'self' => 'https://jira.example.com/issue/PROJ-1',
+            'skippedOptionalFields' => [],
+        ], $result->data);
     }
 
     public function testRespondJsonReturnsErrorOnFailure(): void

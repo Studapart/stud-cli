@@ -34,13 +34,10 @@ class ItemCreateResponder
                 'key' => $response->key,
                 'self' => $response->self,
                 'skippedOptionalFields' => $this->renderSkippedFields($response->skippedOptionalFields ?? [], agent: true),
-            ];
-            if ($response->deferredFields !== null && $response->deferredFields !== []) {
-                $data['deferredFields'] = $response->deferredFields;
-            }
-            if ($response->updateWarnings !== null && $response->updateWarnings !== []) {
-                $data['updateWarnings'] = $response->updateWarnings;
-            }
+            ] + array_filter([
+                'deferredFields' => $response->deferredFields,
+                'updateWarnings' => $response->updateWarnings,
+            ]);
 
             return new AgentJsonResponse(true, data: $data);
         }
@@ -48,12 +45,10 @@ class ItemCreateResponder
         if (! $response->isSuccess() || $response->key === null) {
             return null;
         }
-        $url = $this->successUrl($response);
-        $message = $this->translator->trans('item.create.success', [
+        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.create.success', [
             'key' => $response->key,
-            'url' => $url,
-        ]);
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $message);
+            'url' => $this->successUrl($response),
+        ]));
         $skipped = $this->renderSkippedFields($response->skippedOptionalFields ?? []);
         if ($skipped !== []) {
             $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.create.note_skipped_optional_fields', ['%fields%' => implode(', ', $skipped)]));

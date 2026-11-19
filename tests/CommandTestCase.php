@@ -71,6 +71,15 @@ abstract class CommandTestCase extends TestCase
                 return $message === null ? null : (string) $message;
             });
 
+        $translationService->method('renderForAgent')
+            ->willReturnCallback(function ($message) use ($translationService) {
+                if ($message instanceof MessageRef) {
+                    return $translationService->trans($message->key, $message->parameters);
+                }
+
+                return $message === null ? null : (string) $message;
+            });
+
         $translationService->method('renderText')
             ->willReturnCallback(function ($message) use ($translationService) {
                 $rendered = $translationService->render($message);

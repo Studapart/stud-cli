@@ -10,84 +10,35 @@ use App\Service\Prompt\PromptInterface;
 
 class UpdateFileService
 {
+    private readonly BinarySwapper $swapper;
+
     public function __construct(
         mixed $translator,
         private readonly PromptInterface $prompt,
     ) {
         unset($translator);
+        $this->swapper = new BinarySwapper();
     }
 
     /**
-     * Replaces the running binary with a new version.
+     * Replaces the running binary with a new version, keeping a versioned backup
+     * (e.g. /home/pem/.local/bin/stud-1.1.1.bak).
      *
-     * NOTE: This method uses native PHP file functions (copy, rename, chmod, unlink)
-     * instead of Flysystem because:
-     * 1. We're updating the binary that is currently executing
-     * 2. On Linux, we cannot rename an executing file (EBUSY error)
-     * 3. We need atomic operations that work with the running process
-     * 4. Flysystem cannot handle this special case
+     * No success() call on completion to avoid zlib error after PHAR replacement.
      */
     public function replaceBinary(WorkflowEntryRecorder $recorder, string $tempFile, string $binaryPath, string $currentVersion): int
     {
-        if (! is_writable($binaryPath)) {
-            $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_not_writable'));
-            @unlink($tempFile);
-
-            return 1;
-        }
-
-        // Create versioned backup path (e.g., /home/pem/.local/bin/stud-1.1.1.bak)
         $backupPath = $binaryPath . '-' . $currentVersion . '.bak';
 
-        // Step 1: Backup the current executable
-        // On Linux, we cannot rename a file that is currently executing (EBUSY error)
-        // So we use copy() instead, which works even when the file is in use
-        // Exception from copy() is extremely rare and hard to simulate
-        // @codeCoverageIgnoreStart
-        try {
-            if (! @copy($binaryPath, $backupPath)) {
-                $lastError = error_get_last();
-                $errorMessage = $lastError['message'] ?? 'Unknown error during backup';
-
-                throw new \RuntimeException($errorMessage);
-            }
-        } catch (\Exception $e) {
-            $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_backup', ['error' => $e->getMessage()]));
-            @unlink($tempFile);
-
-            return 1;
-        }
-        // @codeCoverageIgnoreEnd
-
-        // Step 2: Try to activate new version (atomic transaction)
-        try {
-            rename($tempFile, $binaryPath);
-            chmod($binaryPath, 0755);
-
-            // Backup file is left behind for cleanup on next run
-            // Note: No success() call here to avoid zlib error after PHAR replacement
+        if (! is_writable($binaryPath)) {
+            $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_not_writable'));
+        } elseif ($this->swapper->backup($recorder, $binaryPath, $backupPath)
+            && $this->swapper->activate($recorder, $tempFile, $binaryPath, $backupPath)) {
             return 0;
-            // Note: rename() doesn't throw exceptions in PHP, but chmod() might in edge cases
-            // Rollback on failure
-            // Exception from rename/chmod is extremely rare and hard to simulate
-            // @codeCoverageIgnoreStart
-        } catch (\Exception $e) {
-            try {
-                rename($backupPath, $binaryPath);
-                $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_rollback', ['error' => $e->getMessage()]));
-            } catch (\Exception $rollbackException) {
-                // Rollback also failed - this is a critical state
-                $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_rollback_failed', [
-                    'original_error' => $e->getMessage(),
-                    'rollback_error' => $rollbackException->getMessage(),
-                    'backup_path' => $backupPath,
-                ]));
-            }
-            @unlink($tempFile);
-
-            return 1;
         }
-        // @codeCoverageIgnoreEnd
+        @unlink($tempFile);
+
+        return 1;
     }
 
     public function getBinaryPath(string $binaryPath): string
@@ -144,21 +95,11 @@ class UpdateFileService
         }
 
         // Case A: Match (Verified) - proceed automatically
-        if ($digest !== null) {
-            // Extract hash from digest format "sha256:hash"
-            $expectedHash = null;
-            if (str_starts_with($digest, 'sha256:')) {
-                $expectedHash = substr($digest, 7); // Remove "sha256:" prefix
-            } else {
-                // If digest doesn't have prefix, assume it's the hash itself
-                $expectedHash = $digest;
-            }
+        $expectedHash = is_string($digest) && str_starts_with($digest, 'sha256:') ? substr($digest, 7) : $digest;
+        if (is_string($digest) && is_string($expectedHash) && strtolower($calculatedHash) === strtolower($expectedHash)) {
+            $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.success_hash_verified'));
 
-            if (strtolower($calculatedHash) === strtolower($expectedHash)) {
-                $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.success_hash_verified'));
-
-                return true;
-            }
+            return true;
         }
 
         // Case B: Mismatch or Missing Digest (Failed) - in quiet mode abort without prompting
@@ -171,21 +112,10 @@ class UpdateFileService
 
         $recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, $errorMessage);
 
-        if ($quiet) {
-            return false;
-        }
-
-        $continue = $this->prompt->confirm(
+        // Otherwise the user decides: abort (false) or override and proceed to replacement (true)
+        return ! $quiet && $this->prompt->confirm(
             MessageRef::key('update.prompt_continue_on_verification_failure'),
             false
         );
-
-        if (! $continue) {
-            // User aborted - stop process, delete temp file, exit with error code 1
-            return false;
-        }
-
-        // User overrode - proceed to file replacement
-        return true;
     }
 }

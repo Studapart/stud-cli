@@ -6,8 +6,6 @@ namespace App\Service;
 
 class ChangelogParser
 {
-    private const CHANGELOG_SECTION_BREAKING = 'breaking';
-
     /**
      * Parse changelog content and extract changes between current and latest versions.
      *
@@ -21,17 +19,9 @@ class ChangelogParser
         $currentVersion = $this->normalizeVersion($currentVersion);
         $latestVersion = $this->normalizeVersion($latestVersion);
 
-        $result = [
-            'sections' => [],
-            'hasBreaking' => false,
-            'breakingChanges' => [],
-        ];
+        $collector = new ChangelogChangeCollector();
 
-        $lines = explode("\n", $changelogContent);
-        $inTargetVersion = false;
-        $currentSection = null;
-
-        foreach ($lines as $line) {
+        foreach (explode("\n", $changelogContent) as $line) {
             $versionInChangelog = $this->extractVersionFromLine($line);
 
             if ($versionInChangelog !== null) {
@@ -40,34 +30,25 @@ class ChangelogParser
                     break;
                 }
 
-                // Check if this version is in the target range
-                $inTargetVersion = $this->isInTargetVersion($versionInChangelog, $currentVersion, $latestVersion);
-                $currentSection = null; // Reset section when entering new version
+                $collector->enterVersion($this->isInTargetVersion($versionInChangelog, $currentVersion, $latestVersion));
 
-                continue;
-            }
-
-            if (! $inTargetVersion) {
                 continue;
             }
 
             $section = $this->extractSectionFromLine($line);
             if ($section !== null) {
-                $currentSection = $section;
-                if ($currentSection === self::CHANGELOG_SECTION_BREAKING) {
-                    $result['hasBreaking'] = true;
-                }
+                $collector->enterSection($section);
 
                 continue;
             }
 
             $item = $this->extractItemFromLine($line);
-            if ($item !== null && $currentSection !== null) {
-                $this->addItemToResult($item, $currentSection, $result);
+            if ($item !== null) {
+                $collector->addItem($item);
             }
         }
 
-        return $result;
+        return $collector->toArray();
     }
 
     /**
@@ -116,23 +97,6 @@ class ChangelogParser
     }
 
     /**
-     * @param array{sections: array<string, array<string>>, hasBreaking: bool, breakingChanges: array<string>} $result
-     */
-    protected function addItemToResult(string $item, string $currentSection, array &$result): void
-    {
-        if ($currentSection === self::CHANGELOG_SECTION_BREAKING) {
-            $result['hasBreaking'] = true;
-            $result['breakingChanges'][] = $item;
-
-            return;
-        }
-        if (! isset($result['sections'][$currentSection])) {
-            $result['sections'][$currentSection] = [];
-        }
-        $result['sections'][$currentSection][] = $item;
-    }
-
-    /**
      * Extract item text from a changelog line (e.g., "- Feature added").
      *
      * @return string|null Item text if found, null otherwise
@@ -159,7 +123,7 @@ class ChangelogParser
             'deprecated' => '### Deprecated',
             'removed' => '### Removed',
             'fixed' => '### Fixed',
-            self::CHANGELOG_SECTION_BREAKING => '### Breaking',
+            ChangelogChangeCollector::SECTION_BREAKING => '### Breaking',
             'security' => '### Security',
             default => '### ' . ucfirst($sectionType),
         };

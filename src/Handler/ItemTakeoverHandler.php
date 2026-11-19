@@ -34,12 +34,10 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
         $key = strtoupper($key);
         $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.section', ['key' => $key]));
 
-        // Step 1: Validate working directory
         if (! $this->checkWorkingDirectory()) {
             return $this->recorder->toResponse(1);
         }
 
-        // Step 2: Fetch issue from Jira
         try {
             $this->workflows->fetchIssue($key);
         } catch (ApiException $e) {
@@ -52,18 +50,14 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
             return $this->recorder->toResponse(1);
         }
 
-        // Step 3: Assign issue to current user
         $this->assignIssueToCurrentUser($key);
 
-        // Step 4: Fetch from remote
         $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.fetching'), WorkflowChannel::Git);
         $this->branches->fetch();
 
-        // Step 5: Search for branches
         $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.searching_branches'), WorkflowChannel::Git);
         $branches = $this->branches->findBranches($key);
 
-        // Step 6: Handle branches
         if (empty($branches['local']) && empty($branches['remote'])) {
             return $this->handleNoBranches($key, $quiet);
         }

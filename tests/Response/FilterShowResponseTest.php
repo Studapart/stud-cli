@@ -2,6 +2,8 @@
 
 namespace App\Tests\Response;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
 use App\DTO\WorkItem;
 use App\Response\FilterShowResponse;
 use PHPUnit\Framework\TestCase;
@@ -34,5 +36,15 @@ class FilterShowResponseTest extends TestCase
         $this->assertSame($errorMessage, $response->getError());
         $this->assertEmpty($response->issues);
         $this->assertSame('', $response->filterName);
+    }
+
+    public function testErrorFactoryKeepsFurtherMessages(): void
+    {
+        $extra = ResponseMessage::warning(MessageRef::key('filter.show.error_fetch', ['error' => 'Linear down']));
+
+        $response = FilterShowResponse::error('Jira down', [$extra]);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame([$extra], $response->getWarnings());
     }
 }

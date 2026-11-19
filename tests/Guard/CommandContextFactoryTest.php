@@ -69,7 +69,7 @@ class CommandContextFactoryTest extends TestCase
     public function testCreateBlocksSearchUnderDualPmWithoutOverride(): void
     {
         $helper = new AgentModeHelper(stdinReader: static fn (): string => '{"jql":"find me"}');
-        $factory = new CommandContextFactory(new \App\Guard\Resolver\ConfigResolver(), new \App\Guard\Resolver\EffectiveProviderResolver(), new \App\Guard\Resolver\IssueTrackerProviderResolver(), new CommandInputResolver($helper));
+        $factory = new CommandContextFactory(new \App\Guard\Resolver\ConfigResolver(), new \App\Guard\Resolver\EffectiveProviderResolver(), new \App\Guard\Resolver\IssueTrackerProviderSelector(), new CommandInputResolver($helper));
         $event = $this->createEvent(['--agent' => true], 'items:search', true);
 
         $context = $factory->create($event, new CommandContextInput([

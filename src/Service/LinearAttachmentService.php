@@ -15,11 +15,6 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 class LinearAttachmentService
 {
-    /**
-     * Linear fileUpload signs GCS PUT URLs with this content-type; PUT must match exactly.
-     */
-    private const LINEAR_UPLOAD_CONTENT_TYPE = 'application/x-www-form-urlencoded';
-
     /** @var list<string> */
     private const ALLOWED_LINEAR_ASSET_HOSTS = [
         'uploads.linear.app',
@@ -103,33 +98,10 @@ class LinearAttachmentService
         }
         // @codeCoverageIgnoreEnd
 
-        $upload = $this->linearApiClient->fileUpload(
-            $filename,
-            self::LINEAR_UPLOAD_CONTENT_TYPE,
-            strlen($body),
-        );
+        $uploader = new LinearFileUploader($this->linearApiClient, $this->uploadHttpClient());
+        $assetUrl = $uploader->upload($filename, $body);
 
-        $putHeaders = [];
-        foreach ($upload['headers'] as $header) {
-            $putHeaders[$header['key']] = $header['value'];
-        }
-        $putHeaders['Content-Type'] = self::LINEAR_UPLOAD_CONTENT_TYPE;
-
-        $response = $this->uploadHttpClient()->request('PUT', $upload['uploadUrl'], [
-            'headers' => $putHeaders,
-            'body' => $body,
-        ]);
-
-        $statusCode = $response->getStatusCode();
-        if ($statusCode < 200 || $statusCode >= 300) {
-            throw new ApiException(
-                'Linear attachment upload failed.',
-                $this->extractTechnicalDetails($response),
-                $statusCode,
-            );
-        }
-
-        $this->linearApiClient->attachmentCreate($issueKey, $filename, $upload['assetUrl']);
+        $this->linearApiClient->attachmentCreate($issueKey, $filename, $assetUrl);
     }
 
     /**

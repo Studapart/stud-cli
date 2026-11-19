@@ -549,6 +549,16 @@ function _get_issue_tracker_port_supplier(): IssueTrackerPortSupplier
     );
 }
 
+function _get_issue_tracker_provider_fan_out(): \App\Service\IssueTrackerProviderFanOut
+{
+    return new \App\Service\IssueTrackerProviderFanOut(
+        _get_issue_tracker_port_supplier(),
+        _get_config(),
+        _project_config_or_empty(),
+        new \App\Service\IssueTrackerProvidersQueryResolver(),
+    );
+}
+
 function _get_jira_attachment_service(): JiraAttachmentService
 {
     if (class_exists("\App\Tests\TestKernel::class") && \App\Tests\TestKernel::$jiraAttachmentService !== null) {
@@ -833,7 +843,12 @@ function _get_init_project_config_follow_up_service(): InitProjectConfigFollowUp
     $gitRepository = _get_git_repository();
     $gitSetup = _get_git_setup_service();
     $promptCollector = _get_config_project_init_prompt_collector();
-    $projectInitHandler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
+    $projectInitHandler = new ConfigProjectInitHandler(
+        $gitRepository,
+        new \App\Handler\ConfigProjectInitPatchWriter($gitRepository, $gitSetup),
+        $promptCollector,
+        new \App\Handler\ConfigProjectInitAgentInput(),
+    );
 
     return new InitProjectConfigFollowUpService(
         $gitRepository,
@@ -2425,7 +2440,12 @@ function config_project_init(
     $gitRepository = _get_git_repository();
     $gitSetup = _get_git_setup_service();
     $promptCollector = _get_config_project_init_prompt_collector();
-    $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
+    $handler = new ConfigProjectInitHandler(
+        $gitRepository,
+        new \App\Handler\ConfigProjectInitPatchWriter($gitRepository, $gitSetup),
+        $promptCollector,
+        new \App\Handler\ConfigProjectInitAgentInput(),
+    );
     $response = $handler->handle($rawAgentInput, $skipRemote, $agent, $workflowRecorder);
     $responder = new ConfigProjectInitResponder(_get_responder_helper(), _get_logger());
     if ($format !== OutputFormat::Json) {
@@ -2467,11 +2487,7 @@ function projects_list(
         $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     }
 
-    $handler = new ProjectListHandler(
-        _get_issue_tracker_port_supplier(),
-        _get_config(),
-        _project_config_or_empty(),
-    );
+    $handler = new ProjectListHandler(_get_issue_tracker_provider_fan_out());
     $response = $handler->handle($providerOverride ?? $provider);
     $responder = new ProjectListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -2625,11 +2641,7 @@ function filters_list(
         $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     }
 
-    $handler = new FilterListHandler(
-        _get_issue_tracker_port_supplier(),
-        _get_config(),
-        _project_config_or_empty()
-    );
+    $handler = new FilterListHandler(_get_issue_tracker_provider_fan_out());
     $response = $handler->handle($providerOverride ?? $provider);
     $responder = new FilterListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -2792,11 +2804,7 @@ function filters_show(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "filterName" argument is required.');
         exit(1);
     }
-    $handler = new FilterShowHandler(
-        _get_issue_tracker_port_supplier(),
-        _get_config(),
-        _project_config_or_empty(),
-    );
+    $handler = new FilterShowHandler(_get_issue_tracker_provider_fan_out());
     $response = $handler->handle($filterName, $providerOverride ?? $provider);
     $responder = new FilterShowResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);

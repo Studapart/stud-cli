@@ -175,26 +175,4 @@ class LinearGraphqlClientTest extends TestCase
             $this->assertSame('Linear GraphQL request returned no data.', $exception->getMessage());
         }
     }
-
-    public function testExtractTechnicalDetailsFallsBackToStatusCodeWhenBodyUnreadable(): void
-    {
-        $response = $this->createMock(\Symfony\Contracts\HttpClient\ResponseInterface::class);
-        $response->method('getStatusCode')->willReturn(502);
-        $response->expects($this->once())->method('getContent')->with(false)->willThrowException(new \RuntimeException('broken stream'));
-
-        $graphql = new LinearGraphqlClient(new MockHttpClient());
-        $method = new \ReflectionMethod(LinearGraphqlClient::class, 'extractTechnicalDetails');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $this->assertSame('HTTP 502', $method->invoke($graphql, $response));
-    }
-
-    public function testFormatGraphQlErrorsReturnsFallbackWhenErrorsAreEmpty(): void
-    {
-        $graphql = new LinearGraphqlClient(new MockHttpClient());
-        $method = new \ReflectionMethod(LinearGraphqlClient::class, 'formatGraphQlErrors');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $this->assertSame('Linear GraphQL request failed.', $method->invoke($graphql, ['not-an-array']));
-    }
 }

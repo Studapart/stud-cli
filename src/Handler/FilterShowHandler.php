@@ -9,79 +9,50 @@ use App\DTO\ResponseMessage;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\FilterShowResponse;
-use App\Service\IssueTrackerPortSupplier;
-use App\Service\IssueTrackerProvidersQueryResolver;
+use App\Service\IssueTrackerPort;
+use App\Service\IssueTrackerProviderFanOut;
 
 class FilterShowHandler implements JiraAware, LinearAware
 {
     public function __construct(
-        private readonly IssueTrackerPortSupplier $portSupplier,
-        /** @var array<string, mixed> */
-        private readonly array $globalConfig,
-        /** @var array<string, mixed> */
-        private readonly array $projectConfig,
-        private readonly IssueTrackerProvidersQueryResolver $queryResolver = new IssueTrackerProvidersQueryResolver(),
+        private readonly IssueTrackerProviderFanOut $fanOut,
     ) {
     }
 
     public function handle(string $filterName, ?string $providerOverride = null): FilterShowResponse
     {
-        $providers = $this->queryResolver->resolve($this->globalConfig, $this->projectConfig, $providerOverride);
-        if ($providers === []) {
-            $resolution = $this->portSupplier->resolve($this->globalConfig, $this->projectConfig);
-            if (! $resolution['ok']) {
-                return FilterShowResponse::error($resolution['error']);
-            }
-
-            $providers = [$resolution['provider']];
+        $result = $this->fanOut->collect(
+            $providerOverride,
+            fn (IssueTrackerPort $port): array => $port->runFilterOrView($filterName),
+            'filter.show.error_fetch',
+            false,
+        );
+        if ($result instanceof MessageRef) {
+            return FilterShowResponse::error($result);
         }
 
-        $issues = [];
-        $issueProviders = [];
-        $matchedProviders = [];
-        $warnings = [];
-
-        foreach ($providers as $providerSlug) {
-            $resolution = $this->portSupplier->resolveForProvider($providerSlug, $this->globalConfig, $this->projectConfig);
-            if (! $resolution['ok']) {
-                if (count($providers) === 1) {
-                    return FilterShowResponse::error($resolution['error']);
-                }
-                $warnings[] = ResponseMessage::warning($resolution['error']);
-
-                continue;
-            }
-
-            try {
-                $fetched = $resolution['port']->runFilterOrView($filterName);
-            } catch (\Exception $e) {
-                if (count($providers) === 1) {
-                    return FilterShowResponse::error(
-                        MessageRef::key('filter.show.error_fetch', ['error' => $e->getMessage()])
-                    );
+        if ($result->items === []) {
+            if ($result->fetchFailures !== []) {
+                $furtherFailures = [];
+                foreach (array_slice($result->fetchFailures, 1) as $failure) {
+                    $furtherFailures[] = ResponseMessage::warning($failure);
                 }
 
-                continue;
+                return FilterShowResponse::error(
+                    $result->fetchFailures[0],
+                    array_merge($furtherFailures, $result->warnings),
+                );
             }
 
-            if ($fetched !== []) {
-                $matchedProviders[] = $providerSlug;
+            if ($result->warnings !== []) {
+                return FilterShowResponse::error($result->warnings[0]->message, array_slice($result->warnings, 1));
             }
 
-            foreach ($fetched as $issue) {
-                $issues[] = $issue;
-                $issueProviders[] = $providerSlug;
-            }
-        }
-
-        if ($issues === []) {
             return FilterShowResponse::error(
                 MessageRef::key('filter.show.error_not_found', ['filterName' => $filterName]),
             );
         }
 
-        $multiProvider = count(array_unique($issueProviders)) > 1;
-
-        return FilterShowResponse::success($issues, $filterName, $issueProviders, $multiProvider, $warnings);
+        return FilterShowResponse::success($result->items, $filterName, $result->providers, $result->isMultiProvider(), $result->warnings);
     }
 }

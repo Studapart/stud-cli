@@ -150,6 +150,33 @@ echo 'hello';
         $this->assertNull($workItem->priority);
     }
 
+    public function testMapToWorkItemMapsComponentsRenderedDescriptionAndAttachments(): void
+    {
+        $data = [
+            'id' => '10001',
+            'key' => 'TEST-1',
+            'fields' => [
+                'summary' => 'Issue with extras',
+                'status' => ['name' => 'To Do'],
+                'issuetype' => ['name' => 'Task'],
+                'components' => [['name' => 'API'], ['name' => 'CLI']],
+                'attachment' => [
+                    ['id' => '5', 'filename' => 'log.txt', 'content' => 'https://jira/log.txt', 'size' => 3],
+                ],
+            ],
+            'renderedFields' => ['description' => '<p>Hi</p>'],
+        ];
+
+        $workItem = $this->mapper->mapToWorkItem($data);
+
+        $this->assertSame(['API', 'CLI'], $workItem->components);
+        $this->assertSame('<p>Hi</p>', $workItem->renderedDescription);
+        $this->assertCount(1, $workItem->attachments);
+        $this->assertSame('log.txt', $workItem->attachments[0]->filename);
+        $this->assertSame([], $workItem->labels);
+        $this->assertSame('Unassigned', $workItem->assignee);
+    }
+
     public function testMapToWorkItemWithPriorityMissingName(): void
     {
         $data = [
