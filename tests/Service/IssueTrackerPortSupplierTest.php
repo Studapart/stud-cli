@@ -441,6 +441,47 @@ class IssueTrackerPortSupplierTest extends TestCase
         $this->assertSame(IssueTrackerProvider::Jira->value, $result['provider']);
     }
 
+    public function testResolveFullPortForProviderReturnsPortThatCanChangeItems(): void
+    {
+        $jira = $this->createStub(JiraApiClient::class);
+        $jira->method('getProjectTransitions')->willReturn([]);
+
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
+            new IssueTrackerFactory(),
+            new IssueTrackerResolver(),
+            new \App\Service\IssueTrackerClients($jira, $this->createStub(JiraAttachmentService::class), null),
+        );
+
+        $result = $supplier->resolveFullPortForProvider(
+            IssueTrackerProvider::Jira->value,
+            [
+                'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value],
+                'JIRA_URL' => 'https://jira.example.com',
+                'JIRA_EMAIL' => 'user@example.com',
+                'JIRA_API_TOKEN' => 'token',
+            ],
+            [],
+        );
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(IssueTrackerProvider::Jira->value, $result['provider']);
+        $this->assertInstanceOf(\App\Service\IssueTrackerPort::class, $result['port']);
+    }
+
+    public function testResolveFullPortForProviderReturnsErrorForAuto(): void
+    {
+        $supplier = \App\Tests\Support\ConstructorFixtures::issueTrackerPortSupplier(
+            new IssueTrackerFactory(),
+            new IssueTrackerResolver(),
+            new \App\Service\IssueTrackerClients(null, null, null),
+        );
+
+        $result = $supplier->resolveFullPortForProvider('auto', [], []);
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('issue_tracker_provider.invalid_override', $result['error']->key);
+    }
+
     public function testResolveForDiscoveryInfersLinearFromProjectCredentials(): void
     {
         $linear = $this->createStub(LinearApiClient::class);

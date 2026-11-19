@@ -661,7 +661,7 @@ function _get_git_branch_service(): GitBranchService
 
     $gitRepository = _get_git_repository();
 
-    return new GitBranchService($gitRepository, new \App\Service\GitBaseBranchResolver($gitRepository));
+    return new GitBranchService($gitRepository, new \App\Service\GitBaseBranchResolver());
 }
 
 function _get_branch_deletion_eligibility_resolver(): BranchDeletionEligibilityResolver
@@ -2375,7 +2375,7 @@ function config_validate(
  *
  * @param array<string, mixed> $effectiveConfig
  *
- * @return array{ok: true, provider: 'jira'|'linear', port: \App\Service\IssueTrackerPort}|array{ok: false, error: \App\DTO\MessageRef}
+ * @return array{ok: true, provider: 'jira'|'linear', port: \App\Service\IssueTrackerReadPort}|array{ok: false, error: \App\DTO\MessageRef}
  */
 function _config_validate_tracker_resolution(string $provider, array $effectiveConfig): array
 {

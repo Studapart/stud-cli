@@ -300,7 +300,7 @@ class GitBranchService
     }
 
     /**
-     * Resolves the most advanced ref between local and remote counterparts of a base branch.
+     * Returns the remote-tracking ref for the configured base branch.
      *
      * @see GitBaseBranchResolver::resolveLatestBaseBranch()
      */

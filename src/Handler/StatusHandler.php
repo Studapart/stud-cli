@@ -13,7 +13,7 @@ use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
-use App\Service\IssueTrackerPort;
+use App\Service\IssueTrackerReadPort;
 
 class StatusHandler implements GitRepositoryAware, JiraAware
 {
@@ -21,7 +21,7 @@ class StatusHandler implements GitRepositoryAware, JiraAware
 
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly IssueTrackerPort $provider,
+        private readonly IssueTrackerReadPort $provider,
     ) {
     }
 

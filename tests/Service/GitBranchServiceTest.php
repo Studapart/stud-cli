@@ -546,11 +546,11 @@ class GitBranchServiceTest extends TestCase
         $baseBranchResolver->expects($this->once())
             ->method('resolveLatestBaseBranch')
             ->with('origin/develop')
-            ->willReturn('develop');
+            ->willReturn('origin/develop');
         $this->gitRepository->expects($this->never())->method('runQuietly');
         $gitBranchService = new GitBranchService($this->gitRepository, $baseBranchResolver);
 
-        $this->assertSame('develop', $gitBranchService->resolveLatestBaseBranch('origin/develop'));
+        $this->assertSame('origin/develop', $gitBranchService->resolveLatestBaseBranch('origin/develop'));
     }
 
     public function testSwitchBranch(): void

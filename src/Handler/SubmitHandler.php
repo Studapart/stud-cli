@@ -22,7 +22,7 @@ use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitHostingPort;
-use App\Service\IssueTrackerPort;
+use App\Service\IssueTrackerReadPort;
 use App\Service\SubmitAssembly;
 use App\Service\SubmitBranchInspector;
 use App\Service\SubmitGit;
@@ -40,7 +40,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
 
     public function __construct(
         private readonly SubmitGit $git,
-        private readonly IssueTrackerPort $provider,
+        private readonly IssueTrackerReadPort $provider,
         private readonly ?GitHostingPort $githubProvider,
         private readonly SubmitAssembly $assembly,
     ) {

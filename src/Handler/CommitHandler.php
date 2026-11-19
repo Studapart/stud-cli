@@ -15,7 +15,7 @@ use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\CommandResponse;
 use App\Service\CommitMessageComposer;
 use App\Service\GitRepository;
-use App\Service\IssueTrackerPort;
+use App\Service\IssueTrackerReadPort;
 use App\Service\Prompt\PromptInterface;
 
 class CommitHandler implements GitRepositoryAware, JiraAware
@@ -23,12 +23,12 @@ class CommitHandler implements GitRepositoryAware, JiraAware
     private readonly CommitMessageComposer $messageComposer;
 
     /**
-     * @param IssueTrackerPort|\Closure(): IssueTrackerPort $issueTracker
+     * @param IssueTrackerReadPort|\Closure(): IssueTrackerReadPort $issueTracker
      *        Closure defers provider resolution until a work-item fetch is required
      */
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly IssueTrackerPort|\Closure $issueTracker,
+        private readonly IssueTrackerReadPort|\Closure $issueTracker,
         private readonly string $baseBranch,
         PromptInterface $prompt
     ) {
@@ -171,9 +171,9 @@ class CommitHandler implements GitRepositoryAware, JiraAware
     /**
      * Resolve the issue-tracker port (eager instance or deferred Closure from Castor).
      */
-    protected function port(): IssueTrackerPort
+    protected function port(): IssueTrackerReadPort
     {
-        if ($this->issueTracker instanceof IssueTrackerPort) {
+        if ($this->issueTracker instanceof IssueTrackerReadPort) {
             return $this->issueTracker;
         }
 

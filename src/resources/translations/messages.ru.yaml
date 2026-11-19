@@ -266,6 +266,8 @@ item:
     save_linear_state: 'Сохранить это состояние как начальное по умолчанию для проекта?'
     linear_state_saved: 'Начальное состояние Linear сохранено в конфигурации проекта.'
     using_advanced_base: 'Настроенная база ''%configured%'' отстаёт от ''%resolved%''; используется ''%resolved%'' в качестве базы.'
+    error_fetch: "Не удалось получить origin, поэтому ветка не создана и не взята из удалённого репозитория."
+    warning_fetch_local: "Не удалось получить origin (%error%). Выполнен переход на существующую локальную ветку."
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.
@@ -507,6 +509,7 @@ sync:
   already_up_to_date: "Already up to date. The base branch has no new commits."
   success: "✅ Branch %branch% has been rebased onto %base%."
   error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  error_fetch: "Could not fetch from origin. Sync stopped. %error%"
   help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 cache:
   clear:

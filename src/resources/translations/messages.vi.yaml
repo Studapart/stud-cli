@@ -266,6 +266,8 @@ item:
     save_linear_state: 'Bạn có muốn lưu trạng thái này làm trạng thái bắt đầu mặc định cho dự án không?'
     linear_state_saved: 'Đã lưu trạng thái bắt đầu Linear vào cấu hình dự án.'
     using_advanced_base: 'Nhánh cơ sở đã cấu hình ''%configured%'' đang đứng sau ''%resolved%''; sử dụng ''%resolved%'' làm cơ sở.'
+    error_fetch: "Không thể lấy từ origin, nên không tạo nhánh mới và không chuyển sang nhánh từ máy chủ."
+    warning_fetch_local: "Không thể lấy từ origin (%error%). Đã chuyển sang nhánh cục bộ hiện có."
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.
@@ -507,6 +509,7 @@ sync:
   already_up_to_date: "Already up to date. The base branch has no new commits."
   success: "✅ Branch %branch% has been rebased onto %base%."
   error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  error_fetch: "Could not fetch from origin. Sync stopped. %error%"
   help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 cache:
   clear:

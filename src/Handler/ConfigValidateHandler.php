@@ -13,7 +13,7 @@ use App\Exception\ApiException;
 use App\Exception\IssueTrackerException;
 use App\Response\ConfigValidateResponse;
 use App\Service\ConfigReadinessEvaluator;
-use App\Service\IssueTrackerPort;
+use App\Service\IssueTrackerReadPort;
 
 /**
  * Handler for config:validate: pings configured integrations and evaluates readiness (SCI-218).
@@ -144,7 +144,7 @@ class ConfigValidateHandler
         }
     }
 
-    private function pingIssueTracker(IssueTrackerPort $tracker, string $errorKey): ConfigValidateIntegrationPing
+    private function pingIssueTracker(IssueTrackerReadPort $tracker, string $errorKey): ConfigValidateIntegrationPing
     {
         try {
             $tracker->ping();
