@@ -15,7 +15,7 @@ class UpdateInstallDetector
     {
         $bundleRoot = $this->resolvePortableBundleRoot($binaryPath);
         if ($bundleRoot === null) {
-            return new UpdateInstallContext(UpdateInstallContext::MODE_PHAR, $currentVersion, $binaryPath);
+            return $this->createPharContext($currentVersion, $binaryPath);
         }
 
         $manifest = $this->readManifest($bundleRoot);
@@ -35,7 +35,30 @@ class UpdateInstallDetector
             ]);
         }
 
-        return new UpdateInstallContext(UpdateInstallContext::MODE_PHAR, $currentVersion, $binaryPath);
+        return $this->createPharContext($currentVersion, $binaryPath);
+    }
+
+    /**
+     * A PHAR is managed when it runs from the managed PHAR directory or is the file ~/.local/bin/stud resolves to.
+     */
+    protected function createPharContext(string $currentVersion, string $binaryPath): UpdateInstallContext
+    {
+        $mode = $this->isManagedPhar($binaryPath) ? UpdateInstallContext::MODE_PHAR : UpdateInstallContext::MODE_PHAR_IN_PLACE;
+
+        return new UpdateInstallContext($mode, $currentVersion, $binaryPath);
+    }
+
+    protected function isManagedPhar(string $binaryPath): bool
+    {
+        $paths = ManagedInstallPaths::fromEnvironment();
+        if (! $paths->isConfigured()) {
+            return false;
+        }
+
+        $resolvedBinary = realpath($binaryPath);
+
+        return $paths->isWithin($paths->pharDirectory(), $binaryPath)
+            || ($resolvedBinary !== false && $resolvedBinary === realpath($paths->managedSymlink()));
     }
 
     protected function resolvePortableBundleRoot(string $binaryPath): ?string
@@ -92,7 +115,7 @@ class UpdateInstallDetector
     ): UpdateInstallContext {
         $legacyPortableLayout = $metadata['legacyPortableLayout'] === true;
         $portableRoot = $legacyPortableLayout ? dirname($bundleRoot) : dirname(dirname($bundleRoot));
-        $managedSymlink = $this->managedSymlinkPath();
+        $paths = ManagedInstallPaths::fromEnvironment();
 
         return new UpdateInstallContext(
             UpdateInstallContext::MODE_PORTABLE,
@@ -102,19 +125,9 @@ class UpdateInstallDetector
             $bundleRoot,
             $portableRoot,
             $bundleRoot . '/stud',
-            $managedSymlink,
+            $paths->isConfigured() ? $paths->managedSymlink() : null,
             $legacyPortableLayout
         );
-    }
-
-    protected function managedSymlinkPath(): ?string
-    {
-        $home = $_SERVER['HOME'] ?? getenv('HOME') ?: null;
-        if (! is_string($home)) {
-            return null;
-        }
-
-        return rtrim($home, '/') . '/.local/bin/stud';
     }
 
     protected function stringValue(mixed $value): ?string

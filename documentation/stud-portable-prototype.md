@@ -108,4 +108,4 @@ scripts/create-release-checksums --directory dist/release --output dist/release/
 - Agent-run temporary outputs must be written under `.cursor/tmp/` and must not be committed. CI can point `--output` at its artifact directory.
 - The normal PHAR release remains unchanged.
 - The first `darwin-arm64` artifact is unsigned and unnotarized for internal use; signing, notarization, and managed installers remain follow-up work.
-- Previous portable versions are kept by default after update; cleanup is an explicit interactive choice.
+- Previous portable versions are kept by default after update; cleanup is an explicit interactive choice, carried out by a later command that already runs the new version.

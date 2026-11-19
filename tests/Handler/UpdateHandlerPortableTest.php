@@ -11,6 +11,7 @@ use App\Service\PortableUpdateService;
 use App\Service\Prompt\PromptInterface;
 use App\Service\UpdateFileService;
 use App\Tests\CommandTestCase;
+use App\Tests\Support\RestoresServerHome;
 use App\Tests\Support\UpdateHandlerTestKit;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -21,6 +22,8 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class UpdateHandlerPortableTest extends CommandTestCase
 {
+    use RestoresServerHome;
+
     private string $workspace;
     private HttpClientInterface&MockObject $httpClient;
     private PortableUpdateService&MockObject $portableUpdateService;
@@ -32,7 +35,7 @@ class UpdateHandlerPortableTest extends CommandTestCase
 
         $this->workspace = dirname(__DIR__, 2) . '/.cursor/tmp/update-handler-portable-test-' . bin2hex(random_bytes(4));
         mkdir($this->workspace . '/home', 0777, true);
-        $_SERVER['HOME'] = $this->workspace . '/home';
+        $this->pointHomeAt($this->workspace . '/home');
         $this->httpClient = $this->createMock(HttpClientInterface::class);
         $this->portableUpdateService = $this->createMock(PortableUpdateService::class);
         $this->prompt = $this->createStub(PromptInterface::class);
@@ -41,6 +44,8 @@ class UpdateHandlerPortableTest extends CommandTestCase
     protected function tearDown(): void
     {
         $this->removeDirectory($this->workspace);
+
+        $this->restoreServerHome();
 
         parent::tearDown();
     }
@@ -56,6 +61,47 @@ class UpdateHandlerPortableTest extends CommandTestCase
         $response = $this->createHandler($bundleRoot . '/app/stud.phar')->handle(false, true);
 
         self::assertSame(0, $response->exitCode);
+    }
+
+    public function testSuccessfulPortableUpdateWritesCleanupMarkerWhenOperatorAgrees(): void
+    {
+        $bundleRoot = $this->createPortableBundle('linux-amd64/1.0.0', true);
+        $this->mockReleaseFetch();
+        $this->portableUpdateService->expects(self::once())->method('update')->willReturn(0);
+        $prompt = $this->createStub(PromptInterface::class);
+        $prompt->method('confirm')->willReturn(true);
+        $this->prompt = $prompt;
+
+        $response = $this->createHandler($bundleRoot . '/app/stud.phar')->handle(false, false);
+
+        self::assertSame(0, $response->exitCode);
+        self::assertFileExists($this->workspace . '/home/.local/share/stud-portable/.cleanup-pending');
+    }
+
+    public function testSuccessfulPortableUpdateWritesNoMarkerWhenOperatorDeclines(): void
+    {
+        $bundleRoot = $this->createPortableBundle('linux-amd64/1.0.0', true);
+        $this->mockReleaseFetch();
+        $this->portableUpdateService->expects(self::once())->method('update')->willReturn(0);
+
+        $response = $this->createHandler($bundleRoot . '/app/stud.phar')->handle(false, false);
+
+        self::assertSame(0, $response->exitCode);
+        self::assertFileDoesNotExist($this->workspace . '/home/.local/share/stud-portable/.cleanup-pending');
+    }
+
+    public function testFailedPortableUpdateNeverAsksAboutCleanup(): void
+    {
+        $bundleRoot = $this->createPortableBundle('linux-amd64/1.0.0', true);
+        $this->mockReleaseFetch();
+        $this->portableUpdateService->expects(self::once())->method('update')->willReturn(1);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->prompt->expects(self::never())->method('confirm');
+
+        $response = $this->createHandler($bundleRoot . '/app/stud.phar')->handle(false, false);
+
+        self::assertSame(1, $response->exitCode);
+        self::assertFileDoesNotExist($this->workspace . '/home/.local/share/stud-portable/.cleanup-pending');
     }
 
     public function testLegacyPortableInstallIsRejectedBeforePortableUpdate(): void

@@ -177,9 +177,11 @@ use App\Service\JiraFieldMetadataService;
 use App\Service\JiraIssueMapper;
 use App\Service\JiraUserSearchService;
 use App\Service\Logger;
+use App\Service\ManagedInstallPaths;
 use App\Service\MessageRenderer;
 use App\Service\MigrationExecutor;
 use App\Service\MigrationRegistry;
+use App\Service\OldVersionCleaner;
 use App\Service\PrCommentInputResolver;
 use App\Service\ProcessFactory;
 use App\Service\ProjectInitChain;
@@ -1812,6 +1814,32 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
         if (isset($logger)) {
             $logger->error(Logger::VERBOSITY_VERBOSE, ['Config pass error: ' . $e->getMessage()]);
         }
+    }
+}
+
+/**
+ * Runs the old-version removal that an update left pending, from the active version only.
+ * Failures warn and never change the exit code.
+ */
+#[AsListener(event: ConsoleEvents::COMMAND)]
+function _pending_cleanup_listener(ConsoleCommandEvent $event): void
+{
+    $command = $event->getCommand();
+    if (! $command instanceof \Castor\Console\Command\TaskCommand || ! class_exists('Phar') || ! \Phar::running(false)) {
+        return;
+    }
+
+    $paths = ManagedInstallPaths::fromEnvironment();
+    $failedPaths = (new OldVersionCleaner($paths))->runPending(\Phar::running(false));
+    $agentMode = _is_agent_mode_request($event->getInput());
+    if ($failedPaths === [] || $agentMode || $event->getOutput()->isQuiet()) {
+        return;
+    }
+
+    $io = new SymfonyStyle($event->getInput(), $event->getOutput());
+    $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer(_get_colour_config()), new \App\Service\OutputVerbosityGate($io, $agentMode), _get_message_renderer());
+    foreach ($failedPaths as $path) {
+        $logger->warning(Logger::VERBOSITY_NORMAL, \App\DTO\MessageRef::key('update.cleanup_failed', ['path' => $path, 'marker' => $paths->cleanupMarker()]));
     }
 }
 

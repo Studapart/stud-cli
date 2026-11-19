@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\DTO\WorkflowRecorder;
-use App\Service\PortableOldVersionCleaner;
+use App\Service\ManagedInstallPaths;
+use App\Service\ManagedSymlinkSwitcher;
+use App\Service\OldVersionCleaner;
 use App\Service\PortableUpdateService;
-use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
 use App\Service\UpdateInstallContext;
 use App\Service\UpdateRepositoryContext;
@@ -23,14 +24,12 @@ class PortableUpdateServiceTest extends TestCase
     private string $portableRoot;
     private string $managedSymlink;
     private HttpClientInterface $httpClient;
-    private PromptInterface $prompt;
     private TranslationService&Stub $translator;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->httpClient = $this->createStub(HttpClientInterface::class);
-        $this->prompt = $this->createStub(PromptInterface::class);
         $this->translator = $this->createStub(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(
             fn (string $key, array $parameters = []): string => strtr($key, array_map('strval', $parameters))
@@ -45,18 +44,14 @@ class PortableUpdateServiceTest extends TestCase
         parent::tearDown();
     }
 
-    public function testSuccessfulQuietUpdateSwitchesSymlinkAndKeepsPreviousVersion(): void
+    public function testSuccessfulUpdateSwitchesSymlinkAndKeepsPreviousVersion(): void
     {
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->bindSubject();
-
         $context = $this->createInstalledPortableContext();
         $archive = $this->createPortableArchive('1.0.1', true);
         $checksums = hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n";
         $this->mockDownloads(file_get_contents($archive) ?: '', $checksums);
-        $this->prompt->expects(self::never())->method('confirm');
 
-        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, $this->releaseData(), new WorkflowRecorder());
 
         self::assertSame(0, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.1/stud', readlink($this->managedSymlink));
@@ -70,7 +65,7 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', str_repeat('0', 64) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, $this->releaseData(), new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
@@ -83,262 +78,45 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  another-file.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, $this->releaseData(), new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
     }
 
-    public function testInteractiveCleanupRemovesNonRunningVersionsImmediatelyAndDefersRunningBundle(): void
+    public function testSymlinkSwitchFailureReportsErrorAndKeepsCurrentVersionActive(): void
     {
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->bindSubject();
-
         $context = $this->createInstalledPortableContext();
-        $extraOld = $this->portableRoot . '/linux-amd64/0.9.0';
-        mkdir($extraOld . '/app', 0777, true);
-        $this->writeExecutable($extraOld . '/stud', "#!/usr/bin/env sh\nprintf 'old\\n'\n");
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
-        $this->prompt->expects(self::once())->method('confirm')->willReturn(true);
-
-        $cleaner = $this->createCleanerWithDeferredCapture();
-        $result = $this->createService($cleaner)->update($context, $this->releaseData(), false, new WorkflowRecorder());
-
-        self::assertSame(0, $result);
-        self::assertFileDoesNotExist($extraOld . '/stud');
-        self::assertFileExists($this->portableRoot . '/linux-amd64/1.0.0/stud');
-        self::assertFileExists($this->portableRoot . '/linux-amd64/1.0.1/stud');
-        self::assertSame([$this->portableRoot . '/linux-amd64/1.0.0'], $cleaner->deferredPaths);
-    }
-
-    public function testInteractiveCleanupDoesNotDestroyRunningBundleBeforeReturn(): void
-    {
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->bindSubject();
-
-        $context = $this->createInstalledPortableContext();
-        $runningPhar = $context->bundleRoot . '/app/stud.phar';
-        $archive = $this->createPortableArchive('1.0.1', true);
-        $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
-        $this->prompt->expects(self::once())->method('confirm')->willReturn(true);
-
-        $cleaner = $this->createCleanerWithDeferredCapture();
-        $result = $this->createService($cleaner)->update($context, $this->releaseData(), false, new WorkflowRecorder());
-
-        self::assertSame(0, $result);
-        self::assertFileExists($runningPhar);
-        self::assertSame([$context->bundleRoot], $cleaner->deferredPaths);
-    }
-
-    public function testImmediateCleanupFailureEmitsWarningWithoutFailingUpdate(): void
-    {
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->bindSubject();
-
-        $context = $this->createInstalledPortableContext();
-        $extraOld = $this->portableRoot . '/linux-amd64/0.9.0';
-        mkdir($extraOld . '/app', 0777, true);
-        $this->writeExecutable($extraOld . '/stud', "#!/usr/bin/env sh\nprintf 'old\\n'\n");
-        $archive = $this->createPortableArchive('1.0.1', true);
-        $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
-        $this->prompt->expects(self::once())->method('confirm')->willReturn(true);
-
+        $switcher = $this->createStub(ManagedSymlinkSwitcher::class);
+        $switcher->method('switch')->willReturn(false);
+        $service = new PortableUpdateService(
+            new UpdateRepositoryContext('studapart', 'stud-cli'),
+            new OldVersionCleaner(ManagedInstallPaths::fromHome($this->workspace . '/home')),
+            $switcher,
+            $this->httpClient,
+        );
         $recorder = new WorkflowRecorder();
-        $cleaner = new class ($this->prompt, $extraOld) extends PortableOldVersionCleaner {
-            public function __construct(PromptInterface $prompt, private readonly string $failPath)
-            {
-                parent::__construct($prompt);
-            }
 
-            protected function scheduleDeferredRemoval(array $paths): void
-            {
-            }
+        $result = $service->update($context, $this->releaseData(), $recorder);
 
-            public function removeDirectory(string $path): bool
-            {
-                if ($path === $this->failPath) {
-                    return false;
-                }
-
-                return parent::removeDirectory($path);
-            }
-        };
-
-        $result = $this->createService($cleaner)->update($context, $this->releaseData(), false, $recorder);
-
-        self::assertSame(0, $result);
-        $warnings = array_values(array_filter(
-            $recorder->getEntries(),
-            static fn ($entry): bool => $entry->type === 'warning'
-        ));
-        self::assertNotEmpty($warnings);
-        $message = $warnings[0]->message;
-        self::assertInstanceOf(\App\DTO\MessageRef::class, $message);
-        self::assertSame('update.portable_cleanup_failed', $message->key);
-        self::assertSame($extraOld, $message->parameters['path'] ?? null);
+        self::assertSame(1, $result);
+        self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
+        self::assertSame(['text', 'error'], array_values(array_map(static fn ($entry): string => $entry->type, $recorder->getEntries())));
     }
 
-    public function testDeferredScheduleFailureEmitsWarningWithoutFailingUpdate(): void
+    public function testUnexpectedReleaseVersionIsRefusedBeforeAnyPathIsBuilt(): void
     {
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->bindSubject();
-
         $context = $this->createInstalledPortableContext();
-        $archive = $this->createPortableArchive('1.0.1', true);
-        $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
-        $this->prompt->expects(self::once())->method('confirm')->willReturn(true);
-
         $recorder = new WorkflowRecorder();
-        $cleaner = new class ($this->prompt) extends PortableOldVersionCleaner {
-            protected function spawnDeferredRemoval(int $pid, array $paths): bool
-            {
-                return false;
-            }
-        };
 
-        $result = $this->createService($cleaner)->update($context, $this->releaseData(), false, $recorder);
+        $result = $this->createService()->update($context, ['tag_name' => 'v../../escape', 'assets' => []], $recorder);
 
-        self::assertSame(0, $result);
-        self::assertFileExists($context->bundleRoot . '/app/stud.phar');
-        $warnings = array_values(array_filter(
-            $recorder->getEntries(),
-            static fn ($entry): bool => $entry->type === 'warning'
-        ));
-        self::assertNotEmpty($warnings);
-        $message = $warnings[0]->message;
-        self::assertInstanceOf(\App\DTO\MessageRef::class, $message);
-        self::assertSame('update.portable_cleanup_schedule_failed', $message->key);
-    }
-
-    public function testMissingProcessIdEmitsScheduleFailureWarning(): void
-    {
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->bindSubject();
-
-        $context = $this->createInstalledPortableContext();
-        $archive = $this->createPortableArchive('1.0.1', true);
-        $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
-        $this->prompt->expects(self::once())->method('confirm')->willReturn(true);
-
-        $recorder = new WorkflowRecorder();
-        $cleaner = new class ($this->prompt) extends PortableOldVersionCleaner {
-            protected function currentProcessId(): int|false
-            {
-                return false;
-            }
-        };
-
-        $result = $this->createService($cleaner)->update($context, $this->releaseData(), false, $recorder);
-
-        self::assertSame(0, $result);
-        $warnings = array_values(array_filter(
-            $recorder->getEntries(),
-            static fn ($entry): bool => $entry->type === 'warning'
-        ));
-        self::assertNotEmpty($warnings);
-        $message = $warnings[0]->message;
-        self::assertInstanceOf(\App\DTO\MessageRef::class, $message);
-        self::assertSame('update.portable_cleanup_schedule_failed', $message->key);
-    }
-
-    public function testSuccessfulDeferredScheduleEmitsNote(): void
-    {
-        $this->prompt = $this->createMock(PromptInterface::class);
-        $this->bindSubject();
-
-        $context = $this->createInstalledPortableContext();
-        $archive = $this->createPortableArchive('1.0.1', true);
-        $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
-        $this->prompt->expects(self::once())->method('confirm')->willReturn(true);
-
-        $recorder = new WorkflowRecorder();
-        $cleaner = new class ($this->prompt) extends PortableOldVersionCleaner {
-            protected function spawnDeferredRemoval(int $pid, array $paths): bool
-            {
-                return true;
-            }
-        };
-
-        $result = $this->createService($cleaner)->update($context, $this->releaseData(), false, $recorder);
-
-        self::assertSame(0, $result);
-        $notes = array_values(array_filter(
-            $recorder->getEntries(),
-            static fn ($entry): bool => $entry->type === 'note'
-        ));
-        self::assertNotEmpty($notes);
-        $message = $notes[0]->message;
-        self::assertInstanceOf(\App\DTO\MessageRef::class, $message);
-        self::assertSame('update.portable_cleanup_deferred', $message->key);
-    }
-
-    public function testIsSameFilesystemPathFallsBackWhenRealpathFails(): void
-    {
-        $cleaner = new PortableOldVersionCleaner($this->prompt);
-        $method = new \ReflectionMethod(PortableOldVersionCleaner::class, 'isSameFilesystemPath');
-        $missing = $this->workspace . '/missing-a';
-        $other = $this->workspace . '/missing-b';
-
-        self::assertTrue($method->invoke($cleaner, $missing, $missing . '/'));
-        self::assertFalse($method->invoke($cleaner, $missing, $other));
-    }
-
-    public function testRemoveDirectoryReturnsTrueForMissingPath(): void
-    {
-        $cleaner = new PortableOldVersionCleaner($this->prompt);
-        self::assertTrue($cleaner->removeDirectory($this->workspace . '/does-not-exist'));
-    }
-
-    public function testSpawnDeferredRemovalBuildsDetachedCommandAndReturnsTrue(): void
-    {
-        $dir = $this->workspace . '/deferred-target';
-        mkdir($dir, 0777, true);
-        file_put_contents($dir . '/marker', 'x');
-
-        $cleaner = new PortableOldVersionCleaner($this->prompt);
-        $build = new \ReflectionMethod(PortableOldVersionCleaner::class, 'buildDeferredRemovalCommand');
-        $command = $build->invoke($cleaner, 2147483646, [$dir]);
-        self::assertStringContainsString('nohup sh -c', $command);
-        self::assertStringContainsString('rm -rf', $command);
-        self::assertStringContainsString(escapeshellarg($dir), $command);
-
-        $spawn = new \ReflectionMethod(PortableOldVersionCleaner::class, 'spawnDeferredRemoval');
-        self::assertTrue($spawn->invoke($cleaner, 2147483646, [$dir]));
-    }
-
-    public function testScheduleDeferredRemovalNoopsForEmptyPathList(): void
-    {
-        $cleaner = new PortableOldVersionCleaner($this->prompt);
-        $method = new \ReflectionMethod(PortableOldVersionCleaner::class, 'scheduleDeferredRemoval');
-        $method->invoke($cleaner, []);
-        self::assertTrue(true);
-    }
-
-    public function testRemoveDirectoryPropagatesChildFailure(): void
-    {
-        $parent = $this->workspace . '/parent-dir';
-        $child = $parent . '/child';
-        mkdir($child, 0777, true);
-
-        $cleaner = new class ($this->prompt, $child) extends PortableOldVersionCleaner {
-            public function __construct(PromptInterface $prompt, private readonly string $failPath)
-            {
-                parent::__construct($prompt);
-            }
-
-            public function removeDirectory(string $path): bool
-            {
-                if ($path === $this->failPath) {
-                    return false;
-                }
-
-                return parent::removeDirectory($path);
-            }
-        };
-
-        self::assertFalse($cleaner->removeDirectory($parent));
-        self::assertDirectoryExists($parent);
+        self::assertSame(1, $result);
+        self::assertDirectoryExists($this->portableRoot . '/linux-amd64/1.0.0');
+        self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
+        self::assertSame(['error'], array_values(array_map(static fn ($entry): string => $entry->type, $recorder->getEntries())));
     }
 
     public function testSmokeFailureLeavesCurrentSymlinkActive(): void
@@ -347,7 +125,7 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', false);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, $this->releaseData(), new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
@@ -359,7 +137,7 @@ class PortableUpdateServiceTest extends TestCase
         $archiveContent = 'not a tar archive';
         $this->mockDownloads($archiveContent, hash('sha256', $archiveContent) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, $this->releaseData(), new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
@@ -376,7 +154,7 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, $this->releaseData(), new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($unmanaged, readlink($this->managedSymlink));
@@ -396,7 +174,7 @@ class PortableUpdateServiceTest extends TestCase
             true
         );
 
-        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, $this->releaseData(), new WorkflowRecorder());
 
         self::assertSame(1, $result);
     }
@@ -405,7 +183,7 @@ class PortableUpdateServiceTest extends TestCase
     {
         $context = new UpdateInstallContext(UpdateInstallContext::MODE_PORTABLE, '1.0.0', '/tmp/stud.phar');
 
-        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, $this->releaseData(), new WorkflowRecorder());
 
         self::assertSame(1, $result);
     }
@@ -414,7 +192,7 @@ class PortableUpdateServiceTest extends TestCase
     {
         $context = $this->createInstalledPortableContext();
 
-        $result = $this->createService()->update($context, ['tag_name' => 'v1.0.1', 'assets' => []], true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, ['tag_name' => 'v1.0.1', 'assets' => []], new WorkflowRecorder());
 
         self::assertSame(1, $result);
     }
@@ -422,7 +200,6 @@ class PortableUpdateServiceTest extends TestCase
     public function testAssetWithoutIdIsReportedAsFailure(): void
     {
         $this->httpClient = $this->createMock(HttpClientInterface::class);
-        $this->bindSubject();
 
         $context = $this->createInstalledPortableContext();
         $release = [
@@ -434,7 +211,7 @@ class PortableUpdateServiceTest extends TestCase
         ];
         $this->httpClient->expects(self::never())->method('request');
 
-        $result = $this->createService()->update($context, $release, true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, $release, new WorkflowRecorder());
 
         self::assertSame(1, $result);
     }
@@ -445,7 +222,7 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
+        $result = $this->createService()->update($context, $this->releaseData(), new WorkflowRecorder());
 
         self::assertSame(0, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.1/stud', readlink($this->managedSymlink));
@@ -457,14 +234,14 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $checksums = hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n";
         $this->mockDownloads(file_get_contents($archive) ?: '', $checksums);
-        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli'), $this->prompt, $this->httpClient) extends PortableUpdateService {
+        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli'), new OldVersionCleaner(ManagedInstallPaths::fromHome($this->workspace . '/home')), new ManagedSymlinkSwitcher(), $this->httpClient) extends PortableUpdateService {
             protected function moveDirectory(string $from, string $to): bool
             {
                 return false;
             }
         };
 
-        $result = $service->update($context, $this->releaseData(), true, new WorkflowRecorder());
+        $result = $service->update($context, $this->releaseData(), new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
@@ -494,7 +271,7 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testCanCreateRealHttpClientWhenNoClientIsInjected(): void
     {
-        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli', 'token'), $this->prompt) extends PortableUpdateService {
+        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli', 'token'), new OldVersionCleaner(ManagedInstallPaths::fromHome($this->workspace . '/home')), new ManagedSymlinkSwitcher()) extends PortableUpdateService {
             public function exposedClient(): HttpClientInterface
             {
                 return $this->client();
@@ -506,7 +283,7 @@ class PortableUpdateServiceTest extends TestCase
 
     protected function exposingMoveService(): PortableUpdateService
     {
-        return new class (new UpdateRepositoryContext('studapart', 'stud-cli'), $this->prompt) extends PortableUpdateService {
+        return new class (new UpdateRepositoryContext('studapart', 'stud-cli'), new OldVersionCleaner(ManagedInstallPaths::fromHome($this->workspace . '/home')), new ManagedSymlinkSwitcher()) extends PortableUpdateService {
             public function exposeMove(string $from, string $to): bool
             {
                 return $this->moveDirectory($from, $to);
@@ -514,30 +291,14 @@ class PortableUpdateServiceTest extends TestCase
         };
     }
 
-    protected function createService(?PortableOldVersionCleaner $cleaner = null): PortableUpdateService
+    protected function createService(?OldVersionCleaner $cleaner = null): PortableUpdateService
     {
         return new PortableUpdateService(
             new UpdateRepositoryContext('studapart', 'stud-cli'),
-            $this->prompt,
+            $cleaner ?? new OldVersionCleaner(ManagedInstallPaths::fromHome($this->workspace . '/home')),
+            new ManagedSymlinkSwitcher(),
             $this->httpClient,
-            $cleaner,
         );
-    }
-
-    /**
-     * @return PortableOldVersionCleaner&object{deferredPaths: list<string>}
-     */
-    protected function createCleanerWithDeferredCapture(): PortableOldVersionCleaner
-    {
-        return new class ($this->prompt) extends PortableOldVersionCleaner {
-            /** @var list<string> */
-            public array $deferredPaths = [];
-
-            protected function scheduleDeferredRemoval(array $paths): void
-            {
-                $this->deferredPaths = $paths;
-            }
-        };
     }
 
     protected function createInstalledPortableContext(): UpdateInstallContext

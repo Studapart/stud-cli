@@ -47,6 +47,16 @@ class SetupStudScriptTest extends TestCase
         self::assertStringContainsString('-r', file_get_contents($this->workspace . '/php.log') ?: '');
     }
 
+    public function testPharModeStoresVersionedPharAndLinksTheManagedCommand(): void
+    {
+        $process = $this->runSetup(['--skip-init']);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        $pharFile = $this->home . '/.local/share/stud-portable/phar/9.8.7-stud.phar';
+        self::assertFileExists($pharFile);
+        self::assertSame($pharFile, readlink($this->home . '/.local/bin/stud'));
+    }
+
     public function testPharModeRejectsUnpatchedPhp(): void
     {
         foreach (['8.2.0', '8.3.21', '8.4.0', '8.4.27', '8.5.11'] as $version) {
@@ -220,6 +230,36 @@ class SetupStudScriptTest extends TestCase
         self::assertSame($unmanagedRoot . '/stud', readlink($this->home . '/.local/bin/stud'));
     }
 
+    public function testPharModeRefusesPlainFileAtManagedCommandWithoutForce(): void
+    {
+        $this->writePlainStudFile();
+
+        $process = $this->runSetup(['--skip-init']);
+
+        self::assertNotSame(0, $process->getExitCode());
+        self::assertStringContainsString('Refusing to overwrite unmanaged stud', $process->getErrorOutput());
+        self::assertFalse(is_link($this->home . '/.local/bin/stud'));
+    }
+
+    public function testPharModeReplacesPlainFileAtManagedCommandWithForce(): void
+    {
+        $this->writePlainStudFile();
+
+        $process = $this->runSetup(['--force', '--skip-init']);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        self::assertSame($this->home . '/.local/share/stud-portable/phar/9.8.7-stud.phar', readlink($this->home . '/.local/bin/stud'));
+    }
+
+    public function testRefusesReleaseVersionThatIsNotAFileNameToken(): void
+    {
+        $process = $this->runSetup(['--skip-init'], ['STUD_INSTALL_VERSION' => '../evil']);
+
+        self::assertNotSame(0, $process->getExitCode());
+        self::assertStringContainsString('Refusing to install unexpected release version', $process->getOutput() . $process->getErrorOutput());
+        self::assertFileDoesNotExist($this->home . '/.local/bin/stud');
+    }
+
     public function testFailsWhenLatestReleaseResponseHasNoTagName(): void
     {
         $this->writeCurlFakeWithApiResponse(<<<'JSON'
@@ -278,6 +318,12 @@ JSON);
         $process->run();
 
         return $process;
+    }
+
+    protected function writePlainStudFile(): void
+    {
+        mkdir($this->home . '/.local/bin', 0777, true);
+        $this->writeExecutable($this->home . '/.local/bin/stud', "#!/usr/bin/env sh\nprintf 'plain\\n'\n");
     }
 
     protected function writeDefaultFakes(): void
