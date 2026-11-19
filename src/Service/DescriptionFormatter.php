@@ -136,99 +136,17 @@ class DescriptionFormatter
      */
     public function formatContentForDisplay(array $lines): array
     {
-        $lists = [];
-        $text = [];
-        $currentList = [];
-        $currentText = [];
-        $currentListItem = null;
-        $currentSubItems = [];
+        $builder = new ChecklistDisplayBuilder();
 
         foreach ($lines as $line) {
             $trimmed = trim($line);
             if (preg_match('/^\[\s*[xX]?\s*\]\s*(.+)$/', $trimmed, $matches)) {
-                $this->flushCurrentListItem($currentList, $currentText, $text, $currentListItem, $currentSubItems);
-                if ($currentText !== []) {
-                    $text[] = $currentText;
-                    $currentText = [];
-                }
-                $currentListItem = trim($matches[1]);
+                $builder->startCheckboxItem(trim($matches[1]));
             } else {
-                $this->appendNonCheckboxLine($trimmed, $currentList, $lists, $currentText, $currentListItem, $currentSubItems);
+                $builder->addNonCheckboxLine($trimmed);
             }
         }
 
-        $this->flushCurrentListItem($currentList, $currentText, $text, $currentListItem, $currentSubItems);
-        if ($currentList !== []) {
-            $lists[] = $currentList;
-        }
-        if ($currentText !== []) {
-            $text[] = $currentText;
-        }
-
-        return ['lists' => $lists, 'text' => $text];
-    }
-
-    /**
-     * @param array<int, string> $currentList
-     * @param array<int, string> $currentText
-     * @param array<int, array<int, string>> $text
-     * @param array<int, string> $currentSubItems
-     */
-    protected function flushCurrentListItem(
-        array &$currentList,
-        array &$currentText,
-        array &$text,
-        ?string &$currentListItem,
-        array &$currentSubItems
-    ): void {
-        if ($currentListItem === null) {
-            return;
-        }
-        if ($currentSubItems !== []) {
-            $formatted = $currentListItem;
-            foreach ($currentSubItems as $sub) {
-                $formatted .= "\n  - " . $sub;
-            }
-            $currentList[] = $formatted;
-        } else {
-            $currentList[] = $currentListItem;
-        }
-        $currentListItem = null;
-        $currentSubItems = [];
-    }
-
-    /**
-     * @param array<int, string> $currentList
-     * @param array<int, array<int, string>> $lists
-     * @param array<int, string> $currentText
-     * @param array<int, string> $currentSubItems
-     */
-    protected function appendNonCheckboxLine(
-        string $trimmed,
-        array &$currentList,
-        array &$lists,
-        array &$currentText,
-        ?string $currentListItem,
-        array &$currentSubItems
-    ): void {
-        if ($currentListItem !== null) {
-            if ($trimmed !== '') {
-                $currentSubItems[] = $trimmed;
-            }
-
-            return;
-        }
-        // Unreachable: currentList only non-empty after flush, same iteration sets currentListItem
-        // @codeCoverageIgnoreStart
-        if ($currentList !== []) {
-            $lists[] = $currentList;
-            $currentList = [];
-        }
-        // @codeCoverageIgnoreEnd
-        if ($trimmed !== '') {
-            $currentText[] = $trimmed;
-        } elseif ($currentText !== []) {
-            $currentText[] = '';
-        }
+        return $builder->build();
     }
 }

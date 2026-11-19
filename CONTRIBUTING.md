@@ -103,7 +103,7 @@ vendor/bin/phpunit
 
 - **README.md** – Install router and documentation index.
 - **CONVENTIONS.md** – Coding and testing standards (required reading for code contributions).
-- **AI.md** – AI agent development protocol (required for agent-driven work).
+- **AGENTS.md** – Agent obligations for this repository.
 - **documentation/** – Setup, features, integrations, development guide, generated [command reference](documentation/reference/commands.md), and [Architecture Decision Records](documentation/index.md#architecture-decision-records).
 
 When changing behavior or architecture, consider adding or updating an ADR; use [documentation/adr-template.md](documentation/adr-template.md) for new ADRs.

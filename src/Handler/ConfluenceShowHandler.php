@@ -10,16 +10,14 @@ use App\Exception\ApiException;
 use App\Guard\Capability\ConfluenceAware;
 use App\Response\ConfluenceShowResponse;
 use App\Service\AdfToMarkdownConverter;
-use App\Service\WikiPort;
+use App\Service\WikiReadPort;
 
 class ConfluenceShowHandler implements ConfluenceAware
 {
     public function __construct(
-        private readonly WikiPort $wiki,
+        private readonly WikiReadPort $wiki,
         private readonly AdfToMarkdownConverter $adfConverter,
-        mixed $_translator
     ) {
-        unset($_translator);
     }
 
     public function handle(ConfluenceShowInput $input, string $baseUrl): ConfluenceShowResponse

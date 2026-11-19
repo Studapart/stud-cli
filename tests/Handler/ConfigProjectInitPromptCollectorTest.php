@@ -9,6 +9,9 @@ use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\ConfigProjectInitPromptCollector;
+use App\Handler\ProjectGitPrompts;
+use App\Handler\ProjectInitGlobalConfig;
+use App\Handler\ProjectInitPromptContext;
 use App\Service\FileSystem;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
@@ -39,14 +42,12 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         return new ConfigProjectInitPromptCollector(
             $gitRepository,
-            $gitSetup,
-            $this->createStub(TranslationService::class),
+            new ProjectGitPrompts($gitRepository, $gitSetup, $prompt, new GitTokenPromptResolver()),
             $prompt,
-            new GitTokenPromptResolver(),
-            $fileSystem,
-            '/tmp/global-config.yml',
-            new GlobalConfigProviderResolver(),
-            $metadataPrompts ?? $this->createDefaultMetadataPrompts(),
+            new ProjectInitPromptContext(
+                new ProjectInitGlobalConfig($fileSystem, '/tmp/global-config.yml', new GlobalConfigProviderResolver()),
+                $metadataPrompts ?? $this->createDefaultMetadataPrompts(),
+            ),
         );
     }
 
@@ -517,14 +518,12 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
-            $gitSetup,
-            $this->createStub(TranslationService::class),
+            new ProjectGitPrompts($gitRepository, $gitSetup, $prompt, new GitTokenPromptResolver()),
             $prompt,
-            new GitTokenPromptResolver(),
-            $fileSystem,
-            '/tmp/global-config.yml',
-            new GlobalConfigProviderResolver(),
-            $this->createDefaultMetadataPrompts(),
+            new ProjectInitPromptContext(
+                new ProjectInitGlobalConfig($fileSystem, '/tmp/global-config.yml', new GlobalConfigProviderResolver()),
+                $this->createDefaultMetadataPrompts(),
+            ),
         );
 
         $this->assertSame(['gitProvider' => 'github'], $collector->collect(new WorkflowRecorder()));
@@ -694,49 +693,6 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $result = $collector->collect(new WorkflowRecorder());
         $this->assertArrayNotHasKey('linearTeamKey', $result);
         $this->assertSame('SCI', $result['projectKey']);
-    }
-
-    public function testPromptLinearTeamKeyUsesExistingValueAsDefaultAndSkipsUnchangedAnswer(): void
-    {
-        $prompt = $this->createMock(PromptInterface::class);
-        $prompt->expects($this->once())
-            ->method('ask')
-            ->with(
-                $this->anything(),
-                'ENG',
-            )
-            ->willReturn('ENG');
-
-        $collector = $this->createCollector(
-            $this->createStub(GitRepository::class),
-            $prompt,
-            $this->createStub(GitSetupService::class),
-        );
-
-        $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptLinearTeamKey');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $this->assertSame([], $method->invoke($collector, [
-            'projectKey' => 'SCI',
-            'linearTeamKey' => 'ENG',
-        ]));
-    }
-
-    public function testPromptLinearTeamKeyReturnsEmptyWhenUserSkips(): void
-    {
-        $prompt = $this->createStub(PromptInterface::class);
-        $prompt->method('ask')->willReturn('');
-
-        $collector = $this->createCollector(
-            $this->createStub(GitRepository::class),
-            $prompt,
-            $this->createStub(GitSetupService::class),
-        );
-
-        $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptLinearTeamKey');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $this->assertSame([], $method->invoke($collector, ['projectKey' => 'SCI']));
     }
 
     public function testMergeProjectConfigSkipsUnknownInputKeys(): void

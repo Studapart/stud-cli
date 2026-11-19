@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\DTO\BranchEligibilityContext;
 use App\DTO\WorkflowRecorder;
 use App\Enum\BranchAutoCleanDecision;
 use App\Service\BranchDeletionEligibilityResolver;
@@ -73,9 +74,9 @@ class BranchDeletionEligibilityResolverTest extends TestCase
     {
         $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $this->createStub(GitBranchService::class), null);
 
-        $protected = $resolver->evaluate('develop', 'main', true, 'origin/develop', [], true);
-        $current = $resolver->evaluate('feat/a', 'feat/a', true, 'origin/develop', [], true);
-        $openPr = $resolver->evaluate('feat/b', 'main', true, 'origin/develop', ['feat/b' => ['state' => 'open']], true);
+        $protected = $resolver->evaluate('develop', true, new BranchEligibilityContext('main', 'origin/develop', [], true));
+        $current = $resolver->evaluate('feat/a', true, new BranchEligibilityContext('feat/a', 'origin/develop', [], true));
+        $openPr = $resolver->evaluate('feat/b', true, new BranchEligibilityContext('main', 'origin/develop', ['feat/b' => ['state' => 'open']], true));
 
         $this->assertSame(BranchAutoCleanDecision::No, $protected->decision);
         $this->assertSame(BranchAutoCleanDecision::No, $current->decision);
@@ -85,8 +86,8 @@ class BranchDeletionEligibilityResolverTest extends TestCase
     public function testEvaluateReturnsManualForUnresolvedBaseAndProviderUnavailable(): void
     {
         $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $this->createStub(GitBranchService::class), null);
-        $unresolved = $resolver->evaluate('feat/a', 'main', false, null, [], true);
-        $providerUnavailable = $resolver->evaluate('feat/a', 'main', false, 'origin/develop', [], false);
+        $unresolved = $resolver->evaluate('feat/a', false, new BranchEligibilityContext('main', null, [], true));
+        $providerUnavailable = $resolver->evaluate('feat/a', false, new BranchEligibilityContext('main', 'origin/develop', [], false));
 
         $this->assertSame(BranchAutoCleanDecision::Manual, $unresolved->decision);
         $this->assertSame('base_branch_unresolved', $unresolved->reason);
@@ -102,14 +103,16 @@ class BranchDeletionEligibilityResolverTest extends TestCase
         ]);
         $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $gitBranchService, null);
 
-        $mergedByGit = $resolver->evaluate('feat/git', 'main', true, 'origin/develop', [], true);
+        $mergedByGit = $resolver->evaluate('feat/git', true, new BranchEligibilityContext('main', 'origin/develop', [], true));
         $mergedByProvider = $resolver->evaluate(
             'feat/provider',
-            'main',
             false,
-            'origin/develop',
-            ['feat/provider' => ['state' => 'closed', 'merged_at' => '2026-03-26T10:00:00Z']],
-            true
+            new BranchEligibilityContext(
+                'main',
+                'origin/develop',
+                ['feat/provider' => ['state' => 'closed', 'merged_at' => '2026-03-26T10:00:00Z']],
+                true
+            )
         );
 
         $this->assertSame(BranchAutoCleanDecision::Yes, $mergedByGit->decision);
@@ -130,11 +133,13 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
         $eligibility = $resolver->evaluate(
             'feat/provider',
-            'main',
             true,
-            'origin/develop',
-            ['feat/provider' => ['state' => 'closed', 'merged_at' => '2026-03-26T10:00:00Z']],
-            true
+            new BranchEligibilityContext(
+                'main',
+                'origin/develop',
+                ['feat/provider' => ['state' => 'closed', 'merged_at' => '2026-03-26T10:00:00Z']],
+                true
+            )
         );
 
         $this->assertSame(BranchAutoCleanDecision::Yes, $eligibility->decision);
@@ -151,11 +156,8 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
         $eligibility = $resolver->evaluate(
             'feat/closed',
-            'main',
             true,
-            'origin/develop',
-            ['feat/closed' => ['state' => 'closed']],
-            true
+            new BranchEligibilityContext('main', 'origin/develop', ['feat/closed' => ['state' => 'closed']], true)
         );
 
         $this->assertSame(BranchAutoCleanDecision::Manual, $eligibility->decision);
@@ -168,7 +170,7 @@ class BranchDeletionEligibilityResolverTest extends TestCase
         $gitBranchService->method('isBranchMergedInto')->willThrowException(new \RuntimeException('boom'));
         $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $gitBranchService, null);
 
-        $eligibility = $resolver->evaluate('feat/ex', 'main', false, 'origin/develop', [], true);
+        $eligibility = $resolver->evaluate('feat/ex', false, new BranchEligibilityContext('main', 'origin/develop', [], true));
 
         $this->assertSame(BranchAutoCleanDecision::Manual, $eligibility->decision);
         $this->assertSame('merge_check_failed', $eligibility->reason);
@@ -181,7 +183,7 @@ class BranchDeletionEligibilityResolverTest extends TestCase
         $resolver = new BranchDeletionEligibilityResolver($this->createStub(GitRepository::class), $gitBranchService, null);
         $recorder = new WorkflowRecorder();
 
-        $eligibility = $resolver->evaluate('feat/ex', 'main', false, 'origin/develop', [], true, $recorder);
+        $eligibility = $resolver->evaluate('feat/ex', false, new BranchEligibilityContext('main', 'origin/develop', [], true), $recorder);
 
         $this->assertSame(BranchAutoCleanDecision::Manual, $eligibility->decision);
         $this->assertSame('merge_check_failed', $eligibility->reason);

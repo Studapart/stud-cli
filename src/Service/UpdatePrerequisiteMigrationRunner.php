@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Contract\WorkflowEntryRecorder;
+use App\DTO\GlobalConfigFile;
 use App\DTO\MessageRef;
+use App\DTO\PrerequisiteMigrationHooks;
 
 class UpdatePrerequisiteMigrationRunner
 {
@@ -17,35 +19,33 @@ class UpdatePrerequisiteMigrationRunner
     public function run(
         WorkflowEntryRecorder $recorder,
         GlobalMigrationService $globalMigrationService,
-        callable $getConfigPath,
-        callable $isTestEnvironment,
-        callable $buildErrorMessage,
+        PrerequisiteMigrationHooks $hooks,
     ): int {
         if (defined('STUD_CLI_TEST_MODE') && STUD_CLI_TEST_MODE === true) {
             return 0;
         }
 
         // @codeCoverageIgnoreStart
-        if ($isTestEnvironment()) {
+        if (($hooks->isTestEnvironment)()) {
             return 0;
         }
 
         try {
-            $configData = $this->loadConfigAndVersion($getConfigPath, $isTestEnvironment);
+            $configData = $this->loadConfigAndVersion($hooks->getConfigPath, $hooks->isTestEnvironment);
             if ($configData === null) {
                 return 0;
             }
 
             [$config, $configPath, $currentVersion] = $configData;
 
-            $pendingMigrations = $this->discoverPrerequisiteMigrations($globalMigrationService, $currentVersion, $isTestEnvironment);
+            $pendingMigrations = $this->discoverPrerequisiteMigrations($globalMigrationService, $currentVersion, $hooks->isTestEnvironment);
             if (empty($pendingMigrations)) {
                 return 0;
             }
 
-            return $this->executePendingMigrations($recorder, $globalMigrationService, $pendingMigrations, $config, $configPath);
+            return $this->executePendingMigrations($recorder, $globalMigrationService, $pendingMigrations, new GlobalConfigFile($config, $configPath));
         } catch (\Throwable $e) {
-            return $this->handleMigrationError($recorder, $e, $isTestEnvironment, $buildErrorMessage);
+            return $this->handleMigrationError($recorder, $e, $hooks->isTestEnvironment, $hooks->buildErrorMessage);
         }
         // @codeCoverageIgnoreEnd
     }
@@ -108,17 +108,15 @@ class UpdatePrerequisiteMigrationRunner
 
     /**
      * @param array<\App\Migrations\MigrationInterface> $pendingMigrations
-     * @param array<string, mixed> $config
      */
     public function executePendingMigrations(
         WorkflowEntryRecorder $recorder,
         GlobalMigrationService $globalMigrationService,
         array $pendingMigrations,
-        array $config,
-        string $configPath,
+        GlobalConfigFile $configFile,
     ): int {
         $recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('migration.global.running'));
-        $globalMigrationService->executePendingMigrations($pendingMigrations, $config, $configPath, $recorder);
+        $globalMigrationService->executePendingMigrations($pendingMigrations, $configFile->config, $configFile->path, $recorder);
         $recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('migration.global.complete'));
 
         return 0;

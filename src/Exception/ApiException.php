@@ -13,7 +13,6 @@ class ApiException extends \RuntimeException
         private readonly string $technicalDetails,
         private readonly ?int $statusCode = null,
         ?\Throwable $previous = null,
-        private readonly ?MessageRef $resolutionHint = null,
     ) {
         parent::__construct($userMessage, 0, $previous);
     }
@@ -30,6 +29,6 @@ class ApiException extends \RuntimeException
 
     public function getResolutionHint(): ?MessageRef
     {
-        return $this->resolutionHint;
+        return null;
     }
 }

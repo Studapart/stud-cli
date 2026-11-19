@@ -25,7 +25,6 @@ class ItemUpdateHandlerTest extends CommandTestCase
     {
         return new ItemUpdateHandler(
             $this->issueTracker,
-            $this->translationService,
             $this->fieldsParser
         );
     }

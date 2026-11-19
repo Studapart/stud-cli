@@ -45,7 +45,7 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch, true)->shouldBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop');
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -74,7 +74,7 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldNotBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop');
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -103,7 +103,7 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch, false)->shouldBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop');
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -132,7 +132,7 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldNotBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop');
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -141,16 +141,11 @@ class DeployHandlerTest extends CommandTestCase
     public function testHandleOnNonReleaseBranch(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
 
         $gitRepository->getCurrentBranchName()->willReturn('feat/some-feature');
 
-        $logger = $this->createStub(\App\Service\Logger::class);
-        $logger->method('addSection');
-        $logger->method('addError');
-
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $response = $handler->handle($io->reveal());
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop');
+        $response = $handler->handle();
 
         $this->assertFalse($response->isSuccess());
     }
@@ -182,7 +177,7 @@ class DeployHandlerTest extends CommandTestCase
 
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop');
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -216,7 +211,7 @@ class DeployHandlerTest extends CommandTestCase
 
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop');
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -249,7 +244,7 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranchForce($releaseBranch)->shouldNotBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop');
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());

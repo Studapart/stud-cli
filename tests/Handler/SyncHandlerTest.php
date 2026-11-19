@@ -7,15 +7,10 @@ namespace App\Tests\Handler;
 use App\Handler\SyncHandler;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
-use App\Service\Logger;
 use App\Tests\CommandTestCase;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class SyncHandlerTest extends CommandTestCase
 {
-    private Logger $logger;
     private string $baseBranch = 'origin/develop';
 
     protected function setUp(): void
@@ -23,13 +18,6 @@ class SyncHandlerTest extends CommandTestCase
         parent::setUp();
         $this->gitBranchService = $this->createStub(GitBranchService::class);
         $this->gitRepository = $this->createStub(GitRepository::class);
-
-        $this->logger = $this->createStub(Logger::class);
-        $this->logger->method('addSection');
-        $this->logger->method('addText');
-        $this->logger->method('addNote');
-        $this->logger->method('addSuccess');
-        $this->logger->method('addError');
     }
 
     public function testHandleRebaseSuccess(): void
@@ -62,8 +50,8 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('rebaseAbort');
 
-        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $this->logger);
-        $result = $handler->handle($this->createIo());
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch);
+        $result = $handler->handle();
 
         $this->assertTrue($result->isSuccess());
     }
@@ -88,13 +76,8 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('tryRebase');
 
-        $logger = $this->createStub(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addText');
-        $logger->method('addNote');
-
-        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $logger);
-        $result = $handler->handle($this->createIo());
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch);
+        $result = $handler->handle();
 
         $this->assertTrue($result->isSuccess());
     }
@@ -123,13 +106,8 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('rebaseAbort');
 
-        $logger = $this->createStub(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addText');
-        $logger->method('addError');
-
-        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $logger);
-        $result = $handler->handle($this->createIo());
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch);
+        $result = $handler->handle();
 
         $this->assertFalse($result->isSuccess());
     }
@@ -149,8 +127,8 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('tryRebase');
 
-        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $this->logger);
-        $result = $handler->handle($this->createIo());
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch);
+        $result = $handler->handle();
 
         $this->assertFalse($result->isSuccess());
     }
@@ -169,10 +147,30 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('tryRebase');
 
-        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $this->logger);
-        $result = $handler->handle($this->createIo());
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch);
+        $result = $handler->handle();
 
         $this->assertFalse($result->isSuccess());
+    }
+
+    public function testHandleFetchFailureStops(): void
+    {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-42-my-feature');
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->expects($this->once())->method('fetch')->willThrowException(new \App\Exception\GitException(
+            'Git command failed: git fetch origin',
+            'could not resolve host',
+        ));
+        $this->gitBranchService->expects($this->never())->method('resolveLatestBaseBranch');
+        $this->gitRepository->expects($this->never())->method('tryRebase');
+
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch);
+        $result = $handler->handle();
+
+        $this->assertFalse($result->isSuccess());
+        $this->assertMessageRef($result->getErrorMessage(), 'sync.error_fetch', ['error' => 'could not resolve host']);
     }
 
     public function testHandleOnBaseBranchWithoutOriginPrefix(): void
@@ -185,14 +183,9 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('fetch');
 
-        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, 'main', $this->translationService, $this->logger);
-        $result = $handler->handle($this->createIo());
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, 'main');
+        $result = $handler->handle();
 
         $this->assertFalse($result->isSuccess());
-    }
-
-    private function createIo(): SymfonyStyle
-    {
-        return new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
     }
 }

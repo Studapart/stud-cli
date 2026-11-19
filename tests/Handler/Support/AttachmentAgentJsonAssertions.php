@@ -102,6 +102,6 @@ trait AttachmentAgentJsonAssertions
 
     protected function createAttachmentTestLogger(SymfonyStyle $io): Logger
     {
-        return new Logger($io, []);
+        return new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
     }
 }

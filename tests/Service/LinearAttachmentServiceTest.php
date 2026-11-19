@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Exception\ApiException;
+use App\Service\Linear\LinearIssueQueryClient;
+use App\Service\Linear\LinearMutationClient;
+use App\Service\Linear\LinearTeamMetadataClient;
+use App\Service\Linear\LinearWorkspaceClient;
 use App\Service\LinearApiClient;
 use App\Service\LinearAttachmentService;
 use App\Service\LinearGraphqlClient;
@@ -48,7 +52,7 @@ class LinearAttachmentServiceTest extends TestCase
                     ],
                 ], JSON_THROW_ON_ERROR)),
             ]);
-            $linearApi = new LinearApiClient(new LinearGraphqlClient($graphqlClient));
+            $linearApi = $this->linearApiClient(new LinearGraphqlClient($graphqlClient));
 
             $uploadClient = new MockHttpClient(static function (string $method, string $url, array $options = []) use ($tmp): MockResponse {
                 if ($method !== 'PUT' || $url !== 'https://uploads.linear.app/signed/object') {
@@ -77,7 +81,7 @@ class LinearAttachmentServiceTest extends TestCase
 
     public function testUploadRejectsEmptyAbsolutePath(): void
     {
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi);
 
         $this->expectException(ApiException::class);
@@ -87,7 +91,7 @@ class LinearAttachmentServiceTest extends TestCase
 
     public function testUploadRejectsMissingFile(): void
     {
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi);
 
         $this->expectException(ApiException::class);
@@ -96,7 +100,7 @@ class LinearAttachmentServiceTest extends TestCase
 
     public function testUploadRejectsDirectoryPath(): void
     {
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi);
 
         $this->expectException(ApiException::class);
@@ -124,7 +128,7 @@ class LinearAttachmentServiceTest extends TestCase
                     ],
                 ], JSON_THROW_ON_ERROR)),
             ]);
-            $linearApi = new LinearApiClient(new LinearGraphqlClient($graphqlClient));
+            $linearApi = $this->linearApiClient(new LinearGraphqlClient($graphqlClient));
             $uploadClient = new MockHttpClient([
                 new MockResponse('forbidden', ['http_code' => 403]),
             ]);
@@ -140,7 +144,7 @@ class LinearAttachmentServiceTest extends TestCase
 
     public function testUploadHttpClientUsesDefaultWhenNotInjected(): void
     {
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi);
         $method = new \ReflectionMethod(LinearAttachmentService::class, 'uploadHttpClient');
 
@@ -155,7 +159,7 @@ class LinearAttachmentServiceTest extends TestCase
         $response->method('getStatusCode')->willReturn(502);
         $response->expects($this->once())->method('getContent')->with(false)->willThrowException(new \RuntimeException('broken stream'));
 
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi);
         $method = new \ReflectionMethod(LinearAttachmentService::class, 'extractTechnicalDetails');
 
@@ -217,7 +221,7 @@ class LinearAttachmentServiceTest extends TestCase
             ],
         ]);
 
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi, assetHttpClient: $assetClient);
 
         $this->assertSame('file-bytes', $service->downloadAttachmentContent($url));
@@ -229,7 +233,7 @@ class LinearAttachmentServiceTest extends TestCase
         $assetClient = new MockHttpClient([
             new MockResponse('payload', ['http_code' => 200]),
         ]);
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi, assetHttpClient: $assetClient);
 
         $this->assertSame('payload', $service->downloadAttachmentContent($url));
@@ -237,7 +241,7 @@ class LinearAttachmentServiceTest extends TestCase
 
     public function testDownloadRejectsEmptyUrl(): void
     {
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi, assetHttpClient: new MockHttpClient([]));
 
         $this->expectException(ApiException::class);
@@ -247,7 +251,7 @@ class LinearAttachmentServiceTest extends TestCase
 
     public function testDownloadRejectsMalformedUrl(): void
     {
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi, assetHttpClient: new MockHttpClient([]));
 
         $this->expectException(ApiException::class);
@@ -256,7 +260,7 @@ class LinearAttachmentServiceTest extends TestCase
 
     public function testDownloadRejectsDisallowedHost(): void
     {
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi, assetHttpClient: new MockHttpClient([]));
 
         $this->expectException(ApiException::class);
@@ -270,7 +274,7 @@ class LinearAttachmentServiceTest extends TestCase
         $assetClient = new MockHttpClient([
             new MockResponse('gone', ['http_code' => 404]),
         ]);
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi, assetHttpClient: $assetClient);
 
         $this->expectException(ApiException::class);
@@ -280,10 +284,20 @@ class LinearAttachmentServiceTest extends TestCase
 
     public function testAssetHttpClientUsesDefaultWhenNotInjected(): void
     {
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
+        $linearApi = $this->linearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
         $service = new LinearAttachmentService($linearApi);
         $method = new \ReflectionMethod(LinearAttachmentService::class, 'assetHttpClient');
 
         $this->assertInstanceOf(HttpClientInterface::class, $method->invoke($service));
+    }
+
+    private function linearApiClient(LinearGraphqlClient $graphql): LinearApiClient
+    {
+        return new LinearApiClient(
+            new LinearTeamMetadataClient($graphql),
+            new LinearWorkspaceClient($graphql),
+            new LinearIssueQueryClient($graphql),
+            new LinearMutationClient($graphql),
+        );
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\DTO\ConfluencePageContent;
+use App\DTO\ConfluencePageTarget;
 use App\Service\ConfluenceApiClient;
 use App\Service\ConfluenceWikiAdapter;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -54,12 +56,13 @@ class ConfluenceWikiAdapterTest extends TestCase
 
     public function testUpdatePageDelegates(): void
     {
+        $content = new ConfluencePageContent('Title', '{}');
         $this->confluenceApiClient->expects($this->once())
             ->method('updatePage')
-            ->with('42', 'Title', '{}', 2, 'msg')
+            ->with('42', $content, 2, 'msg')
             ->willReturn(['id' => '42']);
 
-        $this->assertSame(['id' => '42'], $this->adapter->updatePage('42', 'Title', '{}', 2, 'msg'));
+        $this->assertSame(['id' => '42'], $this->adapter->updatePage('42', $content, 2, 'msg'));
     }
 
     public function testGetFolderDelegates(): void
@@ -84,12 +87,14 @@ class ConfluenceWikiAdapterTest extends TestCase
 
     public function testCreatePageDelegates(): void
     {
+        $target = new ConfluencePageTarget('space-id', 'parent', 'current');
+        $content = new ConfluencePageContent('Title', '{}');
         $this->confluenceApiClient->expects($this->once())
             ->method('createPage')
-            ->with('space-id', 'Title', '{}', 'parent', 'current')
+            ->with($target, $content)
             ->willReturn(['id' => '99']);
 
-        $this->assertSame(['id' => '99'], $this->adapter->createPage('space-id', 'Title', '{}', 'parent', 'current'));
+        $this->assertSame(['id' => '99'], $this->adapter->createPage($target, $content));
     }
 
     public function testGetDirectChildPagesDelegates(): void

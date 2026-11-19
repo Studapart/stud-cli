@@ -15,6 +15,9 @@ class IssueTrackerFactory
 {
     public function __construct(
         private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),
+        private readonly IssueKeyPrefixMatcher $issueKeyPrefixMatcher = new IssueKeyPrefixMatcher(),
+        private readonly DualTrackerPolicy $dualTracker = new DualTrackerPolicy(),
+        private readonly ?GitRepository $gitRepository = null,
     ) {
     }
 
@@ -43,7 +46,7 @@ class IssueTrackerFactory
             return $projectProvider->value;
         }
 
-        if ($this->shouldResolveByIssueKeyPrefix($globalConfig, $projectConfig)) {
+        if ($this->dualTracker->isDualAuto($globalConfig, $projectConfig)) {
             return $this->resolveByIssueKeyPrefix($globalConfig, $projectConfig, $issueKey);
         }
 
@@ -84,21 +87,20 @@ class IssueTrackerFactory
 
     public function create(
         string $type,
-        ?JiraApiClient $jiraService = null,
-        ?JiraAttachmentService $attachmentService = null,
-        ?LinearApiClient $linearApiClient = null,
+        IssueTrackerClients $clients,
         ?GitRepository $gitRepository = null,
-        ?LinearAttachmentService $linearAttachmentService = null,
     ): IssueTrackerPort {
+        $gitRepository ??= $this->gitRepository;
+
         return match ($type) {
             IssueTrackerProvider::Jira->value => new JiraIssueTrackerAdapter(
-                $jiraService ?? throw new \InvalidArgumentException('Jira service is required for the jira work-item provider'),
-                $attachmentService ?? throw new \InvalidArgumentException('Jira attachment service is required for the jira work-item provider'),
+                $clients->jira ?? throw new \InvalidArgumentException('Jira service is required for the jira work-item provider'),
+                $clients->jiraAttachments ?? throw new \InvalidArgumentException('Jira attachment service is required for the jira work-item provider'),
             ),
             IssueTrackerProvider::Linear->value => new LinearIssueTrackerAdapter(
-                $linearApiClient ?? throw new \InvalidArgumentException('Linear API client is required for the linear work-item provider'),
+                $clients->linear ?? throw new \InvalidArgumentException('Linear API client is required for the linear work-item provider'),
                 gitRepository: $gitRepository,
-                linearAttachmentService: $linearAttachmentService,
+                linearAttachmentService: $clients->linearAttachments,
             ),
             default => throw new \InvalidArgumentException(sprintf('Unknown work-item provider type: %s', $type)),
         };
@@ -109,32 +111,17 @@ class IssueTrackerFactory
      *
      * @throws IssueTrackerException
      */
-    public function createForProvider(
-        string $type,
-        ?JiraApiClient $jiraApiClient,
-        ?JiraAttachmentService $attachmentService,
-        ?LinearApiClient $linearApiClient,
-        ?GitRepository $gitRepository = null,
-        ?LinearAttachmentService $linearAttachmentService = null,
-    ): IssueTrackerPort {
+    public function createForProvider(string $type, IssueTrackerClients $clients): IssueTrackerPort
+    {
         if ($type === IssueTrackerProvider::Jira->value) {
-            if ($jiraApiClient === null || $attachmentService === null) {
+            if ($clients->jira === null || $clients->jiraAttachments === null) {
                 throw IssueTrackerException::missingJiraConfiguration();
             }
-
-            return $this->create(IssueTrackerProvider::Jira->value, $jiraApiClient, $attachmentService);
-        }
-
-        if ($linearApiClient === null) {
+        } elseif ($clients->linear === null) {
             throw IssueTrackerException::missingLinearApiKey();
         }
 
-        return $this->create(
-            IssueTrackerProvider::Linear->value,
-            linearApiClient: $linearApiClient,
-            gitRepository: $gitRepository,
-            linearAttachmentService: $linearAttachmentService,
-        );
+        return $this->create($type, $clients);
     }
 
     /**
@@ -154,30 +141,12 @@ class IssueTrackerFactory
      */
     public function providerClaimingIssueKey(string $issueKey, array $projectConfig): ?IssueTrackerProvider
     {
-        $prefix = $this->issueKeyPrefixOrNull($issueKey);
-        if ($prefix === null) {
-            return null;
-        }
-
-        try {
-            return $this->resolveProviderForPrefix($prefix, $projectConfig);
-        } catch (IssueTrackerResolutionException) {
-            return null;
-        }
+        return $this->issueKeyPrefixMatcher->providerClaimingIssueKey($issueKey, $projectConfig);
     }
 
     public function issueKeyPrefixOrNull(string $issueKey): ?string
     {
-        $trimmedKey = trim($issueKey);
-        if ($trimmedKey === '') {
-            return null;
-        }
-
-        try {
-            return GitProjectConfigService::extractIssueKeyPrefix($trimmedKey);
-        } catch (\RuntimeException) {
-            return null;
-        }
+        return $this->issueKeyPrefixMatcher->prefixOrNull($issueKey);
     }
 
     /**
@@ -189,54 +158,10 @@ class IssueTrackerFactory
         array $projectConfig,
         ?string $issueKey,
     ): string {
-        $trimmedKey = $issueKey !== null ? trim($issueKey) : '';
-        if ($trimmedKey === '') {
-            throw IssueTrackerResolutionException::autoRequiresIssueKey();
-        }
-
-        try {
-            $prefix = GitProjectConfigService::extractIssueKeyPrefix($trimmedKey);
-        } catch (\RuntimeException) {
-            throw IssueTrackerResolutionException::unknownPrefix(
-                $trimmedKey,
-                $this->formatConfiguredKeyPrefixes($projectConfig),
-            );
-        }
-
-        $provider = $this->resolveProviderForPrefix($prefix, $projectConfig);
-        if ($provider === null) {
-            throw IssueTrackerResolutionException::unknownPrefix(
-                $prefix,
-                $this->formatConfiguredKeyPrefixes($projectConfig),
-            );
-        }
-
+        $provider = $this->issueKeyPrefixMatcher->providerForIssueKey($issueKey, $projectConfig);
         $this->assertCredentials($provider->vendorSlug(), $globalConfig);
 
         return $provider->vendorSlug();
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    private function resolveProviderForPrefix(string $prefix, array $projectConfig): ?IssueTrackerProvider
-    {
-        $matchesJira = $this->prefixMatchesJira($prefix, $projectConfig);
-        $matchesLinear = $this->prefixMatchesLinear($prefix, $projectConfig);
-
-        if ($matchesJira && $matchesLinear) {
-            throw IssueTrackerResolutionException::ambiguousPrefix($prefix);
-        }
-
-        if ($matchesJira) {
-            return IssueTrackerProvider::Jira;
-        }
-
-        if ($matchesLinear) {
-            return IssueTrackerProvider::Linear;
-        }
-
-        return null;
     }
 
     /**
@@ -250,28 +175,6 @@ class IssueTrackerFactory
         }
 
         return $sole->vendorSlug();
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     */
-    private function hasDualConfiguredProviders(array $globalConfig): bool
-    {
-        foreach (IssueTrackerProvider::vendors() as $vendor) {
-            if (! GlobalStudConfigKeys::hasCredentialsFor($vendor, $globalConfig)) {
-                return false;
-            }
-        }
-
-        $globalProviders = $this->globalResolver->resolveIssueTrackerProviders($globalConfig);
-
-        foreach (IssueTrackerProvider::vendors() as $vendor) {
-            if (! $this->globalResolver->collectsIssueTracker($vendor, $globalProviders)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**
@@ -360,89 +263,5 @@ class IssueTrackerFactory
         }
 
         return $provider;
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
-    private function shouldResolveByIssueKeyPrefix(array $globalConfig, array $projectConfig): bool
-    {
-        if (! $this->hasDualConfiguredProviders($globalConfig)) {
-            return false;
-        }
-
-        $projectSetting = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
-        if ($projectSetting === null) {
-            return true;
-        }
-
-        return $projectSetting === IssueTrackerProvider::Auto->value;
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    private function prefixMatchesJira(string $prefix, array $projectConfig): bool
-    {
-        foreach ($this->jiraKeyPrefixes($projectConfig) as $configuredPrefix) {
-            if (strcasecmp($prefix, $configuredPrefix) === 0) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    private function prefixMatchesLinear(string $prefix, array $projectConfig): bool
-    {
-        $linearTeamKey = $projectConfig[ProjectStudConfigKeys::LINEAR_TEAM_KEY] ?? null;
-        if (! is_string($linearTeamKey) || trim($linearTeamKey) === '') {
-            return false;
-        }
-
-        return strcasecmp($prefix, trim($linearTeamKey)) === 0;
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     * @return list<string>
-     */
-    private function jiraKeyPrefixes(array $projectConfig): array
-    {
-        $prefixes = [];
-        foreach ([ProjectStudConfigKeys::PROJECT_KEY, ProjectStudConfigKeys::JIRA_DEFAULT_PROJECT] as $key) {
-            $value = $projectConfig[$key] ?? null;
-            if (is_string($value) && trim($value) !== '') {
-                $prefixes[] = strtoupper(trim($value));
-            }
-        }
-
-        return array_values(array_unique($prefixes));
-    }
-
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    private function formatConfiguredKeyPrefixes(array $projectConfig): string
-    {
-        $parts = [];
-        foreach ($this->jiraKeyPrefixes($projectConfig) as $prefix) {
-            $parts[] = $prefix . ' (' . IssueTrackerProvider::Jira->value . ')';
-        }
-
-        $linearTeamKey = $projectConfig[ProjectStudConfigKeys::LINEAR_TEAM_KEY] ?? null;
-        if (is_string($linearTeamKey) && trim($linearTeamKey) !== '') {
-            $parts[] = strtoupper(trim($linearTeamKey)) . ' (' . IssueTrackerProvider::Linear->value . ')';
-        }
-
-        if ($parts === []) {
-            return '(none)';
-        }
-
-        return implode(', ', $parts);
     }
 }

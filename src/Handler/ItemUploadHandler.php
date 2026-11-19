@@ -4,23 +4,25 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\AttachmentTransferLog;
 use App\DTO\ItemUploadInput;
 use App\DTO\MessageRef;
-use App\Exception\ApiException;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ItemUploadResponse;
 use App\Service\FileSystem;
 use App\Service\IssueTrackerPort;
+use App\Service\ItemUploadPathValidator;
 
 class ItemUploadHandler implements JiraAware, LinearAware
 {
+    private readonly ItemUploadPathValidator $pathValidator;
+
     public function __construct(
-        private readonly FileSystem $fileSystem,
+        FileSystem $fileSystem,
         private readonly IssueTrackerPort $provider,
-        mixed $_translator
     ) {
-        unset($_translator);
+        $this->pathValidator = new ItemUploadPathValidator($fileSystem);
     }
 
     public function handle(ItemUploadInput $input): ItemUploadResponse
@@ -41,76 +43,37 @@ class ItemUploadHandler implements JiraAware, LinearAware
         }
         // @codeCoverageIgnoreEnd
 
-        $files = [];
-        $errors = [];
+        $log = new AttachmentTransferLog();
         foreach ($input->filePaths as $relPath) {
-            $this->processOnePath($key, $relPath, $cwd, $files, $errors);
+            $this->processOnePath($key, $relPath, $cwd, $log);
         }
 
-        return ItemUploadResponse::result($files, $errors);
+        return ItemUploadResponse::result($log->files(), $log->errors());
     }
 
-    /**
-     * @param list<array{filename: string, path: string}>                         $files
-     * @param list<array{filename: string|null, message: MessageRef|string}> $errors
-     */
     private function processOnePath(
         string $issueKey,
         string $relPath,
         string $cwd,
-        array &$files,
-        array &$errors
+        AttachmentTransferLog $log
     ): void {
         $trimmed = trim($relPath);
         if ($trimmed === '') {
             return;
         }
 
-        try {
-            $this->assertNoPathTraversal($trimmed);
-        } catch (\InvalidArgumentException) {
-            $errors[] = [
-                'filename' => $trimmed,
-                'message' => MessageRef::key('item.upload.error_path_traversal'),
-            ];
+        $rejection = $this->pathValidator->rejectionFor($trimmed);
+        if ($rejection !== null) {
+            $log->addError($trimmed, $rejection);
 
             return;
         }
-
-        if (! $this->fileSystem->fileExists($trimmed)) {
-            $errors[] = [
-                'filename' => $trimmed,
-                'message' => MessageRef::key('item.upload.error_not_found'),
-            ];
-
-            return;
-        }
-
-        if ($this->fileSystem->isDir($trimmed)) {
-            $errors[] = [
-                'filename' => $trimmed,
-                'message' => MessageRef::key('item.upload.error_not_file'),
-            ];
-
-            return;
-        }
-
-        $absolute = $this->joinUnderCwd($cwd, $trimmed);
-        $uploadName = basename(str_replace('\\', '/', $trimmed));
 
         try {
-            $this->provider->uploadAttachment($issueKey, $absolute);
-            $files[] = ['filename' => $uploadName, 'path' => $trimmed];
-        } catch (ApiException $e) {
-            $errors[] = [
-                'filename' => $trimmed,
-                'message' => MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]),
-            ];
+            $this->provider->uploadAttachment($issueKey, $this->joinUnderCwd($cwd, $trimmed));
+            $log->addFile(basename(str_replace('\\', '/', $trimmed)), $trimmed);
         } catch (\Throwable $e) {
-            $errors[] = [
-                'filename' => $trimmed,
-                'message' => MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]),
-            ];
+            $log->addError($trimmed, MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]));
         }
     }
 
@@ -119,19 +82,6 @@ class ItemUploadHandler implements JiraAware, LinearAware
         $t = trim($issueKey);
 
         return $t === '' ? '' : strtoupper($t);
-    }
-
-    /**
-     * @throws \InvalidArgumentException
-     */
-    private function assertNoPathTraversal(string $path): void
-    {
-        $normalized = str_replace('\\', '/', $path);
-        foreach (explode('/', $normalized) as $segment) {
-            if ($segment === '..') {
-                throw new \InvalidArgumentException('item.upload.error_path_traversal');
-            }
-        }
     }
 
     private function joinUnderCwd(string $cwd, string $relativePath): string

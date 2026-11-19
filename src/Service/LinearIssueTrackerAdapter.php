@@ -21,8 +21,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function __construct(
         private readonly LinearApiClient $linearApiClient,
-        private readonly LinearIssueFieldTranslator $fieldTranslator = new LinearIssueFieldTranslator(),
-        private readonly LinearIssueMapper $issueMapper = new LinearIssueMapper(),
+        private readonly LinearIssueMapping $mapping = new LinearIssueMapping(),
         private readonly ?GitRepository $gitRepository = null,
         private readonly ?LinearAttachmentService $linearAttachmentService = null,
     ) {
@@ -32,7 +31,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
     {
         unset($renderFields);
 
-        return $this->issueMapper->mapToWorkItem(
+        return $this->mapping->mapper->mapToWorkItem(
             $this->linearApiClient->getIssue($key),
             $this->readTypeGroupId(),
         );
@@ -44,7 +43,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
         $typeGroupId = $this->readTypeGroupId();
         $issues = [];
         foreach ($nodes as $node) {
-            $issues[] = $this->issueMapper->mapToWorkItem($node, $typeGroupId);
+            $issues[] = $this->mapping->mapper->mapToWorkItem($node, $typeGroupId);
         }
 
         return $issues;
@@ -56,7 +55,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
         $typeGroupId = $this->readTypeGroupId();
         $issues = [];
         foreach ($nodes as $node) {
-            $issues[] = $this->issueMapper->mapToWorkItem($node, $typeGroupId);
+            $issues[] = $this->mapping->mapper->mapToWorkItem($node, $typeGroupId);
         }
 
         return $issues;
@@ -69,13 +68,13 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
      */
     public function create(array $input): array
     {
-        $mutationInput = $this->fieldTranslator->toCreateInput(
+        $mutationInput = $this->mapping->translator->toCreateInput(
             $input,
             $this->linearApiClient,
             $this->readProjectConfig(),
         );
         $issue = $this->linearApiClient->issueCreate($mutationInput);
-        $mapped = $this->issueMapper->mapCreateResponse($issue);
+        $mapped = $this->mapping->mapper->mapCreateResponse($issue);
 
         return [
             'key' => $mapped['identifier'],
@@ -89,7 +88,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
     public function update(string $key, array $input): void
     {
         $issueId = $this->linearApiClient->resolveIssueId($key);
-        $mutationInput = $this->fieldTranslator->toUpdateInput(
+        $mutationInput = $this->mapping->translator->toUpdateInput(
             $input,
             $this->linearApiClient,
             $key,
@@ -105,7 +104,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
     {
         unset($projectKey, $issueTypeId);
 
-        return $this->fieldTranslator->linearFieldMeta();
+        return $this->mapping->translator->linearFieldMeta();
     }
 
     /**
@@ -115,7 +114,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
     {
         unset($key);
 
-        return $this->fieldTranslator->linearFieldMeta();
+        return $this->mapping->translator->linearFieldMeta();
     }
 
     /**
@@ -125,7 +124,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
     {
         unset($format);
 
-        return $this->fieldTranslator->formatDescriptionPayload($text);
+        return $this->mapping->translator->formatDescriptionPayload($text);
     }
 
     public function listProjectStateChanges(string $projectKey): array
@@ -203,7 +202,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
         $typeGroupId = $this->readTypeGroupId();
         $issues = [];
         foreach ($nodes as $node) {
-            $issues[] = $this->issueMapper->mapToWorkItem($node, $typeGroupId);
+            $issues[] = $this->mapping->mapper->mapToWorkItem($node, $typeGroupId);
         }
 
         return $issues;
@@ -221,7 +220,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function listAttachments(string $key): array
     {
-        return $this->issueMapper->mapToWorkItem(
+        return $this->mapping->mapper->mapToWorkItem(
             $this->linearApiClient->getIssue($key),
             $this->readTypeGroupId(),
         )->attachments;

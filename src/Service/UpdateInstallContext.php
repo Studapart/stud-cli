@@ -7,6 +7,7 @@ namespace App\Service;
 final class UpdateInstallContext
 {
     public const MODE_PHAR = 'phar';
+    public const MODE_PHAR_IN_PLACE = 'phar-in-place';
     public const MODE_PORTABLE = 'portable';
 
     public function __construct(

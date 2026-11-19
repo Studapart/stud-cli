@@ -7,7 +7,6 @@ namespace App\Tests\Service;
 use App\DTO\WorkItem;
 use App\Enum\IssueTrackerProvider;
 use App\Exception\ApiException;
-use App\Service\FetchHintIssueTrackerPort;
 use App\Service\IssueTrackerFetchFailureHintBuilder;
 use App\Service\IssueTrackerPort;
 use PHPUnit\Framework\TestCase;
@@ -22,23 +21,20 @@ class FetchHintIssueTrackerPortTest extends TestCase
             ->with('SCIL-195', false)
             ->willThrowException(new ApiException('not found', 'HTTP 404', 404));
 
-        $port = new FetchHintIssueTrackerPort(
+        $port = \App\Tests\Support\ConstructorFixtures::fetchHintPort(
             $inner,
             new IssueTrackerFetchFailureHintBuilder(),
-            IssueTrackerProvider::Jira->value,
-            null,
-            [
+            new \App\DTO\FetchHintContext(IssueTrackerProvider::Jira->value, null, [
                 'ISSUE_TRACKER_PROVIDERS' => ['jira', 'linear'],
                 'JIRA_URL' => 'https://jira.example.com',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin-key',
-            ],
-            [
+            ], [
                 'issueTrackerProvider' => IssueTrackerProvider::Jira->value,
                 'projectKey' => 'SCI',
                 'linearTeamKey' => 'SCIL',
-            ],
+            ]),
         );
 
         try {
@@ -51,6 +47,30 @@ class FetchHintIssueTrackerPortTest extends TestCase
         }
     }
 
+    public function testGetIssueRethrowsOriginalExceptionWhenHintIsNull(): void
+    {
+        $inner = $this->createMock(IssueTrackerPort::class);
+        $inner->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-1', false)
+            ->willThrowException(new ApiException('not found', 'HTTP 404', 404));
+
+        $port = \App\Tests\Support\ConstructorFixtures::fetchHintPort(
+            $inner,
+            new IssueTrackerFetchFailureHintBuilder(),
+            new \App\DTO\FetchHintContext(IssueTrackerProvider::Jira->value, 'jira', [], []),
+        );
+
+        try {
+            $port->getIssue('SCI-1');
+            $this->fail('Expected ApiException');
+        } catch (ApiException $e) {
+            $this->assertNull($e->getResolutionHint());
+            $this->assertSame('not found', $e->getMessage());
+            $this->assertSame(404, $e->getStatusCode());
+        }
+    }
+
     public function testGetIssuePassesThroughSuccess(): void
     {
         $issue = new WorkItem('1', 'SCI-1', 'Title', 'Open', 'Ada', 'Desc', [], 'Task');
@@ -59,13 +79,10 @@ class FetchHintIssueTrackerPortTest extends TestCase
             ->method('getIssue')
             ->willReturn($issue);
 
-        $port = new FetchHintIssueTrackerPort(
+        $port = \App\Tests\Support\ConstructorFixtures::fetchHintPort(
             $inner,
             new IssueTrackerFetchFailureHintBuilder(),
-            IssueTrackerProvider::Jira->value,
-            null,
-            [],
-            ['issueTrackerProvider' => IssueTrackerProvider::Jira->value, 'projectKey' => 'SCI'],
+            new \App\DTO\FetchHintContext(IssueTrackerProvider::Jira->value, null, [], ['issueTrackerProvider' => IssueTrackerProvider::Jira->value, 'projectKey' => 'SCI']),
         );
 
         $this->assertSame($issue, $port->getIssue('SCI-1'));
@@ -93,13 +110,10 @@ class FetchHintIssueTrackerPortTest extends TestCase
         $inner->expects($this->once())->method('uploadAttachment')->with('SCI-1', '/tmp/a');
         $inner->expects($this->once())->method('downloadAttachment')->with('http://x', '/tmp/b');
 
-        $port = new FetchHintIssueTrackerPort(
+        $port = \App\Tests\Support\ConstructorFixtures::fetchHintPort(
             $inner,
             new IssueTrackerFetchFailureHintBuilder(),
-            IssueTrackerProvider::Jira->value,
-            null,
-            [],
-            [],
+            new \App\DTO\FetchHintContext(IssueTrackerProvider::Jira->value, null, [], []),
         );
 
         $this->assertSame([], $port->search('q'));

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Config\EffectiveIssueTrackerCredentials;
-use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
@@ -13,7 +12,10 @@ use App\Exception\IssueTrackerException;
 use App\Exception\IssueTrackerResolutionException;
 
 /**
- * Resolves the active work-item provider and builds the matching {@see IssueTrackerPort}.
+ * Resolves the active work-item provider and builds the matching port.
+ *
+ * Lookups get the {@see IssueTrackerReadPort}. Only {@see resolveFullPortForProvider()} returns the
+ * full {@see IssueTrackerPort}, for creating a work item from a looked-up provider.
  *
  * Keeps HTTP clients out of handlers; wired once in castor.php.
  */
@@ -22,12 +24,8 @@ class IssueTrackerPortSupplier
     public function __construct(
         private readonly IssueTrackerFactory $factory,
         private readonly IssueTrackerResolver $resolver,
-        private readonly ?JiraApiClient $jiraApiClient,
-        private readonly ?JiraAttachmentService $attachmentService,
-        private readonly ?LinearApiClient $linearApiClient,
-        private readonly ?LinearAttachmentService $linearAttachmentService = null,
-        private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
-        private readonly GlobalConfigProviderResolver $globalProviderResolver = new GlobalConfigProviderResolver(),
+        private readonly IssueTrackerClients $clients,
+        private readonly IssueTrackerScopeResolvers $scopes = new IssueTrackerScopeResolvers(),
     ) {
     }
 
@@ -35,7 +33,7 @@ class IssueTrackerPortSupplier
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig
      *
-     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
+     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerReadPort}|array{ok: false, error: MessageRef}
      */
     public function resolve(array $globalConfig, array $projectConfig): array
     {
@@ -52,9 +50,33 @@ class IssueTrackerPortSupplier
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig
      *
-     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
+     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerReadPort}|array{ok: false, error: MessageRef}
      */
     public function resolveForProvider(string $provider, array $globalConfig, array $projectConfig): array
+    {
+        return $this->providerPortResult($provider, $globalConfig, $projectConfig);
+    }
+
+    /**
+     * Same resolution and errors as {@see resolveForProvider()}, with the full port for item creation.
+     *
+     * @param array<string, mixed> $globalConfig
+     * @param array<string, mixed> $projectConfig
+     *
+     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
+     */
+    public function resolveFullPortForProvider(string $provider, array $globalConfig, array $projectConfig): array
+    {
+        return $this->providerPortResult($provider, $globalConfig, $projectConfig);
+    }
+
+    /**
+     * @param array<string, mixed> $globalConfig
+     * @param array<string, mixed> $projectConfig
+     *
+     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
+     */
+    private function providerPortResult(string $provider, array $globalConfig, array $projectConfig): array
     {
         $globalConfig = $this->withProjectCredentials($globalConfig, $projectConfig);
 
@@ -73,7 +95,7 @@ class IssueTrackerPortSupplier
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig
      *
-     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
+     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerReadPort}|array{ok: false, error: MessageRef}
      */
     public function resolveForDiscovery(string $scopeKey, array $globalConfig, array $projectConfig): array
     {
@@ -82,9 +104,8 @@ class IssueTrackerPortSupplier
             return $this->resolveForProvider($explicitProvider, $globalConfig, $projectConfig);
         }
 
-        $effectiveConfig = $this->withProjectCredentials($globalConfig, $projectConfig);
-        if ($this->shouldInferProviderFromScope($effectiveConfig, $projectConfig)) {
-            $inferred = $this->scopeKeyResolver->resolveProviderForDiscoveryScope($scopeKey, $projectConfig);
+        if ($this->scopes->dualTracker->isDualAuto($globalConfig, $projectConfig)) {
+            $inferred = $this->scopes->scope->resolveProviderForDiscoveryScope($scopeKey, $projectConfig);
             if (! $inferred['ok']) {
                 return $inferred;
             }
@@ -120,13 +141,7 @@ class IssueTrackerPortSupplier
             return [
                 'ok' => true,
                 'provider' => $providerSlug,
-                'port' => $this->factory->createForProvider(
-                    $providerSlug,
-                    $this->jiraApiClient,
-                    $this->attachmentService,
-                    $this->linearApiClient,
-                    linearAttachmentService: $this->linearAttachmentService,
-                ),
+                'port' => $this->factory->createForProvider($providerSlug, $this->clients),
             ];
         } catch (IssueTrackerException $e) {
             return ['ok' => false, 'error' => $e->messageRef];
@@ -148,36 +163,6 @@ class IssueTrackerPortSupplier
         }
 
         return $stored;
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
-    private function shouldInferProviderFromScope(array $globalConfig, array $projectConfig): bool
-    {
-        if (! $this->isDualPmConfigured($globalConfig)) {
-            return false;
-        }
-
-        $stored = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
-
-        return $stored === null || $stored === IssueTrackerProvider::Auto->value;
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     */
-    private function isDualPmConfigured(array $globalConfig): bool
-    {
-        $providers = $this->globalProviderResolver->resolveIssueTrackerProviders($globalConfig);
-        if (! $this->globalProviderResolver->collectsJira($providers)
-            || ! $this->globalProviderResolver->collectsLinear($providers)) {
-            return false;
-        }
-
-        return GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, $globalConfig)
-            && GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Linear, $globalConfig);
     }
 
     /**

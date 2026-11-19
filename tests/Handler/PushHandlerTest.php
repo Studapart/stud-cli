@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\PushInput;
 use App\DTO\ResponseMessage;
 use App\Handler\CommitHandler;
 use App\Handler\FlattenHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PushHandler;
+use App\Handler\PushPreparer;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Process\Process;
 
 class PushHandlerTest extends CommandTestCase
@@ -27,19 +26,18 @@ class PushHandlerTest extends CommandTestCase
         ?PromptInterface $prompt = null,
         ?FlattenHandler $flattenHandler = null,
     ): PushHandler {
-        return new PushHandler(
+        $preparer = new PushPreparer(
             $commitHandler,
             $gitRepository,
-            $pleaseHandler,
-            $this->translationService,
-            $prompt ?? $this->createStub(PromptInterface::class),
-            $flattenHandler ?? new FlattenHandler($gitRepository, 'origin/develop', $this->translationService),
+            $flattenHandler ?? new FlattenHandler($gitRepository, 'origin/develop'),
         );
-    }
 
-    private function io(): SymfonyStyle
-    {
-        return new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
+        return new PushHandler(
+            $preparer,
+            $gitRepository,
+            $pleaseHandler,
+            $prompt ?? $this->createStub(PromptInterface::class),
+        );
     }
 
     /**
@@ -62,7 +60,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler = $this->createStub(PleaseHandler::class);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle($this->io(), false, null, false, false, false, false, true);
+        $response = $handler->handle(new PushInput(false, null, false, false, false, false, true));
 
         $this->assertFalse($response->isSuccess());
         $this->assertMessageRef($response->getErrorMessage(), 'push.commit_failed');
@@ -86,7 +84,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle($this->io(), false, null, false, false, false, false, true);
+        $response = $handler->handle(new PushInput(false, null, false, false, false, false, true));
 
         $this->assertMessageRef($response->message, 'push.success');
         $this->assertTrue($response->isSuccess());
@@ -110,7 +108,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler = $this->createStub(PleaseHandler::class);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, false, true, false, true, true);
+        $response = $handler->handle(new PushInput(false, null, false, true, false, true, true));
         $this->assertMessageRef($response->message, 'push.success');
         $this->assertMessageRef($response->getNotices()[0]->message, 'push.note_uncommitted_left');
         $this->assertTrue($response->isSuccess());
@@ -134,7 +132,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler = $this->createStub(PleaseHandler::class);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, false, true, false, true, true);
+        $response = $handler->handle(new PushInput(false, null, false, true, false, true, true));
         $this->assertMessageRef($response->message, 'push.success');
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->getMessages());
@@ -156,7 +154,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler = $this->createStub(PleaseHandler::class);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, true, true, false, true, true);
+        $response = $handler->handle(new PushInput(false, null, true, true, false, true, true));
         $this->assertMessageRef($response->message, 'push.success');
         $this->assertTrue($response->isSuccess());
     }
@@ -179,7 +177,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle($this->io(), false, null, false, false, true, false, true);
+        $response = $handler->handle(new PushInput(false, null, false, false, true, false, true));
         $this->assertMessageRef($response->getErrorMessage(), 'push.error_push');
         $this->assertFalse($response->isSuccess());
     }
@@ -202,7 +200,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle($this->io(), false, null, false, true, false, false, true);
+        $response = $handler->handle(new PushInput(false, null, false, true, false, false, true));
         $this->assertMessageRef($response->message, 'push.please_completed');
         $this->assertTrue($response->isSuccess());
     }
@@ -225,7 +223,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle($this->io(), false, null, false, true, false, true, false);
+        $response = $handler->handle(new PushInput(false, null, false, true, false, true, false));
         $this->assertMessageRef($response->getErrorMessage(), 'push.error_push');
         $this->assertFalse($response->isSuccess());
     }
@@ -248,7 +246,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle($this->io(), false, null, false, true, false, true, true);
+        $response = $handler->handle(new PushInput(false, null, false, true, false, true, true));
         $this->assertMessageRef($response->message, 'push.please_completed');
         $this->assertTrue($response->isSuccess());
     }
@@ -274,7 +272,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle($this->io(), false, null, false, true, true, true, true);
+        $response = $handler->handle(new PushInput(false, null, false, true, true, true, true));
         $this->assertMessageRef($response->message, 'push.please_completed');
         $this->assertTrue($response->isSuccess());
     }
@@ -300,7 +298,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
 
-        $response = $handler->handle($this->io(), false, null, false, false, false, false, true);
+        $response = $handler->handle(new PushInput(false, null, false, false, false, false, true));
         $this->assertMessageRef($response->getErrorMessage(), 'push.error_push');
         $this->assertFalse($response->isSuccess());
     }
@@ -326,7 +324,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
 
-        $response = $handler->handle($this->io(), false, null, false, false, false, false, true);
+        $response = $handler->handle(new PushInput(false, null, false, false, false, false, true));
 
         $this->assertTrue($response->isSuccess());
         $this->assertMessageRef($response->message, 'push.please_completed');
@@ -350,7 +348,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle($this->io(), false, null, false, true, false, false, true);
+        $response = $handler->handle(new PushInput(false, null, false, true, false, false, true));
 
         $this->assertFalse($response->isSuccess());
         $this->assertMessageRef($response->getErrorMessage(), 'push.please_failed');
@@ -372,7 +370,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler = $this->createStub(PleaseHandler::class);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, false, true, false, false, true);
+        $response = $handler->handle(new PushInput(false, null, false, true, false, false, true));
 
         $this->assertMessageRef($response->message, 'push.success');
         $this->assertSame('Commit created', $response->data['commit']['message']);
@@ -398,7 +396,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, false, true, false, true, true);
+        $response = $handler->handle(new PushInput(false, null, false, true, false, true, true));
         $this->assertSame('Force push completed', (string) $response->message);
         $this->assertTrue($response->isSuccess());
     }
@@ -422,7 +420,7 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, false, true, false, true, true);
+        $response = $handler->handle(new PushInput(false, null, false, true, false, true, true));
         $this->assertMessageRef($response->message, 'push.please_completed');
         $this->assertTrue($response->isSuccess());
     }
@@ -445,7 +443,7 @@ class PushHandlerTest extends CommandTestCase
         $prompt->expects($this->never())->method('confirm');
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
 
-        $response = $handler->handle(false, null, true, true, false, true, true, true);
+        $response = $handler->handle(new PushInput(false, null, true, true, false, true, true, true));
 
         $this->assertMessageRef($response->getWarnings()[0]->message, 'flatten.warning_published');
         $this->assertTrue($response->isSuccess());
@@ -471,7 +469,7 @@ class PushHandlerTest extends CommandTestCase
         $prompt->expects($this->once())->method('confirm')->willReturn(false);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
 
-        $response = $handler->handle($this->io(), false, null, true, false, false, false, true, true);
+        $response = $handler->handle(new PushInput(false, null, true, false, false, false, true, true));
 
         $this->assertMessageRef($response->getErrorMessage(), 'push.error_push');
         $this->assertFalse($response->isSuccess());
@@ -498,7 +496,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler->expects($this->never())->method('handle');
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, true, true, false, true, true, true);
+        $response = $handler->handle(new PushInput(false, null, true, true, false, true, true, true));
 
         $this->assertTrue($response->isSuccess());
         $this->assertTrue($response->data['published']);
@@ -520,7 +518,7 @@ class PushHandlerTest extends CommandTestCase
         $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
         $handler = $this->createHandler($commitHandler, $gitRepository, $this->createStub(PleaseHandler::class));
 
-        $response = $handler->handle(false, null, true, true, false, true, true, true);
+        $response = $handler->handle(new PushInput(false, null, true, true, false, true, true, true));
 
         $this->assertMessageRef($response->getNotices()[0]->message, 'flatten.notice_skipped');
         $this->assertTrue($response->isSuccess());
@@ -544,7 +542,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler->expects($this->never())->method('handle');
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, true, true, false, true, true, true);
+        $response = $handler->handle(new PushInput(false, null, true, true, false, true, true, true));
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame('feat: add [SCI-216]', $response->data['commitMessage']);
@@ -569,7 +567,7 @@ class PushHandlerTest extends CommandTestCase
         $prompt->expects($this->once())->method('confirm')->willReturn(true);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
 
-        $response = $handler->handle(false, null, true, false, false, false, true, true);
+        $response = $handler->handle(new PushInput(false, null, true, false, false, false, true, true));
 
         $this->assertMessageRef($response->getWarnings()[0]->message, 'flatten.warning_published');
         $this->assertTrue($response->isSuccess());
@@ -592,7 +590,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler->method('handle')->willReturn(CommandResponse::error('force failed'));
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, true, true, false, true, true, true);
+        $response = $handler->handle(new PushInput(false, null, true, true, false, true, true, true));
 
         $this->assertFalse($response->isSuccess());
         $this->assertTrue($response->data['rewritten']);
@@ -615,7 +613,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler->expects($this->never())->method('handle');
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, true, true, false, true, false, true);
+        $response = $handler->handle(new PushInput(false, null, true, true, false, true, false, true));
 
         $this->assertFalse($response->isSuccess());
         $this->assertFalse($response->data['rewritten']);
@@ -640,7 +638,7 @@ class PushHandlerTest extends CommandTestCase
         );
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $response = $handler->handle(false, null, true, true, false, true, true, true);
+        $response = $handler->handle(new PushInput(false, null, true, true, false, true, true, true));
 
         $this->assertTrue($response->isSuccess());
         $this->assertFalse($response->data['rewritten']);

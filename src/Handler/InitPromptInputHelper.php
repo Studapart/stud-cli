@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\InitPromptField;
 use App\DTO\MessageRef;
 use App\Exception\StudConfigException;
+use App\Handler\GlobalInit\GlobalInitPromptContext;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\Console\Exception\MissingInputException;
 
@@ -110,39 +112,33 @@ class InitPromptInputHelper
     /**
      * When the provider is inactive, returns trimmed stored value or null.
      * When active, prompts via agent JSON or interactive visible/hidden input.
-     *
-     * @param array<string, mixed>     $rawAgentInput
-     * @param callable(string): string $normalize
      */
     public function resolveWhenActive(
         bool $active,
-        bool $isAgent,
-        array $rawAgentInput,
-        string $agentKey,
-        mixed $existingStored,
-        MessageRef|string $interactivePrompt,
+        GlobalInitPromptContext $context,
+        InitPromptField $field,
         bool $hidden = false,
-        ?callable $normalize = null,
     ): ?string {
-        $normalize ??= static fn (string $s): string => $s;
+        $normalize = $field->normalize ?? static fn (string $s): string => $s;
+        $existingStored = $field->existingStored;
 
         if (! $active) {
             return $this->nonEmptyStoredString(is_string($existingStored) ? $existingStored : null);
         }
 
-        if ($isAgent) {
-            return $this->promptRequiredAgentString($rawAgentInput, $agentKey, $existingStored, $normalize);
+        if ($context->isAgent) {
+            return $this->promptRequiredAgentString($context->rawAgentInput, $field->agentKey, $existingStored, $normalize);
         }
 
         if ($hidden) {
             return $this->promptRequiredHiddenToken(
-                $interactivePrompt,
+                $field->interactivePrompt,
                 is_string($existingStored) ? $existingStored : null,
             );
         }
 
         return $this->promptRequiredVisible(
-            $interactivePrompt,
+            $field->interactivePrompt,
             is_string($existingStored) ? $existingStored : null,
             $normalize,
         );

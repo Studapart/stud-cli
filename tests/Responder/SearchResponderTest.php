@@ -77,7 +77,7 @@ class SearchResponderTest extends CommandTestCase
         $input = new ArrayInput([]);
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
         $responder = new SearchResponder(new ResponderHelper($this->translationService, null), [
             'JIRA_URL' => 'https://your-company.atlassian.net',
         ], $logger);
@@ -97,7 +97,7 @@ class SearchResponderTest extends CommandTestCase
         $input = new ArrayInput([]);
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
         $responder = new SearchResponder(new ResponderHelper($this->translationService, null), [
             'JIRA_URL' => 'https://your-company.atlassian.net',
         ], $logger);
@@ -121,7 +121,7 @@ class SearchResponderTest extends CommandTestCase
         });
         $colorHelper->method('format')->willReturnCallback(fn ($_, $text) => is_string($text) ? $text : '');
         $helper = new ResponderHelper($this->translationService, $colorHelper);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
         $responder = new SearchResponder($helper, [
             'JIRA_URL' => 'https://your-company.atlassian.net',
         ], $logger);

@@ -47,7 +47,6 @@ class ItemTransitionHandlerTest extends CommandTestCase
         return new ItemTransitionHandler(
             $this->gitRepository,
             $this->issueTracker,
-            $this->translationService,
             $prompt
         );
     }
@@ -785,7 +784,6 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $this->handler = new ItemTransitionHandler(
             $this->gitRepository,
             $this->issueTracker,
-            $this->translationService,
             $this->prompt
         );
     }

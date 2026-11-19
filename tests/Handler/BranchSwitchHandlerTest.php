@@ -187,8 +187,7 @@ class BranchSwitchHandlerTest extends CommandTestCase
 
         $this->handler = new BranchSwitchHandler(
             $this->gitRepository,
-            $this->gitBranchService,
-            $this->translationService
+            $this->gitBranchService
         );
     }
 }

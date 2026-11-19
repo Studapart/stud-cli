@@ -266,6 +266,8 @@ item:
     save_linear_state: 'Wil jy hierdie status as verstek beginstatus vir hierdie projek stoor?'
     linear_state_saved: 'Linear beginstatus in projekkonfigurasie gestoor.'
     using_advanced_base: 'Gekonfigureerde basis ''%configured%'' is agter ''%resolved%''; gebruik ''%resolved%'' as basis.'
+    error_fetch: "Kon nie van origin af haal nie, so geen tak is geskep of vanaf die afgeleë tak nagegaan nie."
+    warning_fetch_local: "Kon nie van origin af haal nie (%error%). Oorgeskakel na die bestaande plaaslike tak."
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.
@@ -507,6 +509,7 @@ sync:
   already_up_to_date: "Already up to date. The base branch has no new commits."
   success: "✅ Branch %branch% has been rebased onto %base%."
   error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  error_fetch: "Could not fetch from origin. Sync stopped. %error%"
   help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 cache:
   clear:
@@ -675,10 +678,8 @@ branch:
     confirm_prompt: Are you sure you want to rename this branch? (Y/n)
     renaming_local: Renaming local branch...
     renaming_remote: Renaming remote branch...
-    updating_pr: Updating Pull Request...
     creating_new_pr: Creating new Pull Request for renamed branch...
     pr_creation_failed: '⚠️ Warning: Failed to create new Pull Request. You may need to run stud submit manually.'
-    pr_update_failed: '⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually.'
     commenting_pr: Adding comment to Pull Request...
     success: ✅ Branch renamed successfully from %oldName% to %newName%
     no_pr_found: No Pull Request found for this branch.
@@ -696,6 +697,7 @@ commit:
   found_logical: 'Logiese commit SHA gevind: %sha%'
   creating_fixup: Skep fixup commit vir %sha%...
   fixup_success: ✅ Veranderinge gestoor as fixup vir commit %sha%.
+  note_message_unused: "Die gegewe commitboodskap is nie gebruik nie. Die verandering is as fixup gestoor."
   note_no_logical: Geen vorige logiese commit gevind of --new vlag gebruik. Begin interaktiewe prompter...
   note_clean_working_tree: Werksboom is skoon. Breek commit af.
   error_no_key: 'Kon nie ''n Jira sleutel in jou huidige tak naam vind nie.
@@ -791,10 +793,14 @@ update:
   portable_unmanaged_symlink: 'Portable update failed: ~/.local/bin/stud does not point to a managed portable install. Re-run setup-stud.sh --portable to repair the installation.'
   portable_symlink_failed: 'Portable update failed: could not switch the managed stud symlink. The previous version was kept active.'
   portable_success: Portable stud updated to %version%.
-  portable_cleanup_prompt: Remove older portable versions now?
-  portable_cleanup_failed: Could not remove older portable version at %path%. It was left on disk.
-  portable_cleanup_schedule_failed: Could not schedule removal of older portable version at %path%. It was left on disk.
-  portable_cleanup_deferred: 'Previous portable version will be removed after this command exits: %paths%.'
+  cleanup_prompt: "Remove older stud versions on the next command run?"
+  cleanup_scheduled: "Older versions will be removed by the next stud command that runs the new version."
+  cleanup_mark_failed: "Could not record the cleanup request. Older versions were left on disk."
+  cleanup_failed: "Could not clean up %path%. It was left on disk and will be retried. To cancel the cleanup, delete %marker%."
+  phar_success: "PHAR stud updated to %version%."
+  phar_unmanaged_symlink: "PHAR update failed: ~/.local/bin/stud is a symlink outside the managed install. The previous version was kept active. Run setup-stud.sh --phar --force to switch to the managed install."
+  phar_unmanaged_file: "PHAR update failed: ~/.local/bin/stud is a file that is not the running stud. The previous version was kept active. Run setup-stud.sh --phar --force to switch to the managed install."
+  phar_install_failed: "PHAR update failed: could not install the new version or switch ~/.local/bin/stud. The previous version was kept active."
   portable_update_failed: 'Portable update failed.
 
     Error: %error%'
@@ -899,7 +905,7 @@ help:
   option_items_download_path: "Teikenmap relatief tot cwd (geskep indien nodig); verstek .cursor/stud-downloads"
   option_items_upload_file: "Plaaslike lêerpad relatief tot cwd; herhaal -f/--file vir meerdere lêers"
   option_commit_new: Skep 'n nuwe logiese commit in plaas van 'n fixup
-  option_commit_message: Omseil die interaktiewe prompter en gebruik die verskafde boodskap vir die commit
+  option_commit_message: Boodskap vir 'n nuwe logiese commit. Met 'n bestaande logiese commit, gee --new of die verandering word as 'n fixup gestoor
   option_commit_all: Stage alle veranderinge voordat u commit (herstel die ou gedrag)
   option_push_no_please: "Na 'n mislukte normale stoot, moenie stud please uitvoer of aanbied nie"
   option_flatten: "Squash fixup-commits wanneer dit veilig is"

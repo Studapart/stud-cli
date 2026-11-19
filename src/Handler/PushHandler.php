@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\MessageRef;
+use App\DTO\PushInput;
 use App\DTO\ResponseMessage;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Response\CommandResponse;
@@ -14,14 +15,11 @@ use App\Service\Prompt\PromptInterface;
 class PushHandler implements GitRepositoryAware
 {
     public function __construct(
-        private readonly CommitHandler $commitHandler,
+        private readonly PushPreparer $preparer,
         private readonly GitRepository $gitRepository,
         private readonly PleaseHandler $pleaseHandler,
-        mixed $_translator,
         private readonly PromptInterface $prompt,
-        private readonly FlattenHandler $flattenHandler,
     ) {
-        unset($_translator);
     }
 
     /**
@@ -32,68 +30,19 @@ class PushHandler implements GitRepositoryAware
      * When nothing is staged and `--all` / `stageAll` was not requested, skips the commit phase so a dirty
      * working tree does not block pushing existing commits (standalone `stud commit` still errors).
      */
-    public function handle(
-        mixed $first,
-        mixed $second = null,
-        mixed $third = null,
-        mixed $fourth = false,
-        mixed $fifth = false,
-        mixed $sixth = false,
-        mixed $seventh = false,
-        mixed $eighth = false,
-        mixed $ninth = false,
-    ): CommandResponse {
-        [$isNew, $message, $stageAll, $quiet, $noPlease, $agentMode, $pleaseFallback, $flatten] = $this->normalizeHandleArguments(
-            $first,
-            $second,
-            $third,
-            $fourth,
-            $fifth,
-            $sixth,
-            $seventh,
-            $eighth,
-            $ninth,
-        );
-        $commitResponse = $this->runCommitPhase($isNew, $message, $stageAll, $quiet);
+    public function handle(PushInput $input): CommandResponse
+    {
+        $commitResponse = $this->preparer->commit($input->isNew, $input->message, $input->stageAll, $input->quiet);
         if (! $commitResponse->isSuccess()) {
             return $commitResponse;
         }
 
-        $prepared = $this->prepareFlatten($commitResponse, $flatten);
+        $prepared = $this->preparer->flatten($commitResponse, $input->flatten);
         if (! $prepared->isSuccess()) {
             return $prepared;
         }
 
-        return $this->publish($prepared, $quiet, $noPlease, $agentMode, $pleaseFallback);
-    }
-
-    /**
-     * Commit when stageAll or staged files exist; otherwise soft-skip (dirty-tree notice if needed).
-     */
-    protected function runCommitPhase(bool $isNew, ?string $message, bool $stageAll, bool $quiet): CommandResponse
-    {
-        if (! $stageAll && ! $this->gitRepository->hasStagedChanges()) {
-            return $this->skippedCommitResponse();
-        }
-
-        return $this->normalizeResponse(
-            $this->commitHandler->handle($isNew, $message, $stageAll, $quiet),
-            MessageRef::key('push.commit_created'),
-            MessageRef::key('push.commit_failed'),
-        );
-    }
-
-    /**
-     * @return CommandResponse Success with optional dirty-tree notice
-     */
-    protected function skippedCommitResponse(): CommandResponse
-    {
-        $messages = [];
-        if (trim($this->gitRepository->getPorcelainStatus()) !== '') {
-            $messages[] = ResponseMessage::notice(MessageRef::key('push.note_uncommitted_left'));
-        }
-
-        return CommandResponse::success(messages: $messages);
+        return $this->publish($prepared, $input);
     }
 
     /**
@@ -101,28 +50,23 @@ class PushHandler implements GitRepositoryAware
      *
      * @param list<ResponseMessage> $messages
      */
-    protected function handleFailedPush(
-        bool $quiet,
-        bool $noPlease,
-        bool $agentMode,
-        bool $pleaseFallback,
-        array $messages,
-    ): CommandResponse {
-        $pleaseQuiet = $quiet || $agentMode;
+    protected function handleFailedPush(PushInput $input, array $messages): CommandResponse
+    {
+        $pleaseQuiet = $input->quiet || $input->agentMode;
 
-        if ($agentMode) {
-            if (! $pleaseFallback) {
+        if ($input->agentMode) {
+            if (! $input->pleaseFallback) {
                 return $this->pushFailedResponse($messages);
             }
 
             return $this->runPlease($pleaseQuiet);
         }
 
-        if ($noPlease) {
+        if ($input->noPlease) {
             return $this->pushFailedResponse($messages);
         }
 
-        if (! $quiet) {
+        if (! $input->quiet) {
             $confirmed = $this->prompt->confirm(MessageRef::key('push.confirm_please'), false);
             if (! $confirmed) {
                 return $this->pushFailedResponse($messages);
@@ -149,76 +93,12 @@ class PushHandler implements GitRepositoryAware
         return CommandResponse::error(MessageRef::key('push.error_push'), $messages);
     }
 
-    /**
-     * @return array{0: bool, 1: string|null, 2: bool, 3: bool, 4: bool, 5: bool, 6: bool, 7: bool}
-     */
-    private function normalizeHandleArguments(
-        mixed $first,
-        mixed $second,
-        mixed $third,
-        mixed $fourth,
-        mixed $fifth,
-        mixed $sixth,
-        mixed $seventh,
-        mixed $eighth,
-        mixed $ninth,
-    ): array {
-        if ($first instanceof \Symfony\Component\Console\Style\SymfonyStyle) {
-            return [
-                (bool) $second,
-                is_string($third) ? $third : null,
-                (bool) $fourth,
-                (bool) $fifth,
-                (bool) $sixth,
-                (bool) $seventh,
-                (bool) $eighth,
-                (bool) $ninth,
-            ];
-        }
-
-        return [
-            (bool) $first,
-            is_string($second) ? $second : null,
-            (bool) $third,
-            (bool) $fourth,
-            (bool) $fifth,
-            (bool) $sixth,
-            (bool) $seventh,
-            (bool) $eighth,
-        ];
-    }
-
-    private function prepareFlatten(CommandResponse $commitResponse, bool $flatten): CommandResponse
+    private function publish(CommandResponse $prepared, PushInput $input): CommandResponse
     {
-        if (! $flatten) {
-            return $commitResponse;
-        }
-
-        return $this->withPublishWarning($this->flattenHandler->applyWhenSafe($commitResponse, true));
-    }
-
-    private function withPublishWarning(CommandResponse $response): CommandResponse
-    {
-        if (! $response->isSuccess() || ($response->data['rewritten'] ?? false) !== true) {
-            return $response;
-        }
-        $messages = $response->getMessages();
-        $messages[] = ResponseMessage::warning(MessageRef::key('flatten.warning_published'));
-
-        return CommandResponse::success($response->message, $response->data, $messages);
-    }
-
-    private function publish(
-        CommandResponse $prepared,
-        bool $quiet,
-        bool $noPlease,
-        bool $agentMode,
-        bool $pleaseFallback,
-    ): CommandResponse {
         if (($prepared->data['rewritten'] ?? false) === true) {
-            return $this->publishRewritten($prepared, $quiet, $agentMode);
+            return $this->publishRewritten($prepared, $input->quiet, $input->agentMode);
         }
-        $response = $this->pushCurrent($prepared, $quiet, $noPlease, $agentMode, $pleaseFallback);
+        $response = $this->pushCurrent($prepared, $input);
         if (! array_key_exists('rewritten', $prepared->data)) {
             return $response;
         }
@@ -230,13 +110,8 @@ class PushHandler implements GitRepositoryAware
         return $this->markPublished($response, false);
     }
 
-    private function pushCurrent(
-        CommandResponse $prepared,
-        bool $quiet,
-        bool $noPlease,
-        bool $agentMode,
-        bool $pleaseFallback,
-    ): CommandResponse {
+    private function pushCurrent(CommandResponse $prepared, PushInput $input): CommandResponse
+    {
         $pushProcess = $this->gitRepository->pushHeadToOrigin();
         if ($pushProcess->isSuccessful()) {
             return CommandResponse::success(
@@ -249,7 +124,7 @@ class PushHandler implements GitRepositoryAware
             );
         }
 
-        return $this->handleFailedPush($quiet, $noPlease, $agentMode, $pleaseFallback, $prepared->getMessages());
+        return $this->handleFailedPush($input, $prepared->getMessages());
     }
 
     private function publishRewritten(CommandResponse $prepared, bool $quiet, bool $agentMode): CommandResponse

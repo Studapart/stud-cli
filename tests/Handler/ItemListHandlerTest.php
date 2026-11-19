@@ -215,20 +215,19 @@ class ItemListHandlerTest extends CommandTestCase
             },
         );
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $supplier,
-            [
+            new \App\DTO\ItemListConfigs([
                 'ISSUE_TRACKER_PROVIDERS' => ['jira', 'linear'],
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
-            ],
-            [
+            ], [
                 'issueTrackerProvider' => 'auto',
                 'projectKey' => 'SCI',
                 'linearTeamKey' => 'ENG',
-            ],
+            ]),
         );
 
         $response = $handler->handle(false, null, null);
@@ -249,14 +248,13 @@ class ItemListHandlerTest extends CommandTestCase
             ->with('ENG', true)
             ->willReturn([]);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createLinearPortSupplier($this->issueTracker),
-            $this->globalConfig,
-            [
+            new \App\DTO\ItemListConfigs($this->globalConfig, [
                 'issueTrackerProvider' => 'auto',
                 'projectKey' => 'SCI',
                 'linearTeamKey' => 'ENG',
-            ],
+            ]),
         );
 
         $response = $handler->handle(false, null, null, IssueTrackerProvider::Linear->value);
@@ -274,10 +272,9 @@ class ItemListHandlerTest extends CommandTestCase
             ->with('SCI', true)
             ->willReturn([]);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createPortSupplier($this->issueTracker),
-            ['ISSUE_TRACKER_PROVIDERS' => ['jira']],
-            ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI'],
+            new \App\DTO\ItemListConfigs(['ISSUE_TRACKER_PROVIDERS' => ['jira']], ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI']),
         );
 
         $response = $handler->handle(false, null, null);
@@ -291,10 +288,9 @@ class ItemListHandlerTest extends CommandTestCase
         $supplier->method('resolve')->willReturn(['ok' => false, 'error' => 'missing credentials']);
         $supplier->method('resolveForProvider')->willReturn(['ok' => false, 'error' => 'missing credentials']);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $supplier,
-            ['ISSUE_TRACKER_PROVIDERS' => ['jira']],
-            ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI'],
+            new \App\DTO\ItemListConfigs(['ISSUE_TRACKER_PROVIDERS' => ['jira']], ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI']),
         );
 
         $response = $handler->handle(false, null, null);
@@ -312,10 +308,9 @@ class ItemListHandlerTest extends CommandTestCase
         $jiraPort->method('listAssignedActive')->willReturn([$sharedIssue]);
         $linearPort->method('listAssignedActive')->willReturn([$sharedIssue]);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createDualPortSupplier($jiraPort, $linearPort),
-            $this->dualGlobalConfig(),
-            $this->dualProjectConfig(),
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), $this->dualProjectConfig()),
         );
 
         $response = $handler->handle(false, null, null);
@@ -333,10 +328,9 @@ class ItemListHandlerTest extends CommandTestCase
         $jiraPort->method('listAssignedActive')->willThrowException(new \Exception('jira down'));
         $linearPort->method('listAssignedActive')->willReturn([$linearIssue]);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createDualPortSupplier($jiraPort, $linearPort),
-            $this->dualGlobalConfig(),
-            $this->dualProjectConfig(),
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), $this->dualProjectConfig()),
         );
 
         $response = $handler->handle(false, null, null);
@@ -363,10 +357,9 @@ class ItemListHandlerTest extends CommandTestCase
             },
         );
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $supplier,
-            $this->dualGlobalConfig(),
-            $this->dualProjectConfig(),
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), $this->dualProjectConfig()),
         );
 
         $response = $handler->handle(false, null, null);
@@ -385,14 +378,13 @@ class ItemListHandlerTest extends CommandTestCase
         $jiraPort->method('listAssignedActive')->willReturn([$jiraIssue]);
         $linearPort->method('listAssignedActive')->willReturn([$linearIssue]);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createDualPortSupplier($jiraPort, $linearPort),
-            $this->dualGlobalConfig(),
-            [
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), [
                 'issueTrackerProvider' => 'auto',
                 'projectKey' => 'SCI',
                 'linearTeamKey' => 'SCI',
-            ],
+            ]),
         );
 
         $response = $handler->handle(false, 'SCI', null);
@@ -412,14 +404,13 @@ class ItemListHandlerTest extends CommandTestCase
             ->with('ENG', true)
             ->willReturn([]);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createLinearPortSupplier($this->issueTracker),
-            $this->dualGlobalConfig(),
-            [
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), [
                 'issueTrackerProvider' => 'linear',
                 'projectKey' => 'SCI',
                 'linearTeamKey' => 'ENG',
-            ],
+            ]),
         );
 
         $response = $handler->handle(false, null, null);
@@ -432,10 +423,9 @@ class ItemListHandlerTest extends CommandTestCase
         $supplier = $this->createStub(IssueTrackerPortSupplier::class);
         $supplier->method('resolveForProvider')->willReturn(['ok' => false, 'error' => 'linear unavailable']);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $supplier,
-            $this->dualGlobalConfig(),
-            $this->dualProjectConfig(),
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), $this->dualProjectConfig()),
         );
 
         $response = $handler->handle(false, null, null, IssueTrackerProvider::Linear->value);
@@ -454,10 +444,9 @@ class ItemListHandlerTest extends CommandTestCase
             ->with('UNKNOWN', true)
             ->willReturn([]);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createPortSupplier($this->issueTracker),
-            ['ISSUE_TRACKER_PROVIDERS' => ['jira']],
-            ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI'],
+            new \App\DTO\ItemListConfigs(['ISSUE_TRACKER_PROVIDERS' => ['jira']], ['issueTrackerProvider' => 'auto', 'projectKey' => 'SCI']),
         );
 
         $response = $handler->handle(false, 'UNKNOWN', null);
@@ -469,10 +458,9 @@ class ItemListHandlerTest extends CommandTestCase
     {
         $method = new \ReflectionMethod(ItemListHandler::class, 'shouldDualAutoAggregate');
         \App\Util\ReflectionAccessor::ensureAccessible($method);
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createPortSupplier($this->issueTracker),
-            $this->dualGlobalConfig(),
-            ['issueTrackerProvider' => 'jira', 'projectKey' => 'SCI'],
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), ['issueTrackerProvider' => 'jira', 'projectKey' => 'SCI']),
         );
 
         $this->assertFalse($method->invoke($handler));
@@ -489,10 +477,9 @@ class ItemListHandlerTest extends CommandTestCase
             },
         );
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $supplier,
-            $this->dualGlobalConfig(),
-            $this->dualProjectConfig(),
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), $this->dualProjectConfig()),
         );
 
         $response = $handler->handle(false, null, null);
@@ -512,10 +499,9 @@ class ItemListHandlerTest extends CommandTestCase
             ->with('SCI', true)
             ->willReturn([]);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createPortSupplier($this->issueTracker),
-            $this->dualGlobalConfig(),
-            $this->dualProjectConfig(),
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), $this->dualProjectConfig()),
         );
 
         $response = $handler->handle(false, 'SCI', null);
@@ -533,10 +519,9 @@ class ItemListHandlerTest extends CommandTestCase
             ->with('ENG', true)
             ->willReturn([]);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createLinearPortSupplier($this->issueTracker),
-            $this->dualGlobalConfig(),
-            $this->dualProjectConfig(),
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), $this->dualProjectConfig()),
         );
 
         $response = $handler->handle(false, 'ENG', null);
@@ -554,10 +539,9 @@ class ItemListHandlerTest extends CommandTestCase
         $jiraPort->method('listAssignedActive')->willReturn([$jiraIssue]);
         $linearPort->method('listAssignedActive')->willReturn([$linearIssue]);
 
-        $handler = new ItemListHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createDualPortSupplier($jiraPort, $linearPort),
-            $this->dualGlobalConfig(),
-            $this->dualProjectConfig(),
+            new \App\DTO\ItemListConfigs($this->dualGlobalConfig(), $this->dualProjectConfig()),
         );
 
         $response = $handler->handle(false, null, 'Key');
@@ -634,10 +618,9 @@ class ItemListHandlerTest extends CommandTestCase
     private function bindSubject(): void
     {
 
-        $this->handler = new ItemListHandler(
+        $this->handler = \App\Tests\Support\ConstructorFixtures::itemListHandler(
             $this->createPortSupplier($this->issueTracker),
-            $this->globalConfig,
-            $this->projectConfig,
+            new \App\DTO\ItemListConfigs($this->globalConfig, $this->projectConfig),
         );
     }
 }

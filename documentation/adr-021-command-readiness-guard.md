@@ -64,10 +64,6 @@ Castor task → CommandContextFactory → CommandGuard → handler
 * Removed: `ConfigValidator::COMMAND_REQUIREMENTS`
 * Whitelisted commands skip guard (init, help, cache:clear, etc.)
 
----
-
-See also: `.cursor/reports/command-readiness-guard-architecture.md`
-
 ## 8. Cross-references
 
 * [ADR-023](adr-023-integration-layering-and-naming.md) — ports, adapters, clients glossary and rename phases

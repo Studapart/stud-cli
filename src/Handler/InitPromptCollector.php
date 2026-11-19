@@ -12,9 +12,9 @@ use App\Enum\GlobalGitProviderMenu;
 use App\Enum\GlobalIssueTrackerProviderMenu;
 use App\Handler\GlobalInit\GitProviderTokensCollector;
 use App\Handler\GlobalInit\GlobalInitPromptContext;
+use App\Handler\GlobalInit\InitPromptCollectors;
 use App\Handler\GlobalInit\JiraCredentialsCollector;
 use App\Handler\GlobalInit\LinearApiKeyCollector;
-use App\Service\GitTokenPromptResolver;
 use App\Service\GlobalConfigProviderResolver;
 use App\Service\MessageRenderer;
 use App\Service\Prompt\PromptInterface;
@@ -24,30 +24,19 @@ use App\Service\Prompt\PromptInterface;
  */
 class InitPromptCollector
 {
-    private InitPromptInputHelper $inputHelper;
     private JiraCredentialsCollector $jiraCredentialsCollector;
     private LinearApiKeyCollector $linearApiKeyCollector;
     private GitProviderTokensCollector $gitProviderTokensCollector;
 
     public function __construct(
         private readonly PromptInterface $prompt,
-        GitTokenPromptResolver $gitTokenPromptResolver,
         private readonly MessageRenderer $messageRenderer,
         private readonly GlobalConfigProviderResolver $providerResolver,
-        ?InitPromptInputHelper $inputHelper = null,
-        ?JiraCredentialsCollector $jiraCredentialsCollector = null,
-        ?LinearApiKeyCollector $linearApiKeyCollector = null,
-        ?GitProviderTokensCollector $gitProviderTokensCollector = null,
+        InitPromptCollectors $collectors,
     ) {
-        $this->inputHelper = $inputHelper ?? new InitPromptInputHelper($prompt);
-        $this->jiraCredentialsCollector = $jiraCredentialsCollector ?? new JiraCredentialsCollector($providerResolver, $this->inputHelper, $prompt);
-        $this->linearApiKeyCollector = $linearApiKeyCollector ?? new LinearApiKeyCollector($providerResolver, $this->inputHelper);
-        $this->gitProviderTokensCollector = $gitProviderTokensCollector ?? new GitProviderTokensCollector(
-            $providerResolver,
-            $this->inputHelper,
-            $gitTokenPromptResolver,
-            $prompt,
-        );
+        $this->jiraCredentialsCollector = $collectors->jira;
+        $this->linearApiKeyCollector = $collectors->linear;
+        $this->gitProviderTokensCollector = $collectors->git;
     }
 
     /**

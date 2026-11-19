@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\BranchCleanupPlan;
 use App\DTO\BranchDeletionEligibility;
+use App\DTO\BranchEligibilityContext;
 use App\DTO\MessageRef;
 use App\Enum\BranchAutoCleanDecision;
 use App\Enum\BranchCleanupLocalAction;
@@ -36,6 +37,7 @@ class BranchCleanupPlanner
         $currentBranch = $this->gitRepository->getCurrentBranchName();
         $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_DEBUG, "    <fg=gray>Current branch: {$currentBranch}</>", WorkflowChannel::Git);
         $prSnapshot = $this->eligibilityResolver->buildPullRequestSnapshot($recorder);
+        $context = new BranchEligibilityContext($currentBranch, $baseBranch, $prSnapshot['map'], $prSnapshot['available']);
 
         $automaticPlans = [];
         $currentBranchSkipped = false;
@@ -43,15 +45,7 @@ class BranchCleanupPlanner
 
         foreach ($allBranches as $branch) {
             $remoteExists = isset($remoteBranchesSet[$branch]);
-            $eligibility = $this->eligibilityResolver->evaluate(
-                $branch,
-                $currentBranch,
-                $remoteExists,
-                $baseBranch,
-                $prSnapshot['map'],
-                $prSnapshot['available'],
-                $recorder,
-            );
+            $eligibility = $this->eligibilityResolver->evaluate($branch, $remoteExists, $context, $recorder);
 
             if ($eligibility->reason === 'current_branch') {
                 $currentBranchSkipped = true;

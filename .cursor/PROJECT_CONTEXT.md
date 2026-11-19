@@ -27,6 +27,7 @@ playbook routing live here only.
 - Create: `echo '{"summary":"SUMMARY","description":"DESCRIPTION"}' | stud items:create --agent`
 - Attach / replace: attach `echo '{"key":"KEY","files":["PATH"]}' | stud items:upload --agent`; replace `echo '{"key":"KEY","description":"DESCRIPTION"}' | stud items:update --agent`
 - Docs show (wiki/Confluence): `echo '{"page":"PAGE"}' | stud confluence:show --agent`
+- Confluence pages and issue attachments are read through stud (`confluence:show`, `items:download`), never generic HTTP.
 - Work-item template: bundled
 - Required tracker fields: `summary` on create. Project and provider are omitted unless the user specifies them
 
@@ -86,7 +87,7 @@ No repository playbook overrides. Skills use the bundled software-engineering pl
   - `documentation/reference/commands.md` is generated. After command-signature changes run `stud docs:generate` and `stud docs:check`.
   - Invoke the installed `stud` binary on `PATH`.
   - This develop line is stud-cli 5.x. PHP platform is 8.5.12. The installer rejects anything below that. stud-cli 4.x is the PHP 8.4 line. stud-cli 6.x will track PHP 8.6. The bundled portable runtime is PHP 8.5.12.
-  - `.cursor/tmp/` is local scratch and stays gitignored.
+  - `.cursor/tmp/` is local scratch and stays gitignored. A task deletes the scratch it created when it ends.
 
 ## Stack addenda
 

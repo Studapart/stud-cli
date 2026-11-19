@@ -42,22 +42,16 @@ final class CommandResponse extends AbstractResponse
         return new self(false, $error, null, $data, $messages);
     }
 
-    /**
-     * @param list<ResponseMessage> $messages
-     * @param array<string, mixed> $data
-     */
     public static function fromExitCode(
         int $exitCode,
         MessageRef|string $successMessage,
         MessageRef|string $errorMessage,
-        array $messages = [],
-        array $data = [],
     ): self {
         if ($exitCode !== 0) {
-            return self::error($errorMessage, $messages, $data);
+            return self::error($errorMessage);
         }
 
-        return self::success($successMessage, $data, $messages);
+        return self::success($successMessage);
     }
 
     public function hasReusableData(): bool

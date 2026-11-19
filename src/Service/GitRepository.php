@@ -6,15 +6,12 @@ namespace App\Service;
 
 use App\DTO\ConfigFileReadResult;
 use App\Exception\GitException;
-use App\Exception\GitTimeoutException;
-use Symfony\Component\Process\Exception\ProcessFailedException;
-use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
 class GitRepository
 {
     public function __construct(
-        private readonly ProcessFactory $processFactory,
+        private readonly GitCommandRunner $commandRunner,
         private readonly GitProjectConfigService $projectConfigService,
         private readonly GitRemoteUrlParser $remoteUrlParser,
         private readonly GitRebaseAutosquashService $rebaseAutosquashService,
@@ -26,8 +23,7 @@ class GitRepository
      */
     public function getIssueKeyFromBranchName(): ?string
     {
-        $process = $this->processFactory->create(['git', 'rev-parse', '--abbrev-ref', 'HEAD']);
-        $process->run();
+        $process = $this->runQuietly(['git', 'rev-parse', '--abbrev-ref', 'HEAD']);
 
         if (! $process->isSuccessful()) {
             return null;
@@ -339,30 +335,7 @@ class GitRepository
      */
     public function run(array $command): Process
     {
-        $process = $this->processFactory->create($command);
-        $commandLine = implode(' ', $command);
-
-        try {
-            $process->mustRun();
-        } catch (ProcessTimedOutException $e) {
-            throw new GitTimeoutException(
-                $commandLine,
-                ProcessFactory::GIT_SUBPROCESS_TIMEOUT_SECONDS,
-                $e->getMessage(),
-                $e,
-            );
-        } catch (ProcessFailedException $e) {
-            $errorOutput = $process->getErrorOutput() ?: $process->getOutput();
-            $technicalDetails = trim($errorOutput) ?: 'Command failed with no error output';
-
-            throw new GitException(
-                "Git command failed: {$commandLine}",
-                $technicalDetails,
-                $e
-            );
-        }
-
-        return $process;
+        return $this->commandRunner->run($command);
     }
 
     /**
@@ -370,10 +343,7 @@ class GitRepository
      */
     public function runQuietly(array $command): Process
     {
-        $process = $this->processFactory->create($command);
-        $process->run();
-
-        return $process;
+        return $this->commandRunner->runQuietly($command);
     }
 
     /**

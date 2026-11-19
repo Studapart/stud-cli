@@ -134,14 +134,6 @@ class JiraApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
-     */
-    protected function mapToWorkItem(array $data): WorkItem
-    {
-        return $this->issueMapper->mapToWorkItem($data);
-    }
-
-    /**
      * @return array<int, array{id: int, name: string, to: array{name: string, statusCategory: array{key: string, name: string}}}>
      */
     public function getTransitions(string $key): array
@@ -245,26 +237,6 @@ class JiraApiClient
         return $this->userSearchService->findUserByEmail($email);
     }
 
-    /**
-     * @param array<int, array<string, mixed>> $users
-     *
-     * @return array{accountId: string, displayName: string}|null
-     */
-    protected function findExactEmailMatchInUsers(array $users, string $query): ?array
-    {
-        return $this->userSearchService->findExactEmailMatchInUsers($users, $query);
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $users
-     *
-     * @return array<int, array{accountId: string, displayName: string}>
-     */
-    protected function collectUserCandidatesWithAt(array $users): array
-    {
-        return $this->userSearchService->collectUserCandidatesWithAt($users);
-    }
-
     protected function extractTechnicalDetails(\Symfony\Contracts\HttpClient\ResponseInterface $response, bool $truncateBody = true): string
     {
         $statusCode = $response->getStatusCode();
@@ -289,24 +261,7 @@ class JiraApiClient
      */
     public function getCreateMetaIssueTypes(string $projectIdOrKey): array
     {
-        $url = "/rest/api/3/issue/createmeta/{$projectIdOrKey}/issuetypes";
-        $response = $this->client->request('GET', $url);
-
-        if ($response->getStatusCode() !== 200) {
-            throw new ApiException(
-                "Could not fetch create metadata for project \"{$projectIdOrKey}\".",
-                $this->extractTechnicalDetails($response),
-                $response->getStatusCode()
-            );
-        }
-
-        $data = $response->toArray();
-        $values = $data['values'] ?? $data['issueTypes'] ?? [];
-
-        return array_map(static fn (array $item): array => [
-            'id' => (string) ($item['id'] ?? ''),
-            'name' => (string) ($item['name'] ?? ''),
-        ], $values);
+        return $this->fieldMetadataService->getCreateMetaIssueTypes($projectIdOrKey);
     }
 
     /**

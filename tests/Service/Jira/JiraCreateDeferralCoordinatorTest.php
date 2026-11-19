@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service\Jira;
 
+use App\DTO\IssueCreationState;
 use App\Exception\ApiException;
 use App\Service\DurationParser;
 use App\Service\FieldsParser;
@@ -30,7 +31,7 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
     {
         $this->port->method('create')->willReturn(['key' => 'SCI-0', 'self' => 'self']);
 
-        $response = $this->coordinator->create($this->port, ['title' => 'Summary'], [], [], [], []);
+        $response = $this->coordinator->create($this->port, $this->state(['title' => 'Summary']), []);
 
         $this->assertTrue($response->isSuccess());
         $this->assertNull($response->deferredFields);
@@ -44,7 +45,7 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
             400,
         ));
 
-        $response = $this->coordinator->create($this->port, ['title' => 'Summary'], [], [], [], []);
+        $response = $this->coordinator->create($this->port, $this->state(['title' => 'Summary']), []);
 
         $this->assertFalse($response->isSuccess());
     }
@@ -57,7 +58,7 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
             400,
         ));
 
-        $response = $this->coordinator->create($this->port, ['title' => 'Summary'], [], [], [], []);
+        $response = $this->coordinator->create($this->port, $this->state(['title' => 'Summary']), []);
 
         $error = $response->getErrorMessage();
         $this->assertInstanceOf(\App\DTO\MessageRef::class, $error);
@@ -71,7 +72,7 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
     {
         $this->port->method('create')->willThrowException(new \RuntimeException('socket down'));
 
-        $response = $this->coordinator->create($this->port, ['title' => 'Summary'], [], [], [], []);
+        $response = $this->coordinator->create($this->port, $this->state(['title' => 'Summary']), []);
 
         $error = $response->getErrorMessage();
         $this->assertInstanceOf(\App\DTO\MessageRef::class, $error);
@@ -86,7 +87,7 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
         $screenError = new ApiException('Could not create issue.', 'HTTP 400: {"errors":{"summary":"cannot be set"}}', 400);
         $this->port->expects($this->once())->method('create')->willThrowException($screenError);
 
-        $response = $this->coordinator->create($this->port, ['summary' => 'Summary'], [], [], [], []);
+        $response = $this->coordinator->create($this->port, $this->state(['summary' => 'Summary']), []);
 
         $this->assertFalse($response->isSuccess());
     }
@@ -116,10 +117,12 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
         $response = $this->coordinator->create(
             $this->port,
-            ['title' => 'Summary', 'labels' => ['AI-Generated']],
-            ['labels' => ['AI-Generated']],
-            ['labels' => 'labels'],
-            ['labels' => ['required' => false, 'name' => 'Labels']],
+            $this->state(
+                ['title' => 'Summary', 'labels' => ['AI-Generated']],
+                ['labels' => ['AI-Generated']],
+                ['labels' => 'labels'],
+                ['labels' => ['required' => false, 'name' => 'Labels']],
+            ),
             [],
         );
 
@@ -140,10 +143,12 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
         $response = $this->coordinator->create(
             $this->port,
-            ['title' => 'Summary', 'labels' => ['AI-Generated']],
-            ['labels' => ['AI-Generated']],
-            ['labels' => 'labels'],
-            [],
+            $this->state(
+                ['title' => 'Summary', 'labels' => ['AI-Generated']],
+                ['labels' => ['AI-Generated']],
+                ['labels' => 'labels'],
+                [],
+            ),
             [],
         );
 
@@ -172,10 +177,12 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
         $response = $this->coordinator->create(
             $this->port,
-            ['title' => 'Summary', 'labels' => ['AI-Generated']],
-            ['labels' => ['AI-Generated']],
-            ['labels' => 'labels'],
-            [],
+            $this->state(
+                ['title' => 'Summary', 'labels' => ['AI-Generated']],
+                ['labels' => ['AI-Generated']],
+                ['labels' => 'labels'],
+                [],
+            ),
             [],
         );
 
@@ -193,10 +200,12 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
         $response = $this->coordinator->create(
             $this->port,
-            ['title' => 'Summary', 'labels' => ['AI-Generated']],
-            ['labels' => ['AI-Generated']],
-            ['labels' => 'labels'],
-            ['labels' => ['required' => true, 'name' => 'Labels']],
+            $this->state(
+                ['title' => 'Summary', 'labels' => ['AI-Generated']],
+                ['labels' => ['AI-Generated']],
+                ['labels' => 'labels'],
+                ['labels' => ['required' => true, 'name' => 'Labels']],
+            ),
             [],
         );
 
@@ -216,10 +225,12 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
         $response = $this->coordinator->create(
             $this->port,
-            ['title' => 'Summary'],
-            [],
-            [],
-            [],
+            $this->state(
+                ['title' => 'Summary'],
+                [],
+                [],
+                [],
+            ),
             [],
         );
 
@@ -247,10 +258,12 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
         $response = $this->coordinator->create(
             $this->port,
-            ['title' => 'Summary', 'customfield_12' => ['AI-Generated']],
-            ['labels' => ['AI-Generated']],
-            [],
-            [],
+            $this->state(
+                ['title' => 'Summary', 'customfield_12' => ['AI-Generated']],
+                ['labels' => ['AI-Generated']],
+                [],
+                [],
+            ),
             [],
         );
 
@@ -285,17 +298,19 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
         $response = $this->coordinator->create(
             $this->port,
-            [
-                'title' => 'Summary',
-                'labels' => ['AI-Generated'],
-                'assignee' => ['accountId' => 'abc'],
-            ],
-            ['labels' => ['AI-Generated']],
-            ['labels' => 'labels'],
-            [
-                'labels' => ['required' => false, 'name' => 'Labels'],
-                'assignee' => ['required' => false, 'name' => 'Assignee'],
-            ],
+            $this->state(
+                [
+                    'title' => 'Summary',
+                    'labels' => ['AI-Generated'],
+                    'assignee' => ['accountId' => 'abc'],
+                ],
+                ['labels' => ['AI-Generated']],
+                ['labels' => 'labels'],
+                [
+                    'labels' => ['required' => false, 'name' => 'Labels'],
+                    'assignee' => ['required' => false, 'name' => 'Assignee'],
+                ],
+            ),
             [],
         );
 
@@ -328,13 +343,15 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
         $response = $this->coordinator->create(
             $this->port,
-            [
-                'title' => 'Summary',
-                'assignee' => ['accountId' => 'abc'],
-            ],
-            [],
-            [],
-            ['assignee' => ['required' => false, 'name' => 'Assignee']],
+            $this->state(
+                [
+                    'title' => 'Summary',
+                    'assignee' => ['accountId' => 'abc'],
+                ],
+                [],
+                [],
+                ['assignee' => ['required' => false, 'name' => 'Assignee']],
+            ),
             [],
         );
 
@@ -365,6 +382,25 @@ class JiraCreateDeferralCoordinatorTest extends TestCase
 
                 return $second;
             });
+    }
+
+    /**
+     * @param array<string, mixed> $fields
+     * @param array<string, string|list<string>> $fieldInputsForUpdate
+     * @param array<string, string> $payloadKeyToInputKey
+     * @param array<string, array{required: bool, name: string}> $allFieldsMeta
+     */
+    private function state(
+        array $fields,
+        array $fieldInputsForUpdate = [],
+        array $payloadKeyToInputKey = [],
+        array $allFieldsMeta = [],
+    ): IssueCreationState {
+        $state = new IssueCreationState('SCI', '10001', $allFieldsMeta, [], $fields);
+        $state->fieldInputsForUpdate = $fieldInputsForUpdate;
+        $state->payloadKeyToInputKey = $payloadKeyToInputKey;
+
+        return $state;
     }
 
     private function bindSubject(): void

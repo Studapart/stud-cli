@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler\GlobalInit;
 
 use App\Contract\WorkflowEntryRecorder;
+use App\DTO\InitPromptField;
 use App\DTO\MessageRef;
 use App\Handler\InitPromptInputHelper;
 use App\Service\GlobalConfigProviderResolver;
@@ -38,11 +39,8 @@ class LinearApiKeyCollector
         return [
             'LINEAR_API_KEY' => $this->inputHelper->resolveWhenActive(
                 $active,
-                $context->isAgent,
-                $context->rawAgentInput,
-                'linearApiKey',
-                $existing['LINEAR_API_KEY'] ?? null,
-                $linearApiKeyPrompt,
+                $context,
+                new InitPromptField('linearApiKey', $existing['LINEAR_API_KEY'] ?? null, $linearApiKeyPrompt),
                 hidden: true,
             ),
         ];

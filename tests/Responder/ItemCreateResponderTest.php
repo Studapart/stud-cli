@@ -28,6 +28,22 @@ class ItemCreateResponderTest extends CommandTestCase
         $responder->respond($io, $response);
     }
 
+    public function testRespondUsesTheLinearUrlWhenJiraUrlIsAlsoConfigured(): void
+    {
+        $response = ItemCreateResponse::success('SCI-42', 'https://linear.app/stud/issue/SCI-42');
+        $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
+
+        $io->expects($this->once())
+            ->method('success')
+            ->with($this->callback(function (string $message): bool {
+                return str_contains($message, 'linear.app')
+                    && ! str_contains($message, 'browse');
+            }));
+
+        $responder->respond($io, $response);
+    }
+
     public function testRespondDoesNotCallSuccessWhenResponseIsError(): void
     {
         $response = ItemCreateResponse::error('Something failed');
@@ -74,7 +90,7 @@ class ItemCreateResponderTest extends CommandTestCase
 
     public function testRespondJsonReturnsCreatedIssueData(): void
     {
-        $response = ItemCreateResponse::success('PROJ-1', 'https://jira.example.com/issue/PROJ-1', []);
+        $response = ItemCreateResponse::success('PROJ-1', 'https://jira.example.com/issue/PROJ-1', [], [], []);
         $io = $this->createStub(SymfonyStyle::class);
         $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
 
@@ -82,7 +98,11 @@ class ItemCreateResponderTest extends CommandTestCase
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
-        $this->assertSame('PROJ-1', $result->data['key']);
+        $this->assertSame([
+            'key' => 'PROJ-1',
+            'self' => 'https://jira.example.com/issue/PROJ-1',
+            'skippedOptionalFields' => [],
+        ], $result->data);
     }
 
     public function testRespondJsonReturnsErrorOnFailure(): void

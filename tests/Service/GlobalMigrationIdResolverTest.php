@@ -28,7 +28,8 @@ class GlobalMigrationIdResolverTest extends TestCase
     public function testResolveLatestIdReturnsNullWhenDirectoryMissing(): void
     {
         $adapter = new \League\Flysystem\InMemory\InMemoryFilesystemAdapter();
-        $fileSystem = new FileSystem(new FlysystemFilesystem($adapter));
+        $flysystem = new FlysystemFilesystem($adapter);
+        $fileSystem = new FileSystem($flysystem);
 
         $resolver = new GlobalMigrationIdResolver($fileSystem);
 
@@ -50,7 +51,8 @@ class GlobalMigrationIdResolverTest extends TestCase
     public function testResolveLatestIdIgnoresNonMigrationFiles(): void
     {
         $adapter = new \League\Flysystem\InMemory\InMemoryFilesystemAdapter();
-        $fileSystem = new FileSystem(new FlysystemFilesystem($adapter));
+        $flysystem = new FlysystemFilesystem($adapter);
+        $fileSystem = new FileSystem($flysystem);
         $fileSystem->write('src/Migrations/GlobalMigrations/README.md', '');
         $fileSystem->write('src/Migrations/GlobalMigrations/Migration002_Newer.php', '');
         $fileSystem->write('src/Migrations/GlobalMigrations/Migration001_Older.php', '');
@@ -62,7 +64,8 @@ class GlobalMigrationIdResolverTest extends TestCase
 
     public function testResolvePathReturnsAbsolutePathWhenOutsideWorkingDirectory(): void
     {
-        $fileSystem = new FileSystem(new FlysystemFilesystem(new \League\Flysystem\InMemory\InMemoryFilesystemAdapter()));
+        $flysystem = new FlysystemFilesystem(new \League\Flysystem\InMemory\InMemoryFilesystemAdapter());
+        $fileSystem = new FileSystem($flysystem);
         $resolver = new class ($fileSystem) extends GlobalMigrationIdResolver {
             public function resolvePathForTest(string $path): string
             {
@@ -84,7 +87,8 @@ class GlobalMigrationIdResolverTest extends TestCase
 
     public function testResolvePathReturnsInputWhenWorkingDirectoryUnavailable(): void
     {
-        $fileSystem = new FileSystem(new FlysystemFilesystem(new \League\Flysystem\InMemory\InMemoryFilesystemAdapter()));
+        $flysystem = new FlysystemFilesystem(new \League\Flysystem\InMemory\InMemoryFilesystemAdapter());
+        $fileSystem = new FileSystem($flysystem);
         $resolver = new class ($fileSystem) extends GlobalMigrationIdResolver {
             protected function readWorkingDirectory(): string|false
             {

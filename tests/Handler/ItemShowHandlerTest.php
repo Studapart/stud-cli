@@ -88,7 +88,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('SCIL-195', true)
-            ->willThrowException(new \App\Exception\ApiException('not found', '404', 404, null, $hint));
+            ->willThrowException(new \App\Exception\ApiExceptionWithHint(new \App\Exception\ApiException('not found', '404', 404), $hint));
 
         $response = $this->handler->handle('SCIL-195');
 

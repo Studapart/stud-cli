@@ -238,6 +238,6 @@ class ItemUploadHandlerTest extends CommandTestCase
     private function bindSubject(): void
     {
 
-        $this->handler = new ItemUploadHandler($this->fileSystem, $this->provider, $this->translator);
+        $this->handler = new ItemUploadHandler($this->fileSystem, $this->provider);
     }
 }

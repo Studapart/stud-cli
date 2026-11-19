@@ -15,9 +15,12 @@ final class ArchitecturePresentationExceptions
      * @var list<string> paths relative to project root
      */
     public const ALLOWED_SERVICE_FILES = [
+        'src/Service/AgentModeCompactSchemaFormatter.php',
         'src/Service/AgentModeSchemaGenerator.php',
+        'src/Service/CommandHelpFormatter.php',
         'src/Service/CommandOutputBuffer.php',
         'src/Service/CommandReferenceGenerator.php',
+        'src/Service/CommandReferenceTableBuilder.php',
         'src/Service/HelpService.php',
         'src/Service/Logger.php',
         'src/Service/MarkdownToAdfConverter.php',

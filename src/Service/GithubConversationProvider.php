@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\GithubFeedbackCommentInput;
 use App\DTO\PullRequestFeedbackActions;
 use App\DTO\PullRequestFeedbackComment;
 use App\DTO\PullRequestFeedbackConversation;
@@ -169,7 +170,7 @@ class GithubConversationProvider
      */
     protected function mapGithubIssueCommentConversation(array $node): PullRequestFeedbackConversation
     {
-        $comment = $this->mapGithubFeedbackComment($node, self::KIND_PR_COMMENT, null, null, null);
+        $comment = $this->mapGithubFeedbackComment($node, new GithubFeedbackCommentInput(self::KIND_PR_COMMENT, null, null));
 
         return new PullRequestFeedbackConversation(
             $comment->ids,
@@ -246,28 +247,23 @@ class GithubConversationProvider
         $comments = is_array($node['comments']['nodes'] ?? null) ? $node['comments']['nodes'] : [];
 
         return array_map(
-            fn (array $comment): PullRequestFeedbackComment => $this->mapGithubFeedbackComment($comment, self::KIND_REVIEW_COMMENT, $threadId, $fallbackLocation, $comment['pullRequestReview'] ?? null),
+            fn (array $comment): PullRequestFeedbackComment => $this->mapGithubFeedbackComment($comment, new GithubFeedbackCommentInput(self::KIND_REVIEW_COMMENT, $threadId, $fallbackLocation, $comment['pullRequestReview'] ?? null)),
             $comments
         );
     }
 
     /**
      * @param array<string, mixed> $node
-     * @param array<string, mixed>|null $review
      */
-    protected function mapGithubFeedbackComment(
-        array $node,
-        string $kind,
-        ?string $threadId,
-        ?PullRequestFeedbackLocation $fallbackLocation,
-        ?array $review = null,
-    ): PullRequestFeedbackComment {
+    protected function mapGithubFeedbackComment(array $node, GithubFeedbackCommentInput $input): PullRequestFeedbackComment
+    {
+        $review = $input->review;
         $ids = new PullRequestFeedbackIds(
             self::PROVIDER_GITHUB,
-            $kind,
+            $input->kind,
             id: isset($node['databaseId']) ? (string) $node['databaseId'] : null,
             nodeId: isset($node['id']) ? (string) $node['id'] : null,
-            threadId: $threadId,
+            threadId: $input->threadId,
             reviewId: is_array($review) && isset($review['id']) ? (string) $review['id'] : null,
         );
         $state = new PullRequestFeedbackState(
@@ -276,12 +272,12 @@ class GithubConversationProvider
             providerState: isset($node['minimizedReason']) ? (string) $node['minimizedReason'] : null,
         );
         $actions = new PullRequestFeedbackActions(
-            canReply: $threadId !== null,
+            canReply: $input->threadId !== null,
             canHide: (bool) ($node['viewerCanMinimize'] ?? false),
             canUnhide: (bool) (($node['isMinimized'] ?? false) && ($node['viewerCanMinimize'] ?? false)),
         );
 
-        return new PullRequestFeedbackComment($ids, $this->githubAuthor($node['author'] ?? null), $this->githubDate($node, 'createdAt'), (string) ($node['body'] ?? ''), $state, $this->githubCommentLocation($node, $fallbackLocation), $actions);
+        return new PullRequestFeedbackComment($ids, $this->githubAuthor($node['author'] ?? null), $this->githubDate($node, 'createdAt'), (string) ($node['body'] ?? ''), $state, $this->githubCommentLocation($node, $input->fallbackLocation), $actions);
     }
 
     /**

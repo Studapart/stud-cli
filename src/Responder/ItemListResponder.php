@@ -4,21 +4,20 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\DTO\IssueProviderLabels;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ItemListResponse;
 use App\Service\Jira\JiraAssignedActiveJqlBuilder;
 use App\Service\Logger;
 use App\Service\ResponderHelper;
-use App\View\Column;
-use App\View\PageViewConfig;
-use App\View\Section;
-use App\View\TableBlock;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemListResponder
 {
     private readonly IssueListJsonSerializer $issueSerializer;
+
+    private readonly ItemListTable $table;
 
     /**
      * @param array<string, mixed> $jiraConfig
@@ -30,6 +29,7 @@ class ItemListResponder
         ?IssueListJsonSerializer $issueSerializer = null,
     ) {
         $this->issueSerializer = $issueSerializer ?? new IssueListJsonSerializer();
+        $this->table = new ItemListTable($helper, $logger);
     }
 
     public function respond(SymfonyStyle $io, ItemListResponse $response, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse
@@ -54,24 +54,7 @@ class ItemListResponder
             return null;
         }
 
-        $columns = [
-            new Column('key', 'table.key', fn ($item) => $item->key),
-            new Column('status', 'table.status', fn ($item) => $item->status),
-            new Column('title', 'table.summary', fn ($item) => $item->title),
-        ];
-        if ($response->multiProvider) {
-            $columns[] = new Column(
-                'provider',
-                'table.provider',
-                fn ($item) => $this->providerLabelForIssue($response, $item->key),
-            );
-        }
-
-        $viewConfig = new PageViewConfig([
-            new Section('', [new TableBlock($columns)]),
-        ], $this->helper->translator, $this->helper->colorHelper);
-
-        $viewConfig->render($response->issues, $this->logger);
+        $this->table->render($response);
 
         return null;
     }
@@ -87,17 +70,6 @@ class ItemListResponder
         }
 
         return true;
-    }
-
-    protected function providerLabelForIssue(ItemListResponse $response, string $issueKey): string
-    {
-        foreach ($response->issues as $index => $issue) {
-            if ($issue->key === $issueKey) {
-                return $response->issueProviders[$index] ?? '';
-            }
-        }
-
-        return '';
     }
 
     protected function respondJson(ItemListResponse $response): AgentJsonResponse
@@ -116,8 +88,7 @@ class ItemListResponder
             'issues' => $this->issueSerializer->serializeList(
                 $response->issues,
                 $jiraBaseUrl,
-                issueProviders: $response->issueProviders,
-                includeProvider: $response->multiProvider,
+                providerLabels: new IssueProviderLabels($response->issueProviders, $response->multiProvider),
             ),
             'all' => $response->all,
             'project' => $response->project,

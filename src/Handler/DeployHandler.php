@@ -16,9 +16,7 @@ class DeployHandler implements GitRepositoryAware, ProjectBaseBranchAware
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly string $baseBranch,
-        mixed $_translator,
     ) {
-        unset($_translator);
     }
 
     public function handle(): CommandResponse

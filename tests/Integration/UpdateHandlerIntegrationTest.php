@@ -50,7 +50,8 @@ class UpdateHandlerIntegrationTest extends TestCase
 
         $this->httpClient = $this->createMock(HttpClientInterface::class);
         $this->tempBinaryPath = sys_get_temp_dir() . '/stud-test.phar';
-        $this->prompt = new Logger(new SymfonyStyle(new ArrayInput([]), new BufferedOutput()), []);
+        $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
+        $this->prompt = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         // Create handler with real services but mocked HTTP client
         $this->handler = UpdateHandlerTestKit::create(

@@ -8,6 +8,7 @@ use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\FilterShowResponse;
 use App\Service\Logger;
+use App\Service\MessageRenderer;
 use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
@@ -37,10 +38,12 @@ class FilterShowResponder
             return $this->respondJson($response);
         }
 
-        $this->helper->initSection($this->logger, 'filter.show.section', ['filterName' => $response->filterName]);
+        if (! $response->isSuccess()) {
+            return $this->logFurtherFailures($response);
+        }
 
-        $jql = 'filter = "' . $response->filterName . '"';
-        $this->helper->verboseComment($this->logger, 'filter.show.jql_query', ['jql' => $jql]);
+        $this->helper->initSection($this->logger, 'filter.show.section', ['filterName' => $response->filterName]);
+        $this->helper->verboseComment($this->logger, 'filter.show.jql_query', ['jql' => 'filter = "' . $response->filterName . '"']);
 
         if (empty($response->issues)) {
             $this->logger->note(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('filter.show.no_results', ['filterName' => $response->filterName]));
@@ -68,12 +71,24 @@ class FilterShowResponder
         return null;
     }
 
+    private function logFurtherFailures(FilterShowResponse $response): null
+    {
+        foreach ($response->getWarnings() as $warning) {
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $warning->message);
+        }
+
+        return null;
+    }
+
     protected function respondJson(FilterShowResponse $response): AgentJsonResponse
     {
         if (! $response->isSuccess()) {
             return new AgentJsonResponse(
                 false,
                 error: $this->helper->translator->renderForAgentText($response->getErrorMessage() ?? 'Unknown error'),
+                diagnostics: $response->hasDiagnostics()
+                    ? $response->diagnosticsPayload(new MessageRenderer($this->helper->translator, true))
+                    : [],
             );
         }
 

@@ -152,7 +152,7 @@ The following table defines all quality thresholds that must be met:
 **What is Cyclomatic Complexity?** Cyclomatic Complexity measures the number of linearly independent paths through a program's source code. It's calculated by counting decision points (if statements, loops, switch cases, etc.) plus 1.
 
 **Enforcement**: 
-- During development (Phase 1 of the AI protocol), all methods that will be modified or created must be assessed for complexity.
+- Before planning and before delivery, all methods that will be modified or created must be assessed for complexity.
 - If a method exceeds CC of 10, it MUST be refactored before proceeding with feature implementation.
 - Tools like PHPStan, PHPUnit's coverage reports, or static analysis tools can help measure complexity.
 
@@ -316,7 +316,7 @@ public function processData($data) {
 **Exemption**: DTO, Response, and Value Object constructors using promoted `readonly` properties are exempt from the 4-argument limit. These serve as pure data containers with no behavioral complexity; splitting them into sub-objects would add ceremony without reducing cognitive load.
 
 **Enforcement**:
-- PHPMD fails the build when a method has more than 4 arguments. A new promoted readonly DTO, Response, or Value Object constructor that needs the exemption carries `@SuppressWarnings(PHPMD.ExcessiveParameterList)`.
+- PHPMD fails the build when a method has more than 4 arguments. A new promoted readonly DTO, Response, or Value Object constructor that needs the exemption carries `@SuppressWarnings("PHPMD.ExcessiveParameterList")`. Quote the rule name. PHPStan rejects the unquoted form.
 - Methods with many arguments should be refactored using:
   - Parameter objects (DTOs)
   - Builder pattern
@@ -624,13 +624,13 @@ vendor/bin/phpstan analyse
 - Complex code structures that may violate complexity thresholds
 - Potential bugs and code smells
 
-**AI Agent Tooling**: During Phase 1 (Planning) and Phase 3 (Integrity), the AI Agent must use PHPStan and other static analysis techniques to calculate and enforce all quality metrics listed in the Project Quality Metric Blueprint.
+**AI Agent Tooling**: Before planning and before delivery, the AI Agent must use PHPStan and other static analysis techniques to calculate and enforce all quality metrics listed in the Project Quality Metric Blueprint.
 
 ## Documentation and Automation
 
 ### Automation and AI Usage
 
-Scripts and AI agents using `stud-cli` MUST use `--agent` mode on commands that support it (JSON input/output, non-interactive). Fall back to `--quiet` / `-q` only when a command lacks `--agent` support. See `AI.md` and `documentation/features/automation.md` for the full AI development protocol.
+Scripts and AI agents using `stud-cli` MUST use `--agent` mode on commands that support it (JSON input/output, non-interactive). Fall back to `--quiet` / `-q` only when a command lacks `--agent` support. See `AGENTS.md` and `documentation/features/automation.md`.
 
 ## Summary
 

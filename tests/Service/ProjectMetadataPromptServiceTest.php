@@ -14,6 +14,7 @@ use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
 use App\Service\LinearIssueTrackerAdapter;
 use App\Service\MessageRenderer;
+use App\Service\ProjectMetadataPromptContext;
 use App\Service\ProjectMetadataPromptService;
 use App\Service\ProjectScopeKeyResolver;
 use App\Service\ProjectsWorkflowNormalizer;
@@ -671,10 +672,8 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
         return new ProjectMetadataPromptService(
             $supplier,
             new ProjectsWorkflowNormalizer(),
-            $globalConfig,
             $prompt,
-            new ProjectScopeKeyResolver(),
-            $messageRenderer,
+            new ProjectMetadataPromptContext($globalConfig, new ProjectScopeKeyResolver(), $messageRenderer),
         );
     }
 

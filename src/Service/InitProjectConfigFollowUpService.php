@@ -8,8 +8,6 @@ use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\OutputFormat;
-use App\Handler\ConfigProjectInitHandler;
-use App\Responder\ConfigProjectInitResponder;
 use App\Response\WorkflowResponse;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -23,12 +21,9 @@ class InitProjectConfigFollowUpService
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly ProjectStudConfigAdequacyChecker $adequacyChecker,
-        private readonly ConfigProjectInitHandler $projectInitHandler,
-        private readonly ConfigProjectInitResponder $projectInitResponder,
-        mixed $translator,
+        private readonly ProjectInitChain $projectInit,
         private readonly PromptInterface $prompt,
     ) {
-        unset($translator);
     }
 
     /**
@@ -88,8 +83,8 @@ class InitProjectConfigFollowUpService
 
     private function runInteractiveProjectInit(WorkflowEntryRecorder $recorder, SymfonyStyle $io): void
     {
-        $initResponse = $this->projectInitHandler->handle([], false, false, $recorder);
-        $this->projectInitResponder->respond($io, $initResponse, OutputFormat::Cli);
+        $initResponse = $this->projectInit->handler->handle([], false, false, $recorder);
+        $this->projectInit->responder->respond($io, $initResponse, OutputFormat::Cli);
         if (! $initResponse->isSuccess()) {
             // @codeCoverageIgnoreStart
             // Process exit cannot be asserted in unit tests without a separate process.

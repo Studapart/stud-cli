@@ -59,7 +59,7 @@ class PrCommentsHandlerTest extends CommandTestCase
             ->with(123)
             ->willReturn([]);
 
-        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider, $this->translationService);
+        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider);
         $response = $handler->handle();
 
         $this->assertInstanceOf(PrCommentsResponse::class, $response);
@@ -99,7 +99,7 @@ class PrCommentsHandlerTest extends CommandTestCase
             ->with(94)
             ->willReturn([$conversation]);
 
-        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider, $this->translationService);
+        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider);
         $response = $handler->handle(true);
 
         $this->assertTrue($response->isSuccess());
@@ -110,7 +110,7 @@ class PrCommentsHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenNoProvider(): void
     {
-        $handler = new PrCommentsHandler($this->gitRepository, null, $this->translationService);
+        $handler = new PrCommentsHandler($this->gitRepository, null);
         $response = $handler->handle();
 
         $this->assertInstanceOf(PrCommentsResponse::class, $response);
@@ -132,7 +132,7 @@ class PrCommentsHandlerTest extends CommandTestCase
             ->with('studapart:feat/SCI-55')
             ->willReturn(null);
 
-        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider, $this->translationService);
+        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider);
         $response = $handler->handle();
 
         $this->assertInstanceOf(PrCommentsResponse::class, $response);
@@ -159,7 +159,7 @@ class PrCommentsHandlerTest extends CommandTestCase
             ->with(123)
             ->willThrowException(new \RuntimeException('API error'));
 
-        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider, $this->translationService);
+        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider);
         $response = $handler->handle();
 
         $this->assertInstanceOf(PrCommentsResponse::class, $response);
@@ -181,7 +181,7 @@ class PrCommentsHandlerTest extends CommandTestCase
             ->with('studapart:feat/SCI-55')
             ->willReturn(['number' => 0]);
 
-        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider, $this->translationService);
+        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider);
         $response = $handler->handle();
 
         $this->assertInstanceOf(PrCommentsResponse::class, $response);

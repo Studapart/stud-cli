@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\GlobalStudConfigKeys;
+use App\DTO\FetchHintContext;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
 
@@ -20,18 +21,12 @@ class IssueTrackerFetchFailureHintBuilder
     ) {
     }
 
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
-    public function build(
-        string $issueKey,
-        string $attemptedProvider,
-        ?string $cliOverride,
-        array $globalConfig,
-        array $projectConfig,
-    ): ?MessageRef {
-        $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
+    public function build(string $issueKey, FetchHintContext $context): ?MessageRef
+    {
+        $attemptedProvider = $context->attemptedProvider;
+        $projectConfig = $context->projectConfig;
+        $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($context->globalConfig, $projectConfig);
+        $cliOverride = $context->cliOverride;
         if ($cliOverride !== null && trim($cliOverride) !== '') {
             return null;
         }

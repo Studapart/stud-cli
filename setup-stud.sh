@@ -280,11 +280,19 @@ prepare_stud_symlink() {
 install_phar() {
     local latest_version="$1"
     local download_url
-    mkdir -p "$INSTALL_DIR"
+    local phar_root="${PORTABLE_ROOT}/phar"
+    local phar_file
+
     latest_version="${latest_version//$'\r'/}"
     download_url="${REPO_URL}/releases/download/v${latest_version}/stud-${latest_version}.phar"
-    download_release_asset "$download_url" "${INSTALL_DIR}/stud"
-    chmod +x "${INSTALL_DIR}/stud"
+    phar_file="${phar_root}/${latest_version}-stud.phar"
+
+    mkdir -p "$phar_root" "$INSTALL_DIR"
+    download_release_asset "$download_url" "${phar_file}.part"
+    chmod +x "${phar_file}.part"
+    mv "${phar_file}.part" "$phar_file"
+    prepare_stud_symlink
+    ln -sfn "$phar_file" "$STUD_BIN"
 }
 
 install_portable() {
@@ -397,6 +405,10 @@ command -v tar >/dev/null 2>&1 || die "tar is required but not installed. Please
 detect_platform >/dev/null
 
 LATEST_VERSION=$(resolve_install_version)
+# The version becomes a file and directory name, so only plain version tokens are accepted.
+if [[ ! "$LATEST_VERSION" =~ ^[0-9A-Za-z][0-9A-Za-z.+-]*$ ]]; then
+    die "Refusing to install unexpected release version: ${LATEST_VERSION}"
+fi
 
 case "$INSTALL_MODE" in
     phar)

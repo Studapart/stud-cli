@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
+use App\Exception\GitException;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\CommandResponse;
@@ -18,9 +19,7 @@ class SyncHandler implements GitRepositoryAware, ProjectBaseBranchAware
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
         private readonly string $baseBranch,
-        mixed $_translator,
     ) {
-        unset($_translator);
     }
 
     /**
@@ -40,7 +39,13 @@ class SyncHandler implements GitRepositoryAware, ProjectBaseBranchAware
             return CommandResponse::error(MessageRef::key('sync.error_dirty_working'));
         }
 
-        $this->gitRepository->fetch();
+        try {
+            $this->gitRepository->fetch();
+        } catch (GitException $e) {
+            return CommandResponse::error(MessageRef::key('sync.error_fetch', [
+                'error' => $e->getTechnicalDetails(),
+            ]));
+        }
 
         $resolvedBase = $this->gitBranchService->resolveLatestBaseBranch($this->baseBranch);
 

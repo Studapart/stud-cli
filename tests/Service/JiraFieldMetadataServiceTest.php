@@ -19,6 +19,51 @@ class JiraFieldMetadataServiceTest extends TestCase
         $this->httpClient = $this->createStub(HttpClientInterface::class);
     }
 
+    public function testGetCreateMetaIssueTypesMapsValues(): void
+    {
+        $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(200);
+        $response->method('toArray')->willReturn(['values' => [['id' => 10001, 'name' => 'Story'], []]]);
+        $this->httpClient->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/issue/createmeta/SCI/issuetypes')
+            ->willReturn($response);
+
+        $types = (new JiraFieldMetadataService($this->httpClient))->getCreateMetaIssueTypes('SCI');
+
+        $this->assertSame([['id' => '10001', 'name' => 'Story'], ['id' => '', 'name' => '']], $types);
+    }
+
+    public function testGetCreateMetaIssueTypesFallsBackToLegacyIssueTypesKey(): void
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(200);
+        $response->method('toArray')->willReturn(['issueTypes' => [['id' => '7', 'name' => 'Bug']]]);
+        $this->httpClient->method('request')->willReturn($response);
+
+        $types = (new JiraFieldMetadataService($this->httpClient))->getCreateMetaIssueTypes('SCI');
+
+        $this->assertSame([['id' => '7', 'name' => 'Bug']], $types);
+    }
+
+    public function testGetCreateMetaIssueTypesThrowsOnError(): void
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(404);
+        $response->method('getContent')->willReturn('Not found');
+        $this->httpClient->method('request')->willReturn($response);
+
+        try {
+            (new JiraFieldMetadataService($this->httpClient))->getCreateMetaIssueTypes('SCI');
+            $this->fail('Expected ApiException');
+        } catch (ApiException $e) {
+            $this->assertSame('Could not fetch create metadata for project "SCI".', $e->getMessage());
+            $this->assertSame('HTTP 404: Not found', $e->getTechnicalDetails());
+            $this->assertSame(404, $e->getStatusCode());
+        }
+    }
+
     public function testGetCreateMetaFieldsUsesFieldIdInsteadOfListIndex(): void
     {
         $response = $this->createStub(ResponseInterface::class);

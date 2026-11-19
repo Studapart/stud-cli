@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\DTO\FetchHintContext;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
 use App\Service\IssueTrackerFetchFailureHintBuilder;
@@ -21,21 +22,19 @@ class IssueTrackerFetchFailureHintBuilderTest extends TestCase
 
     public function testNoHintWhenCliOverrideSet(): void
     {
-        $hint = $this->builder->build(
-            'SCIL-195',
+        $hint = $this->builder->build('SCIL-195', new FetchHintContext(
             IssueTrackerProvider::Jira->value,
             'jira',
             $this->dualGlobal(),
             $this->pinnedJiraProject(),
-        );
+        ));
 
         $this->assertNull($hint);
     }
 
     public function testNoHintWhenProjectIsAuto(): void
     {
-        $hint = $this->builder->build(
-            'SCIL-195',
+        $hint = $this->builder->build('SCIL-195', new FetchHintContext(
             IssueTrackerProvider::Linear->value,
             null,
             $this->dualGlobal(),
@@ -44,20 +43,19 @@ class IssueTrackerFetchFailureHintBuilderTest extends TestCase
                 'projectKey' => 'SCI',
                 'linearTeamKey' => 'SCIL',
             ],
-        );
+        ));
 
         $this->assertNull($hint);
     }
 
     public function testHintWhenPinnedAndPrefixMatchesOther(): void
     {
-        $hint = $this->builder->build(
-            'SCIL-195',
+        $hint = $this->builder->build('SCIL-195', new FetchHintContext(
             IssueTrackerProvider::Jira->value,
             null,
             $this->dualGlobal(),
             $this->pinnedJiraProject(),
-        );
+        ));
 
         $this->assertInstanceOf(MessageRef::class, $hint);
         $this->assertSame('issue_tracker_provider.fetch_failed_prefix_matches_other', $hint->key);
@@ -69,8 +67,7 @@ class IssueTrackerFetchFailureHintBuilderTest extends TestCase
 
     public function testNoHintWhenAlternateMatchesButCredentialsMissing(): void
     {
-        $hint = $this->builder->build(
-            'SCIL-195',
+        $hint = $this->builder->build('SCIL-195', new FetchHintContext(
             IssueTrackerProvider::Jira->value,
             null,
             [
@@ -80,20 +77,19 @@ class IssueTrackerFetchFailureHintBuilderTest extends TestCase
                 'JIRA_API_TOKEN' => 'token',
             ],
             $this->pinnedJiraProject(),
-        );
+        ));
 
         $this->assertNull($hint);
     }
 
     public function testSuggestOverrideWhenPinnedAndPrefixMatchesNeither(): void
     {
-        $hint = $this->builder->build(
-            'ENG-1',
+        $hint = $this->builder->build('ENG-1', new FetchHintContext(
             IssueTrackerProvider::Jira->value,
             null,
             $this->dualGlobal(),
             $this->pinnedJiraProject(),
-        );
+        ));
 
         $this->assertInstanceOf(MessageRef::class, $hint);
         $this->assertSame('issue_tracker_provider.fetch_failed_suggest_override', $hint->key);
@@ -101,8 +97,7 @@ class IssueTrackerFetchFailureHintBuilderTest extends TestCase
 
     public function testNoHintWhenSingleProviderConfigured(): void
     {
-        $hint = $this->builder->build(
-            'ENG-1',
+        $hint = $this->builder->build('ENG-1', new FetchHintContext(
             IssueTrackerProvider::Jira->value,
             null,
             [
@@ -112,7 +107,7 @@ class IssueTrackerFetchFailureHintBuilderTest extends TestCase
                 'JIRA_API_TOKEN' => 'token',
             ],
             $this->pinnedJiraProject(),
-        );
+        ));
 
         $this->assertNull($hint);
     }

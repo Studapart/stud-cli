@@ -18,10 +18,19 @@ class SubmitLabelResolver
 
     public function __construct(
         private readonly GitHostingPort $gitProvider,
-        mixed $translator,
         private readonly PromptInterface $prompt,
     ) {
-        unset($translator);
+    }
+
+    public function labelCatalogError(): ?string
+    {
+        try {
+            $this->gitProvider->getLabels();
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
+
+        return null;
     }
 
     /**

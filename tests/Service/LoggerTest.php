@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Enum\WorkflowChannel;
+use App\Service\ColorHelper;
 use App\Service\Logger;
+use App\Service\OutputVerbosityGate;
+use App\Service\WorkflowChannelColorizer;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -22,7 +26,7 @@ class LoggerTest extends CommandTestCase
             ->method('error')
             ->with('Test error');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->error(Logger::VERBOSITY_NORMAL, 'Test error');
     }
 
@@ -35,7 +39,7 @@ class LoggerTest extends CommandTestCase
             ->method('error')
             ->with('Test error');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->error(Logger::VERBOSITY_NORMAL, 'Test error');
     }
 
@@ -49,7 +53,7 @@ class LoggerTest extends CommandTestCase
         $io->expects($this->never())->method('writeln');
         $io->expects($this->never())->method('text');
 
-        $logger = new Logger($io, [], suppressOutput: true);
+        $logger = $this->buildLogger($io, suppressOutput: true);
         $logger->error(Logger::VERBOSITY_NORMAL, 'Test error');
         $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'Test error', 'Technical details');
         $logger->warning(Logger::VERBOSITY_NORMAL, 'Test warning');
@@ -70,7 +74,7 @@ class LoggerTest extends CommandTestCase
             ->method('warning')
             ->with('Test warning');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->warning(Logger::VERBOSITY_NORMAL, 'Test warning');
     }
 
@@ -86,7 +90,7 @@ class LoggerTest extends CommandTestCase
             ->method('note')
             ->with('Test note');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->note(Logger::VERBOSITY_NORMAL, 'Test note');
     }
 
@@ -98,7 +102,7 @@ class LoggerTest extends CommandTestCase
         $io->expects($this->never())
             ->method('note');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->note(Logger::VERBOSITY_NORMAL, 'Test note');
     }
 
@@ -114,7 +118,7 @@ class LoggerTest extends CommandTestCase
             ->method('success')
             ->with('Test success');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->success(Logger::VERBOSITY_NORMAL, 'Test success');
     }
 
@@ -130,7 +134,7 @@ class LoggerTest extends CommandTestCase
             ->method('text')
             ->with('Test text');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->text(Logger::VERBOSITY_NORMAL, 'Test text');
     }
 
@@ -143,7 +147,7 @@ class LoggerTest extends CommandTestCase
             ->method('writeln')
             ->with('SCI');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->rawValue('SCI');
     }
 
@@ -159,7 +163,7 @@ class LoggerTest extends CommandTestCase
             ->method('writeln')
             ->with('raw');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->rawValue('raw');
     }
 
@@ -175,7 +179,7 @@ class LoggerTest extends CommandTestCase
             ->method('writeln')
             ->with('Test writeln');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->writeln(Logger::VERBOSITY_VERBOSE, 'Test writeln');
     }
 
@@ -190,7 +194,7 @@ class LoggerTest extends CommandTestCase
         $io->expects($this->never())
             ->method('writeln');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->writeln(Logger::VERBOSITY_VERBOSE, 'Test verbose');
     }
 
@@ -205,7 +209,7 @@ class LoggerTest extends CommandTestCase
         $io->expects($this->never())
             ->method('writeln');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->writeln(Logger::VERBOSITY_VERY_VERBOSE, 'Test very verbose');
     }
 
@@ -221,7 +225,7 @@ class LoggerTest extends CommandTestCase
             ->method('writeln')
             ->with('Test debug');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->writeln(Logger::VERBOSITY_DEBUG, 'Test debug');
     }
 
@@ -238,7 +242,7 @@ class LoggerTest extends CommandTestCase
             ->method('writeln')
             ->with('<fg=bright-blue>Fetching issue: TPW-35</>');
 
-        $logger = new Logger($io, $colors);
+        $logger = $this->buildLogger($io, $colors);
         $logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, 'Fetching issue: TPW-35');
     }
 
@@ -254,7 +258,7 @@ class LoggerTest extends CommandTestCase
         $io->expects($this->never())
             ->method('writeln');
 
-        $logger = new Logger($io, $colors);
+        $logger = $this->buildLogger($io, $colors);
         $logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, 'Fetching issue: TPW-35');
     }
 
@@ -271,7 +275,7 @@ class LoggerTest extends CommandTestCase
             ->method('writeln')
             ->with('<fg=yellow>Branch created: feat/TPW-35</>');
 
-        $logger = new Logger($io, $colors);
+        $logger = $this->buildLogger($io, $colors);
         $logger->gitWriteln(Logger::VERBOSITY_VERBOSE, 'Branch created: feat/TPW-35');
     }
 
@@ -287,7 +291,7 @@ class LoggerTest extends CommandTestCase
         $io->expects($this->never())
             ->method('writeln');
 
-        $logger = new Logger($io, $colors);
+        $logger = $this->buildLogger($io, $colors);
         $logger->gitWriteln(Logger::VERBOSITY_VERBOSE, 'Branch created: feat/TPW-35');
     }
 
@@ -304,7 +308,7 @@ class LoggerTest extends CommandTestCase
             ->method('text')
             ->with('<fg=bright-blue>Issue TPW-35 details</>');
 
-        $logger = new Logger($io, $colors);
+        $logger = $this->buildLogger($io, $colors);
         $logger->jiraText(Logger::VERBOSITY_NORMAL, 'Issue TPW-35 details');
     }
 
@@ -321,7 +325,7 @@ class LoggerTest extends CommandTestCase
             ->method('text')
             ->with(['<fg=bright-blue>Line 1</>', '<fg=bright-blue>Line 2</>']);
 
-        $logger = new Logger($io, $colors);
+        $logger = $this->buildLogger($io, $colors);
         $logger->jiraText(Logger::VERBOSITY_NORMAL, ['Line 1', 'Line 2']);
     }
 
@@ -338,7 +342,7 @@ class LoggerTest extends CommandTestCase
             ->method('text')
             ->with('<fg=yellow>Branch: feat/TPW-35</>');
 
-        $logger = new Logger($io, $colors);
+        $logger = $this->buildLogger($io, $colors);
         $logger->gitText(Logger::VERBOSITY_NORMAL, 'Branch: feat/TPW-35');
     }
 
@@ -355,7 +359,7 @@ class LoggerTest extends CommandTestCase
             ->method('text')
             ->with(['<fg=yellow>Line 1</>', '<fg=yellow>Line 2</>']);
 
-        $logger = new Logger($io, $colors);
+        $logger = $this->buildLogger($io, $colors);
         $logger->gitText(Logger::VERBOSITY_NORMAL, ['Line 1', 'Line 2']);
     }
 
@@ -373,7 +377,7 @@ class LoggerTest extends CommandTestCase
             ->method('writeln')
             ->with('<fg=blue>Fetching issue: TPW-35</>');
 
-        $logger = new Logger($io, $colors);
+        $logger = $this->buildLogger($io, $colors);
         $logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, 'Fetching issue: TPW-35');
     }
 
@@ -391,24 +395,8 @@ class LoggerTest extends CommandTestCase
             ->method('writeln')
             ->with('<fg=yellow>Branch created: feat/TPW-35</>');
 
-        $logger = new Logger($io, $colors);
+        $logger = $this->buildLogger($io, $colors);
         $logger->gitWriteln(Logger::VERBOSITY_VERBOSE, 'Branch created: feat/TPW-35');
-    }
-
-    public function testGetCurrentVerbosityReturnsVeryVerbose(): void
-    {
-        $io = $this->createStub(SymfonyStyle::class);
-        $io->method('isQuiet')->willReturn(false);
-        $io->method('isDebug')->willReturn(false);
-        $io->method('isVeryVerbose')->willReturn(true);
-        $io->method('isVerbose')->willReturn(true);
-
-        $logger = new Logger($io, []);
-        $reflection = new \ReflectionClass($logger);
-        $method = $reflection->getMethod('getCurrentVerbosity');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $this->assertSame(Logger::VERBOSITY_VERY_VERBOSE, $method->invoke($logger));
     }
 
     public function testTitleRespectsVerbosity(): void
@@ -423,7 +411,7 @@ class LoggerTest extends CommandTestCase
             ->method('title')
             ->with('Test Title');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->title(Logger::VERBOSITY_NORMAL, 'Test Title');
     }
 
@@ -440,7 +428,7 @@ class LoggerTest extends CommandTestCase
             ->method('listing')
             ->with($elements);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->listing(Logger::VERBOSITY_NORMAL, $elements);
     }
 
@@ -456,7 +444,7 @@ class LoggerTest extends CommandTestCase
             ->method('comment')
             ->with('Test comment');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->comment(Logger::VERBOSITY_NORMAL, 'Test comment');
     }
 
@@ -473,7 +461,7 @@ class LoggerTest extends CommandTestCase
             ->method('comment')
             ->with($messages);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->comment(Logger::VERBOSITY_NORMAL, $messages);
     }
 
@@ -489,7 +477,7 @@ class LoggerTest extends CommandTestCase
             ->method('info')
             ->with('Test info');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->info(Logger::VERBOSITY_NORMAL, 'Test info');
     }
 
@@ -506,7 +494,7 @@ class LoggerTest extends CommandTestCase
             ->method('info')
             ->with($messages);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->info(Logger::VERBOSITY_NORMAL, $messages);
     }
 
@@ -522,7 +510,7 @@ class LoggerTest extends CommandTestCase
             ->method('caution')
             ->with('Test caution');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->caution(Logger::VERBOSITY_NORMAL, 'Test caution');
     }
 
@@ -539,7 +527,7 @@ class LoggerTest extends CommandTestCase
             ->method('caution')
             ->with($messages);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->caution(Logger::VERBOSITY_NORMAL, $messages);
     }
 
@@ -557,7 +545,7 @@ class LoggerTest extends CommandTestCase
             ->method('table')
             ->with($headers, $rows);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->table(Logger::VERBOSITY_NORMAL, $headers, $rows);
     }
 
@@ -575,7 +563,7 @@ class LoggerTest extends CommandTestCase
             ->method('horizontalTable')
             ->with($headers, $rows);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->horizontalTable(Logger::VERBOSITY_NORMAL, $headers, $rows);
     }
 
@@ -592,7 +580,7 @@ class LoggerTest extends CommandTestCase
             ->method('definitionList')
             ->with(...array_map(fn ($k, $v) => [$k, $v], array_keys($list), $list));
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->definitionList(Logger::VERBOSITY_NORMAL, ...array_map(fn ($k, $v) => [$k, $v], array_keys($list), $list));
     }
 
@@ -608,8 +596,66 @@ class LoggerTest extends CommandTestCase
             ->method('newLine')
             ->with(2);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->newLine(Logger::VERBOSITY_NORMAL, 2);
+    }
+
+    public function testRegisterStylesDelegatesIoToColorHelper(): void
+    {
+        $io = $this->createStub(SymfonyStyle::class);
+        $colorHelper = $this->createMock(ColorHelper::class);
+        $colorHelper->expects($this->once())->method('registerStyles')->with($io);
+
+        $this->buildLogger($io)->registerStyles($colorHelper);
+    }
+
+    public function testSectionRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->once())->method('section')->with('Section');
+
+        $logger = $this->buildLogger($io);
+        $logger->section(Logger::VERBOSITY_NORMAL, 'Section');
+        $logger->section(Logger::VERBOSITY_VERBOSE, 'Hidden section');
+    }
+
+    public function testTextWithArrayAppliesChannelColorToEachLine(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+
+        $io->expects($this->once())
+            ->method('text')
+            ->with(['<fg=blue>one</>', '<fg=blue>two</>']);
+
+        $this->buildLogger($io)->text(Logger::VERBOSITY_NORMAL, ['one', 'two'], WorkflowChannel::Jira);
+    }
+
+    public function testConfirmReturnsAnswer(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('confirm')
+            ->with('Continue?', false)
+            ->willReturn(true);
+
+        $this->assertTrue($this->buildLogger($io)->confirm('Continue?', false));
+    }
+
+    public function testChoiceReturnsSelection(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('choice')
+            ->with('Pick one', ['a', 'b'], 'a', false)
+            ->willReturn('b');
+
+        $this->assertSame('b', $this->buildLogger($io)->choice('Pick one', ['a', 'b'], 'a'));
     }
 
     public function testAskHiddenReturnsString(): void
@@ -620,7 +666,7 @@ class LoggerTest extends CommandTestCase
             ->with('Enter token:', null)
             ->willReturn('secret_token');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $result = $logger->askHidden('Enter token:');
 
         $this->assertSame('secret_token', $result);
@@ -634,7 +680,7 @@ class LoggerTest extends CommandTestCase
             ->with('Enter token:', null)
             ->willReturn(null);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $result = $logger->askHidden('Enter token:');
 
         $this->assertNull($result);
@@ -648,7 +694,7 @@ class LoggerTest extends CommandTestCase
             ->with('Enter value:', 'default', null)
             ->willReturn('user_input');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $result = $logger->ask('Enter value:', 'default');
 
         $this->assertSame('user_input', $result);
@@ -662,7 +708,7 @@ class LoggerTest extends CommandTestCase
             ->with('Enter value:', null, null)
             ->willReturn(null);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $result = $logger->ask('Enter value:');
 
         $this->assertNull($result);
@@ -684,7 +730,7 @@ class LoggerTest extends CommandTestCase
             ->method('text')
             ->with(['', ' Technical details: Technical error details']);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'User-friendly error message', 'Technical error details');
     }
 
@@ -702,7 +748,7 @@ class LoggerTest extends CommandTestCase
         $io->expects($this->never())
             ->method('text');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->errorWithDetails(Logger::VERBOSITY_VERBOSE, 'User-friendly error message', 'Technical error details');
     }
 
@@ -719,7 +765,7 @@ class LoggerTest extends CommandTestCase
             ->method('text')
             ->with(['', ' Technical details: Technical error details']);
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'User-friendly error message', 'Technical error details');
     }
 
@@ -738,7 +784,7 @@ class LoggerTest extends CommandTestCase
         $io->expects($this->never())
             ->method('text');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'User-friendly error message', '');
     }
 
@@ -757,7 +803,15 @@ class LoggerTest extends CommandTestCase
         $io->expects($this->never())
             ->method('text');
 
-        $logger = new Logger($io, []);
+        $logger = $this->buildLogger($io);
         $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'User-friendly error message', '   ');
+    }
+
+    /**
+     * @param array<string, string> $colors
+     */
+    private function buildLogger(SymfonyStyle $io, array $colors = [], bool $suppressOutput = false): Logger
+    {
+        return new Logger($io, new WorkflowChannelColorizer($colors), new OutputVerbosityGate($io, $suppressOutput));
     }
 }

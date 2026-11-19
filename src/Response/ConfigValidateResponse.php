@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Response;
 
 use App\DTO\ConfigValidateIntegrationPing;
+use App\DTO\ConfigValidatePingResults;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Enum\GitProvider;
@@ -84,44 +85,24 @@ final class ConfigValidateResponse extends AbstractResponse
      * @param list<ResponseMessage> $messages
      */
     public static function create(
-        string $jiraStatus,
-        MessageRef|string|null $jiraMessage,
-        string $gitStatus,
-        MessageRef|string|null $gitMessage,
-        string $linearStatus = self::STATUS_SKIPPED,
-        MessageRef|string|null $linearMessage = null,
+        ConfigValidatePingResults $pings,
         ?string $gitProvider = null,
         array $messages = [],
     ): self {
-        $integrations = [];
-        if ($jiraStatus !== self::STATUS_SKIPPED) {
-            $integrations['jira'] = new ConfigValidateIntegrationPing($jiraStatus, $jiraMessage);
-        }
-        if ($linearStatus !== self::STATUS_SKIPPED) {
-            $integrations['linear'] = new ConfigValidateIntegrationPing($linearStatus, $linearMessage);
-        }
-        if ($gitStatus !== self::STATUS_SKIPPED && $gitProvider !== null) {
-            $integrations[$gitProvider] = new ConfigValidateIntegrationPing($gitStatus, $gitMessage);
-        }
-
-        $success = ($jiraStatus !== self::STATUS_FAIL)
-            && ($gitStatus !== self::STATUS_FAIL)
-            && ($linearStatus !== self::STATUS_FAIL);
-
-        $globalRollup = $success ? ConfigReadinessEvaluator::ROLLUP_OK : ConfigReadinessEvaluator::ROLLUP_FAIL;
+        $success = ! $pings->hasFailure();
 
         return new self(
             $success,
             $success ? null : 'config.validate.error_readiness_failed',
-            $globalRollup,
+            $success ? ConfigReadinessEvaluator::ROLLUP_OK : ConfigReadinessEvaluator::ROLLUP_FAIL,
             ConfigReadinessEvaluator::ROLLUP_NOT_APPLICABLE,
-            $integrations,
-            $jiraStatus,
-            $jiraMessage,
-            $gitStatus,
-            $gitMessage,
-            $linearStatus,
-            $linearMessage,
+            $pings->checkedIntegrations($gitProvider),
+            $pings->jira->status,
+            $pings->jira->message,
+            $pings->git->status,
+            $pings->git->message,
+            $pings->linear->status,
+            $pings->linear->message,
             $gitProvider,
             $messages,
         );

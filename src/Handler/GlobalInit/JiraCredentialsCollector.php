@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler\GlobalInit;
 
 use App\Contract\WorkflowEntryRecorder;
+use App\DTO\InitPromptField;
 use App\DTO\MessageRef;
 use App\Handler\InitPromptInputHelper;
 use App\Service\GlobalConfigProviderResolver;
@@ -42,29 +43,23 @@ class JiraCredentialsCollector
         return [
             'JIRA_URL' => $this->inputHelper->resolveWhenActive(
                 $active,
-                $context->isAgent,
-                $context->rawAgentInput,
-                'jiraUrl',
-                $existing['JIRA_URL'] ?? null,
-                $jiraUrlPrompt,
-                hidden: false,
-                normalize: fn (string $s): string => $this->normalizeJiraUrl($s),
+                $context,
+                new InitPromptField(
+                    'jiraUrl',
+                    $existing['JIRA_URL'] ?? null,
+                    $jiraUrlPrompt,
+                    fn (string $s): string => $this->normalizeJiraUrl($s),
+                ),
             ),
             'JIRA_EMAIL' => $this->inputHelper->resolveWhenActive(
                 $active,
-                $context->isAgent,
-                $context->rawAgentInput,
-                'jiraEmail',
-                $existing['JIRA_EMAIL'] ?? null,
-                $jiraEmailPrompt,
+                $context,
+                new InitPromptField('jiraEmail', $existing['JIRA_EMAIL'] ?? null, $jiraEmailPrompt),
             ),
             'JIRA_API_TOKEN' => $this->inputHelper->resolveWhenActive(
                 $active,
-                $context->isAgent,
-                $context->rawAgentInput,
-                'jiraApiToken',
-                $existing['JIRA_API_TOKEN'] ?? null,
-                $jiraTokenPrompt,
+                $context,
+                new InitPromptField('jiraApiToken', $existing['JIRA_API_TOKEN'] ?? null, $jiraTokenPrompt),
                 hidden: true,
             ),
         ];

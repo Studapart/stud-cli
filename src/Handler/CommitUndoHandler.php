@@ -16,9 +16,7 @@ class CommitUndoHandler implements GitRepositoryAware
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly PromptInterface $prompt,
-        mixed $_translator
     ) {
-        unset($_translator);
     }
 
     public function handle(mixed $quiet = false, mixed $legacyQuiet = false): CommandResponse
@@ -48,15 +46,8 @@ class CommitUndoHandler implements GitRepositoryAware
             $warning = MessageRef::key('commit_undo.warning_pushed');
             $messages[] = ResponseMessage::warning($warning);
 
-            if (! $quiet) {
-                $confirmed = $this->prompt->confirm(
-                    MessageRef::key('commit_undo.confirm_continue'),
-                    false
-                );
-
-                if (! $confirmed) {
-                    return CommandResponse::error($warning, $messages);
-                }
+            if (! $quiet && ! $this->prompt->confirm(MessageRef::key('commit_undo.confirm_continue'), false)) {
+                return CommandResponse::error($warning, $messages);
             }
         }
 

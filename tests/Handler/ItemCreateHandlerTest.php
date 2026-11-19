@@ -2,6 +2,8 @@
 
 namespace App\Tests\Handler;
 
+use App\DTO\ExtraFieldPromptContext;
+use App\DTO\IssueCreationState;
 use App\DTO\ItemCreateInput;
 use App\DTO\Project;
 use App\Exception\ApiException;
@@ -16,6 +18,7 @@ use App\Service\GitRepository;
 use App\Service\IssueFieldResolver;
 use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\IssueTrackerPort;
+use App\Service\ItemCreateFieldsOptionApplier;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
 use App\Service\Jira\JiraIssueTrackerCapable;
@@ -47,15 +50,27 @@ class ItemCreateHandlerTest extends CommandTestCase
      */
     private function createHandler(array $defaultWorkItemLabels = []): ItemCreateHandler
     {
-        return new ItemCreateHandler(
+        return \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $this->issueTracker,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
-            $defaultWorkItemLabels,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser, $defaultWorkItemLabels), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
+    }
+
+    private function createPromptService(): ItemCreatePromptService
+    {
+        return new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt);
+    }
+
+    /**
+     * @param array<string, mixed>|null $descriptionAdf
+     */
+    private function promptContext(bool $typeExplicitlyProvided, string $summary, ?array $descriptionAdf): ExtraFieldPromptContext
+    {
+        $state = new IssueCreationState('PROJ', '10001', [], [], ['title' => $summary]);
+
+        return new ExtraFieldPromptContext($state, $typeExplicitlyProvided, $descriptionAdf);
     }
 
     public function testHandleSuccessWithAllOptions(): void
@@ -1166,6 +1181,35 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_project_not_found', ['key' => 'INVALID']);
     }
 
+    public function testHandleReturnsTheJiraCredentialMessageWhenJiraRejectsTheLookup(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->with('SCI')
+            ->willThrowException(new ApiException('Unauthorized', 'details', 401));
+
+        $response = $this->createHandler()->handle(false, new ItemCreateInput('SCI', 'Story', 'Summary', null));
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef($response->getErrorMessage(), 'issue_tracker_provider.missing_jira_configuration');
+    }
+
+    public function testPromptServiceSkipsJiraWhenItIsNotConfigured(): void
+    {
+        $service = new ItemCreatePromptService(null, $this->fieldResolver, $this->prompt);
+        $context = $this->promptContext(false, 'Summary', null);
+
+        $this->assertNull($service->promptForExtraRequiredFields(true, $context, ['reporter']));
+        $this->assertNull($service->getValueForStandardExtraField('reporter', $context, []));
+        $this->assertNull($service->chooseIssueTypeInteractively('PROJ'));
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->prompt->expects($this->once())->method('ask')->willReturn('body');
+        $service = new ItemCreatePromptService(null, $this->fieldResolver, $this->prompt);
+        $this->assertNull($service->promptDescriptionValue(null));
+    }
+
     public function testHandleInteractiveProjectNotFoundPromptsForKeyThenSucceeds(): void
     {
         $this->jiraApiClient = $this->createMock(JiraApiClient::class);
@@ -1377,9 +1421,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn(['project' => ['required' => true, 'name' => 'Project']]);
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', null, ['project'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'Summary', null), ['project']);
         $this->assertIsArray($result);
         $this->assertSame(['project' => ['key' => 'PROJ']], $result);
     }
@@ -1396,9 +1438,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-id');
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', null, ['reporter'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'Summary', null), ['reporter']);
         $this->assertIsArray($result);
         $this->assertSame(['reporter' => ['accountId' => 'current-user-id']], $result);
     }
@@ -1415,9 +1455,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-id');
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', null, ['assignee'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'Summary', null), ['assignee']);
         $this->assertIsArray($result);
         $this->assertSame(['assignee' => ['accountId' => 'current-user-id']], $result);
     }
@@ -1434,9 +1472,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
                 'Issue Type' => ['required' => true, 'name' => 'Issue Type'],
             ]);
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', true, 'Summary', null, ['issuetype'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(true, 'Summary', null), ['issuetype']);
         $this->assertIsArray($result);
         $this->assertArrayHasKey('issueType', $result);
         $this->assertSame(['id' => '10001'], $result['issueType']);
@@ -1453,9 +1489,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('PROJ', '10001')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
         $this->prompt->expects($this->never())->method('ask');
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'My Title', null, ['summary'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'My Title', null), ['summary']);
         $this->assertIsArray($result);
         $this->assertSame(['title' => 'My Title'], $result);
     }
@@ -1472,9 +1506,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('PROJ', '10001')
             ->willReturn(['description' => ['required' => true, 'name' => 'Description']]);
         $this->prompt->expects($this->never())->method('ask');
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', $descriptionAdf, ['description'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'Summary', $descriptionAdf), ['description']);
         $this->assertIsArray($result);
         $this->assertSame(['description' => $descriptionAdf], $result);
     }
@@ -1500,14 +1532,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
         && $message->key === 'item.create.prompt_description_required'))
             ->willReturn('User typed description');
-        $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ',
-            '10001',
-            false,
-            'Summary',
-            null,
-            ['description'],
-        ]);
+        $result = $this->createPromptService()->promptForExtraRequiredFields(true, $this->promptContext(false, 'Summary', null), ['description']);
         $this->assertIsArray($result);
         $this->assertArrayHasKey('description', $result);
         $this->assertSame(['type' => 'doc', 'content' => []], $result['description']);
@@ -1832,19 +1857,116 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('issueCreate')
             ->willReturn(['identifier' => 'SCI-42', 'url' => 'https://linear.app/SCI-42']);
 
-        $handler = new ItemCreateHandler(
-            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, $linearApiClient),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
+            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, new \App\Service\ItemCreateLinearLookup($linearApiClient)),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $linearProvider,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Linear issue', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('SCI-42', $response->key);
+    }
+
+    public function testHandlePinnedLinearPortBehindFetchHintUsesLinearMetadata(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
+        $linearApiClient = $this->createMock(LinearApiClient::class);
+        $gitRepository = $this->createStub(GitRepository::class);
+        $linearProvider = new LinearIssueTrackerAdapter($linearApiClient, gitRepository: $gitRepository);
+        $pinned = \App\Tests\Support\ConstructorFixtures::fetchHintPort(
+            $linearProvider,
+            new \App\Service\IssueTrackerFetchFailureHintBuilder(),
+            new \App\DTO\FetchHintContext('linear', null, [], []),
+        );
+
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->with('SCI')
+            ->willThrowException(new ApiException('Not found', 'details', 404));
+        $linearApiClient->expects($this->once())
+            ->method('getTeamByKey')
+            ->with('SCI')
+            ->willReturn(new Project('SCI', 'Stud'));
+        $this->jiraApiClient->expects($this->never())->method('getCreateMetaIssueTypes');
+        $gitRepository->method('readProjectConfig')->willReturn([]);
+        $linearApiClient->expects($this->once())->method('resolveTeamId')->with('SCI')->willReturn('team-1');
+        $linearApiClient->expects($this->exactly(2))->method('resolveLabelIds')->willReturnOnConsecutiveCalls([], []);
+        $linearApiClient->expects($this->once())
+            ->method('issueCreate')
+            ->willReturn(['identifier' => 'SCI-42', 'url' => 'https://linear.app/SCI-42']);
+
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
+            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, new \App\Service\ItemCreateLinearLookup($linearApiClient)),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
+            $pinned,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
+        );
+
+        $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Linear issue', null));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('SCI-42', $response->key);
+    }
+
+    public function testHandlePinnedLinearCreateContinuesWhenJiraLookupFails(): void
+    {
+        $this->jiraApiClient = $this->createMock(JiraApiClient::class);
+        $this->bindSubject();
+
+        $linearApiClient = $this->createMock(LinearApiClient::class);
+        $gitRepository = $this->createStub(GitRepository::class);
+        $linearProvider = new LinearIssueTrackerAdapter($linearApiClient, gitRepository: $gitRepository);
+
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->with('SCI')
+            ->willThrowException(new ApiException('unavailable', 'details', 500));
+        $linearApiClient->expects($this->once())
+            ->method('getTeamByKey')
+            ->with('SCI')
+            ->willReturn(new Project('SCI', 'Stud'));
+        $gitRepository->method('readProjectConfig')->willReturn([]);
+        $linearApiClient->expects($this->once())->method('resolveTeamId')->with('SCI')->willReturn('team-1');
+        $linearApiClient->expects($this->exactly(2))->method('resolveLabelIds')->willReturnOnConsecutiveCalls([], []);
+        $linearApiClient->expects($this->once())
+            ->method('issueCreate')
+            ->willReturn(['identifier' => 'SCI-42', 'url' => 'https://linear.app/SCI-42']);
+
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
+            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, new \App\Service\ItemCreateLinearLookup($linearApiClient)),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
+            $linearProvider,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
+        );
+
+        $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Linear issue', null));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('SCI-42', $response->key);
+    }
+
+    public function testHandleReturnsErrorWhenPortSourceCannotProvideTracker(): void
+    {
+        $jiraApiClient = $this->createStub(JiraApiClient::class);
+        $jiraApiClient->method('getProject')->willReturn(new Project('SCI', 'Stud CLI', 'jira'));
+        $portSource = $this->createStub(\App\Service\ItemCreatePortSource::class);
+        $portSource->method('portFor')->willReturn(\App\DTO\MessageRef::key('issue_tracker_provider.invalid_override', ['%value%' => 'x']));
+
+        $handler = new ItemCreateHandler(
+            new ItemCreateProjectResolver($this->createStub(GitRepository::class), $jiraApiClient, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
+            $portSource,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
+        );
+
+        $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Summary', null));
+
+        $this->assertMessageRef($response->getErrorMessage(), 'issue_tracker_provider.invalid_override', ['%value%' => 'x']);
     }
 
     public function testHandleLinearCapableReturnsErrorWhenCreateMetaThrows(): void
@@ -1862,13 +1984,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
         $this->jiraApiClient->expects($this->once())->method('getProject')->willReturn(new Project('SCI', 'Stud'));
 
-        $handler = new ItemCreateHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $linearProvider,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Summary', null));
@@ -1899,13 +2019,11 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['identifier' => 'SCI-43', 'url' => 'https://linear.app/SCI-43']);
 
-        $handler = new ItemCreateHandler(
-            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, $linearApiClient),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
+            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, new \App\Service\ItemCreateLinearLookup($linearApiClient)),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $linearProvider,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         $response = $handler->handle(
@@ -1930,18 +2048,16 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('ENG', 'Story')
             ->willReturn([]);
 
-        $handler = new ItemCreateHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $linearProvider,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         /** @var \App\DTO\IssueCreationState $state */
         $state = $this->callPrivateMethod($handler, 'resolveLabelGroupsCapableCreateMetadata', [
-            'SCI',
+            new \App\DTO\ItemCreateTarget($linearProvider, 'SCI', 'jira'),
             'Story',
             'Summary',
             new ItemCreateInput('SCI', 'Story', 'Summary', null),
@@ -1950,22 +2066,50 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->assertSame('ENG', $state->fields['project']['key']);
     }
 
-    public function testResolveLabelGroupsCapableCreateMetadataUsesPlainFormatByDefault(): void
+    public function testResolveLabelGroupsCapableCreateMetadataKeepsALookedUpLinearTeam(): void
     {
-        $linearProvider = new LinearIssueTrackerAdapter($this->createStub(LinearApiClient::class));
+        $this->gitRepository->method('readProjectConfig')->willReturn([
+            'linearTeamKey' => 'ENG',
+        ]);
 
-        $handler = new ItemCreateHandler(
+        $linearProvider = $this->createMock(IssueTrackerPort::class);
+        $linearProvider->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('OPS', 'Story')
+            ->willReturn([]);
+
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $linearProvider,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         /** @var \App\DTO\IssueCreationState $state */
         $state = $this->callPrivateMethod($handler, 'resolveLabelGroupsCapableCreateMetadata', [
-            'SCI',
+            new \App\DTO\ItemCreateTarget($linearProvider, 'OPS', 'linear'),
+            'Story',
+            'Summary',
+            new ItemCreateInput('BAD', 'Story', 'Summary', null),
+        ]);
+
+        $this->assertSame('OPS', $state->fields['project']['key']);
+    }
+
+    public function testResolveLabelGroupsCapableCreateMetadataUsesPlainFormatByDefault(): void
+    {
+        $linearProvider = new LinearIssueTrackerAdapter($this->createStub(LinearApiClient::class));
+
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
+            new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
+            $linearProvider,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
+        );
+
+        /** @var \App\DTO\IssueCreationState $state */
+        $state = $this->callPrivateMethod($handler, 'resolveLabelGroupsCapableCreateMetadata', [
+            new \App\DTO\ItemCreateTarget($linearProvider, 'SCI', 'jira'),
             'Story',
             'Summary',
             new ItemCreateInput('SCI', 'Story', 'Summary', 'plain body'),
@@ -2095,13 +2239,11 @@ class ItemCreateHandlerTest extends CommandTestCase
         $port = new JiraCapableIssueTrackerStub();
         $this->jiraApiClient->method('getProject')->willReturn(new Project('PROJ', 'Project'));
         $this->jiraApiClient->method('getCreateMetaIssueTypes')->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $handler = new ItemCreateHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $port,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
@@ -2120,14 +2262,11 @@ class ItemCreateHandlerTest extends CommandTestCase
         $port = new DeferringJiraIssueTrackerStub();
         $this->jiraApiClient->method('getProject')->willReturn(new Project('PROJ', 'Project'));
         $this->jiraApiClient->method('getCreateMetaIssueTypes')->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $handler = new ItemCreateHandler(
+        $handler = \App\Tests\Support\ConstructorFixtures::itemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
-            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            new \App\Handler\ItemCreatePrompts(new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt), $this->prompt),
             $port,
-            $this->fieldResolver,
-            $this->fieldsParser,
-            $this->prompt,
-            ['AI-Generated'],
+            new \App\Handler\ItemCreateFieldFlow($this->fieldResolver, new ItemCreateFieldsOptionApplier($this->fieldsParser, ['AI-Generated']), new \App\Service\Jira\JiraIssueTrackerResolver(), new \App\Service\Jira\JiraCreateDeferralCoordinator(new \App\Service\Jira\JiraCreateDeferErrorParser(), new \App\Service\Jira\JiraIssueFieldWriter($this->fieldsParser))),
         );
 
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));

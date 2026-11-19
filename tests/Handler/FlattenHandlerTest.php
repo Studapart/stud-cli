@@ -22,7 +22,7 @@ class FlattenHandlerTest extends CommandTestCase
         parent::setUp();
         $this->gitRepository = $this->createMock(GitRepository::class);
 
-        $this->handler = new FlattenHandler($this->gitRepository, $this->baseBranch, $this->translationService);
+        $this->handler = new FlattenHandler($this->gitRepository, $this->baseBranch);
     }
 
     public function testHandleWithDirtyWorkingDirectory(): void

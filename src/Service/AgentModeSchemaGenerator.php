@@ -6,11 +6,7 @@ namespace App\Service;
 
 use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
-use App\Config\GlobalStudConfigFieldMap;
-use App\Config\ProjectStudConfigFieldMap;
 use App\Config\ProjectStudConfigKeys;
-use Castor\Attribute\AsArgument;
-use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 
 /**
@@ -22,55 +18,31 @@ use Castor\Attribute\AsTask;
  */
 class AgentModeSchemaGenerator
 {
-    private const AGENT_ONLY_PARAMS = ['agent', 'inputFile'];
-
-    /** @var list<string> */
-    private const COMMANDS_WITH_PROVIDER_OVERRIDE = [
-        'items:create',
-        'items:list',
-        'items:show',
-        'items:start',
-        'items:transition',
-        'items:update',
-        'items:takeover',
-        'items:download',
-        'items:upload',
-        'items:search',
-        'filters:list',
-        'filters:show',
-        'projects:list',
-        'projects:workflow',
-        'projects:labels',
-        'commit',
-        'push',
-        'submit',
-        'status',
-        'branch:rename',
-    ];
-
     /**
      * @return list<string>
      */
     public static function commandsWithProviderOverride(): array
     {
-        return self::COMMANDS_WITH_PROVIDER_OVERRIDE;
+        return AgentModeInputSchemaBuilder::COMMANDS_WITH_PROVIDER_OVERRIDE;
     }
 
-    private const PROVIDER_OVERRIDE_INPUT_SCHEMA = [
-        'type' => 'string|null',
-        'optional' => true,
-        'default' => null,
-        'enum' => ['jira', 'linear'],
+    public const GENERATED_BY = 'AgentModeSchemaGenerator (runtime reflection)';
+
+    private const EXPANDED_META = [
+        'description' => 'Agent-mode schema — auto-generated from command signatures. When --agent is passed, input is a single JSON document (stdin or one positional file path) and output is a single JSON document.',
+        'generatedBy' => self::GENERATED_BY,
+        'defaultDiscovery' => 'help --agent with empty input returns essential command schemas only.',
+        'fullDiscovery' => 'Use {"essential": false} with help --agent to return every command schema.',
+        'commandDiscovery' => 'Use {"command":"<name-or-alias>"} with help --agent for expanded command response data.',
     ];
 
-    private const COMPACT_PROPERTY = [
-        'type' => 'bool',
-        'optional' => true,
-        'default' => true,
-    ];
+    private readonly AgentModeCompactSchemaFormatter $compactFormatter;
 
-    public function __construct(private readonly ?TranslationService $translator = null)
-    {
+    public function __construct(
+        private readonly AgentModeInputSchemaBuilder $inputSchemaBuilder,
+        ?TranslationService $translator = null
+    ) {
+        $this->compactFormatter = new AgentModeCompactSchemaFormatter($translator);
     }
 
     /**
@@ -84,45 +56,16 @@ class AgentModeSchemaGenerator
             if ($essentialOnly && $taskDef['essential'] !== true) {
                 continue;
             }
-
-            if (! $expandedOutput) {
-                unset($taskDef['parameters']);
-                unset($taskDef['input']['properties']['compact']);
-                $taskDef['description'] = $this->agentText('agent.command.' . $taskDef['name'], (string) $taskDef['description']);
-                $taskDef['output'] = $this->compactOutputSchema($taskDef['output']);
-            }
-            $commands[] = $taskDef;
+            $commands[] = $expandedOutput ? $taskDef : $this->compactFormatter->command($taskDef);
         }
 
         usort($commands, fn (array $a, array $b): int => $a['name'] <=> $b['name']);
 
-        $schema = [
-            'meta' => [
-                'description' => $expandedOutput
-                    ? 'Agent-mode schema — auto-generated from command signatures. When --agent is passed, input is a single JSON document (stdin or one positional file path) and output is a single JSON document.'
-                    : $this->agentText('agent.meta.description', 'Agent contract. Input is JSON via stdin/file; output is one JSON object.'),
-                'generatedBy' => 'AgentModeSchemaGenerator (runtime reflection)',
-                'defaultDiscovery' => $expandedOutput
-                    ? 'help --agent with empty input returns essential command schemas only.'
-                    : $this->agentText('agent.meta.defaultDiscovery', 'Default lists essential commands only.'),
-                'fullDiscovery' => $expandedOutput
-                    ? 'Use {"essential": false} with help --agent to return every command schema.'
-                    : $this->agentText('agent.meta.fullDiscovery', 'Set essential=false to list every command.'),
-                'commandDiscovery' => $expandedOutput
-                    ? 'Use {"command":"<name-or-alias>"} with help --agent for expanded command response data.'
-                    : $this->agentText('agent.meta.commandDiscovery', 'Set command=name for expanded command help.'),
-            ],
-            'commands' => $commands,
-        ];
-
-        if (! $expandedOutput) {
-            $schema['globalInput'] = [
-                'compact' => self::COMPACT_PROPERTY,
-            ];
-            $schema['responseSchemas'] = $this->responseSchemaDescriptors();
+        if ($expandedOutput) {
+            return ['meta' => self::EXPANDED_META, 'commands' => $commands];
         }
 
-        return $schema;
+        return ['meta' => $this->compactFormatter->meta(), 'commands' => $commands] + $this->compactFormatter->globalSections();
     }
 
     /**
@@ -164,128 +107,17 @@ class AgentModeSchemaGenerator
         ?AgentOutput $agentOutput,
         ?AgentCommand $agentCommand,
     ): array {
-        $options = [];
-        $arguments = [];
-        $inputProperties = [];
-
-        foreach ($params as $param) {
-            $this->collectOption($param, $options, $inputProperties);
-            $this->collectArgument($param, $arguments, $inputProperties);
-        }
-
-        $this->injectExtraInputProperties($task->name, $inputProperties);
-        $inputProperties = ['compact' => self::COMPACT_PROPERTY] + $inputProperties;
-
-        $outputSchema = $this->buildOutputSchema($task->name, $agentOutput);
+        $input = $this->inputSchemaBuilder->build($task->name, $params);
 
         return [
             'name' => $task->name,
             'aliases' => $task->aliases,
             'essential' => $agentCommand instanceof AgentCommand && $agentCommand->essential,
             'description' => $task->description,
-            'parameters' => ['options' => $options, 'arguments' => $arguments],
-            'input' => ['properties' => $inputProperties],
-            'output' => $outputSchema,
+            'parameters' => ['options' => $input['options'], 'arguments' => $input['arguments']],
+            'input' => ['properties' => ['compact' => AgentModeCompactSchemaFormatter::COMPACT_PROPERTY] + $input['properties']],
+            'output' => $this->buildOutputSchema($task->name, $agentOutput),
         ];
-    }
-
-    /**
-     * Inject agent-only input properties not represented as function parameters (e.g. confluence:push "content").
-     *
-     * @param array<string, array<string, mixed>> $inputProperties
-     */
-    private function injectExtraInputProperties(string $taskName, array &$inputProperties): void
-    {
-        if ($taskName === 'confluence:push') {
-            $inputProperties = [
-                'file' => ['type' => 'string', 'optional' => true],
-                'content' => ['type' => 'string', 'optional' => true, 'default' => ''],
-            ] + $inputProperties;
-        }
-
-        if ($taskName === 'push') {
-            unset($inputProperties['noPlease']);
-            $inputProperties = [
-                'pleaseFallback' => ['type' => 'bool', 'optional' => true, 'default' => true],
-            ] + $inputProperties;
-        }
-
-        if ($taskName === 'submit') {
-            $inputProperties = [
-                'stageAll' => ['type' => 'bool', 'optional' => true, 'default' => false],
-                'isNew' => ['type' => 'bool', 'optional' => true, 'default' => false],
-                'message' => ['type' => 'string|null', 'optional' => true, 'default' => null],
-                'pleaseFallback' => ['type' => 'bool', 'optional' => true, 'default' => true],
-            ] + $inputProperties;
-        }
-
-        if ($taskName === 'items:download') {
-            $inputProperties = [
-                'issueKey' => ['type' => 'string|null', 'optional' => true, 'default' => null],
-            ] + $inputProperties;
-        }
-
-        if ($taskName === 'items:upload') {
-            $inputProperties = [
-                'issueKey' => ['type' => 'string|null', 'optional' => true, 'default' => null],
-            ] + $inputProperties;
-        }
-
-        if ($taskName === 'help') {
-            $inputProperties = [
-                'commandName' => ['type' => 'string|null', 'optional' => true, 'default' => null],
-                'command' => ['type' => 'string|null', 'optional' => true, 'default' => null],
-                'essential' => ['type' => 'bool', 'optional' => true, 'default' => true],
-            ] + $inputProperties;
-        }
-
-        if (in_array($taskName, self::COMMANDS_WITH_PROVIDER_OVERRIDE, true)) {
-            $inputProperties['provider'] = self::PROVIDER_OVERRIDE_INPUT_SCHEMA;
-        }
-
-        if ($taskName === 'config:init') {
-            $inputProperties = $this->buildConfigInitInputProperties();
-        }
-
-        if ($taskName === 'config:project-init') {
-            $inputProperties = $this->buildConfigProjectInitInputProperties();
-        }
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    private function buildConfigInitInputProperties(): array
-    {
-        $properties = [];
-        foreach (array_keys(GlobalStudConfigFieldMap::INPUT_TO_YAML) as $key) {
-            $properties[$key] = match ($key) {
-                'gitProviders', 'issueTrackerProviders' => ['type' => 'array', 'optional' => true, 'default' => null],
-                'jiraTransitionEnabled' => ['type' => 'bool', 'optional' => true, 'default' => null],
-                default => ['type' => 'string|null', 'optional' => true, 'default' => null],
-            };
-        }
-
-        return $properties;
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    private function buildConfigProjectInitInputProperties(): array
-    {
-        $properties = [];
-        foreach (array_keys(ProjectStudConfigFieldMap::INPUT_TO_YAML) as $key) {
-            $properties[$key] = match ($key) {
-                'transitionId' => ['type' => 'int|null', 'optional' => true, 'default' => null],
-                'linearTypeBranchPrefixes' => ['type' => 'object', 'optional' => true, 'default' => null],
-                'workItemLabels', 'pullRequestLabels' => ['type' => 'array', 'optional' => true, 'default' => null],
-                default => ['type' => 'string|null', 'optional' => true, 'default' => null],
-            };
-        }
-        $properties['skipBaseBranchRemoteCheck'] = ['type' => 'bool', 'optional' => true, 'default' => false];
-
-        return $properties;
     }
 
     /**
@@ -315,71 +147,13 @@ class AgentModeSchemaGenerator
         ];
     }
 
-    /**
-     * @param array<string, mixed> $outputSchema
-     * @return array<string, mixed>
-     */
-    private function compactOutputSchema(array $outputSchema): array
-    {
-        $success = $outputSchema['success'] ?? [];
-        $compactSuccess = $outputSchema['compactSuccess'] ?? $success;
-        $successData = is_array($success) ? ($success['data'] ?? null) : null;
-        $compactHasData = is_array($compactSuccess) && array_key_exists('data', $compactSuccess);
-
-        $output = [
-            'description' => $outputSchema['description'] ?? null,
-            'compact' => [$compactHasData ? 'successData' : 'successOnly', 'error'],
-            'full' => ['successData', 'error'],
-        ];
-
-        if ($successData !== null) {
-            $output['data'] = $successData;
-        }
-
-        return $output;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function responseSchemaDescriptors(): array
-    {
-        return [
-            'successOnly' => ['success' => true],
-            'successData' => ['success' => true, 'data' => 'command.output.data'],
-            'error' => ['success' => false, 'error' => 'string', 'diagnostics?' => 'diagnostics'],
-            'diagnostics' => [
-                'errors?' => 'list<message>',
-                'warnings?' => 'list<message>',
-                'notices?' => 'list<message>',
-                'info?' => 'list<message>',
-            ],
-            'message' => ['message' => 'string', 'technicalDetails?' => 'string', 'context?' => 'object'],
-            'note' => $this->agentText(
-                'agent.response.note',
-                'Use this schema for normal calls. Query command help only when data semantics are unclear. Compact success omits data only when no reusable data exists; diagnostics are included when present.'
-            ),
-        ];
-    }
-
-    private function agentText(string $key, string $fallback): string
-    {
-        if ($this->translator === null) {
-            return $fallback;
-        }
-
-        $translated = $this->translator->trans($key, domain: 'agent', locale: 'en');
-
-        return $translated === $key ? $fallback : $translated;
-    }
-
     private function agentOutputDescription(string $taskName, ?string $fallback): ?string
     {
         if ($fallback === null) {
             return null;
         }
 
-        return $this->agentText('agent.output.' . $taskName, $fallback);
+        return $this->compactFormatter->text('agent.output.' . $taskName, $fallback);
     }
 
     /**
@@ -425,76 +199,6 @@ class AgentModeSchemaGenerator
         }
 
         return $properties;
-    }
-
-    /**
-     * @param list<string> $options
-     * @param array<string, array<string, mixed>> $inputProperties
-     */
-    private function collectOption(\ReflectionParameter $param, array &$options, array &$inputProperties): void
-    {
-        foreach ($param->getAttributes(AsOption::class) as $attr) {
-            /** @var AsOption $opt */
-            $opt = $attr->newInstance();
-            $name = $opt->name ?? $param->getName();
-
-            if (in_array($name, self::AGENT_ONLY_PARAMS, true)) {
-                continue;
-            }
-
-            $shortcut = $opt->shortcut;
-            $label = is_string($shortcut) && $shortcut !== '' ? "{$name} ({$shortcut})" : $name;
-            $options[] = $label;
-
-            $inputProperties[$param->getName()] = $this->buildPropertySchema($param);
-        }
-    }
-
-    /**
-     * @param list<string> $arguments
-     * @param array<string, array<string, mixed>> $inputProperties
-     */
-    private function collectArgument(\ReflectionParameter $param, array &$arguments, array &$inputProperties): void
-    {
-        foreach ($param->getAttributes(AsArgument::class) as $attr) {
-            /** @var AsArgument $arg */
-            $arg = $attr->newInstance();
-            $name = $arg->name ?? $param->getName();
-
-            if (in_array($name, self::AGENT_ONLY_PARAMS, true)) {
-                continue;
-            }
-
-            $label = $param->isOptional() ? "{$name} (optional)" : $name;
-            $arguments[] = $label;
-
-            $inputProperties[$param->getName()] = $this->buildPropertySchema($param);
-        }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildPropertySchema(\ReflectionParameter $param): array
-    {
-        $type = $param->getType();
-        $typeName = 'mixed';
-        if ($type instanceof \ReflectionNamedType) {
-            $typeName = $type->getName();
-            if ($type->allowsNull() && $typeName !== 'mixed') {
-                $typeName .= '|null';
-            }
-        }
-
-        $schema = ['type' => $typeName];
-        if ($param->isOptional()) {
-            $schema['optional'] = true;
-            if ($param->isDefaultValueAvailable()) {
-                $schema['default'] = $param->getDefaultValue();
-            }
-        }
-
-        return $schema;
     }
 
     /**

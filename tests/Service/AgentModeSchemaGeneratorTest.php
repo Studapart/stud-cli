@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Service\AgentModeInputSchemaBuilder;
 use App\Service\AgentModeSchemaGenerator;
 use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
@@ -59,7 +60,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->taskDefs = $this->parseCastorTasksFromSource($castorPath);
         $this->assertNotEmpty($this->taskDefs, 'No tasks parsed from castor.php');
 
-        $this->generator = new AgentModeSchemaGenerator();
+        $this->generator = new AgentModeSchemaGenerator(new AgentModeInputSchemaBuilder());
         $this->schema = $this->generator->generate();
     }
 
@@ -202,6 +203,14 @@ class AgentModeSchemaGeneratorTest extends TestCase
             $this->assertSame(['jira', 'linear'], $provider['enum'] ?? null);
             $this->assertTrue($provider['optional'] ?? false);
         }
+    }
+
+    public function testCommandsWithProviderOverrideListsInputBuilderCommands(): void
+    {
+        $this->assertSame(
+            AgentModeInputSchemaBuilder::COMMANDS_WITH_PROVIDER_OVERRIDE,
+            AgentModeSchemaGenerator::commandsWithProviderOverride(),
+        );
     }
 
     public function testEveryAgentTaskHasAgentOption(): void
@@ -749,7 +758,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
 
     private function generatorWithTranslations(): AgentModeSchemaGenerator
     {
-        return new AgentModeSchemaGenerator(new TranslationService('en', dirname(__DIR__, 2) . '/src/resources/translations'));
+        return new AgentModeSchemaGenerator(new AgentModeInputSchemaBuilder(), new TranslationService('en', dirname(__DIR__, 2) . '/src/resources/translations'));
     }
 
     public function testApplyProjectLabelDefaultsOverlaysOnlyLabelInputs(): void

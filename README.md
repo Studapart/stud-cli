@@ -74,7 +74,6 @@ stud help submit           # show command-specific help
 - [GitHub Actions with stud-cli](documentation/github-actions.md)
 - [Development guide](documentation/development/index.md)
 - [Engineering conventions](CONVENTIONS.md)
-- [AI development protocol](AI.md)
 - [Documentation index and ADRs](documentation/index.md)
 
 See [CONTRIBUTING](CONTRIBUTING.md) for contribution expectations and [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for community standards.

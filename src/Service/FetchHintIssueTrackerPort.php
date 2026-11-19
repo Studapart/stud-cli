@@ -4,25 +4,20 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\FetchHintContext;
 use App\DTO\WorkItem;
 use App\Exception\ApiException;
+use App\Exception\ApiExceptionWithHint;
 
 /**
  * Delegates to an inner port and attaches resolution hints on getIssue failures.
  */
 class FetchHintIssueTrackerPort implements IssueTrackerPort
 {
-    /**
-     * @param array<string, mixed> $globalConfig
-     * @param array<string, mixed> $projectConfig
-     */
     public function __construct(
         private readonly IssueTrackerPort $inner,
         private readonly IssueTrackerFetchFailureHintBuilder $hintBuilder,
-        private readonly string $attemptedProvider,
-        private readonly ?string $cliOverride,
-        private readonly array $globalConfig,
-        private readonly array $projectConfig,
+        private readonly FetchHintContext $context,
     ) {
     }
 
@@ -36,21 +31,12 @@ class FetchHintIssueTrackerPort implements IssueTrackerPort
         try {
             return $this->inner->getIssue($key, $renderFields);
         } catch (ApiException $e) {
-            $hint = $this->hintBuilder->build(
-                $key,
-                $this->attemptedProvider,
-                $this->cliOverride,
-                $this->globalConfig,
-                $this->projectConfig,
-            );
+            $hint = $this->hintBuilder->build($key, $this->context);
+            if ($hint === null) {
+                throw $e;
+            }
 
-            throw new ApiException(
-                $e->getMessage(),
-                $e->getTechnicalDetails(),
-                $e->getStatusCode(),
-                $e,
-                $hint,
-            );
+            throw new ApiExceptionWithHint($e, $hint);
         }
     }
 

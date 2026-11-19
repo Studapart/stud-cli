@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\IssueCreateContent;
+use App\DTO\IssueCreationState;
 use App\DTO\MessageRef;
 
 class IssueFieldResolver
 {
     public function __construct(
-        private readonly JiraApiClient $jiraService,
+        private readonly ?JiraApiClient $jiraService,
         private readonly DurationParser $durationParser
     ) {
     }
@@ -29,7 +31,7 @@ class IssueFieldResolver
     public function resolveIssueTypeId(string $projectKey, string $typeName): ?string
     {
         try {
-            $issueTypes = $this->jiraService->getCreateMetaIssueTypes($projectKey);
+            $issueTypes = $this->jiraService?->getCreateMetaIssueTypes($projectKey) ?? [];
         } catch (\Throwable) {
             return null;
         }
@@ -46,23 +48,20 @@ class IssueFieldResolver
     /**
      * @return array<string, mixed>
      */
-    public function buildBaseFields(
-        string $projectKey,
-        string $issueTypeId,
-        string $summary,
-        ?string $description,
-        ?string $descriptionFormat,
-        ?string $parentKey
-    ): array {
+    public function buildBaseFields(string $projectKey, string $issueTypeId, IssueCreateContent $content): array
+    {
         $fields = [
             StudIssueKeys::PROJECT => [StudIssueKeys::KEY => $projectKey],
             StudIssueKeys::ISSUE_TYPE => [StudIssueKeys::ID => $issueTypeId],
-            StudIssueKeys::TITLE => $summary,
+            StudIssueKeys::TITLE => $content->summary,
         ];
-        if ($description !== null && $description !== '') {
+        $description = $content->description;
+        if ($description !== null && $description !== '' && $this->jiraService !== null) {
+            $descriptionFormat = $content->descriptionFormat;
             $format = ($descriptionFormat !== null && trim($descriptionFormat) !== '') ? trim($descriptionFormat) : 'plain';
             $fields[StudIssueKeys::DESCRIPTION] = $this->jiraService->descriptionToAdf($description, $format);
         }
+        $parentKey = $content->parentKey;
         if ($parentKey !== null && trim($parentKey) !== '') {
             $fields[StudIssueKeys::PARENT] = [StudIssueKeys::KEY => trim($parentKey)];
         }
@@ -74,28 +73,23 @@ class IssueFieldResolver
      * Fills standard fields (Project, Reporter, Assignee, Summary, Description, Issue Type, Parent) from metadata by name,
      * and returns the list of required field IDs that are not standard (i.e. need to be prompted or error).
      *
-     * @param list<string> $requiredFieldIds
-     * @param array<string, array{required: bool, name: string}> $allFieldsMeta
-     * @param array<string, mixed> $fields
      * @param array{projectKey: string, issueTypeId: string, title: string, descriptionAdf: array<string, mixed>|null, assigneeOption: string|null, parentKey: string|null} $fieldValues
      * @return list<string>
      */
     public function resolveStandardFieldsAndExtraRequired(
-        array $requiredFieldIds,
-        array $allFieldsMeta,
-        array &$fields,
+        IssueCreationState $state,
         array $fieldValues,
         bool $fillIssueType
     ): array {
         $extraRequired = [];
         $issueTypeAddedToExtra = false;
 
-        foreach ($requiredFieldIds as $fieldId) {
+        foreach ($state->requiredFieldIds as $fieldId) {
             $fieldId = (string) $fieldId;
-            $name = (string) ($allFieldsMeta[$fieldId]['name'] ?? $fieldId);
+            $name = (string) ($state->allFieldsMeta[$fieldId]['name'] ?? $fieldId);
             $nameLower = strtolower($name);
 
-            if ($this->fillStandardFieldByName($nameLower, $fields, $fieldValues, $fillIssueType)) {
+            if ($this->fillStandardFieldByName($nameLower, $state->fields, $fieldValues, $fillIssueType)) {
                 continue;
             }
             if ($nameLower === 'issue type' || $nameLower === 'issuetype') {
@@ -132,8 +126,8 @@ class IssueFieldResolver
         }
         match ($nameLower) {
             StudIssueKeys::PROJECT => $fields[StudIssueKeys::PROJECT] = [StudIssueKeys::KEY => $fieldValues['projectKey']],
-            StudIssueKeys::REPORTER => $fields[StudIssueKeys::REPORTER] = [StudIssueKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()],
-            StudIssueKeys::ASSIGNEE => $fields[StudIssueKeys::ASSIGNEE] = [StudIssueKeys::ACCOUNT_ID => $fieldValues['assigneeOption'] ?? $this->jiraService->getCurrentUserAccountId()],
+            StudIssueKeys::REPORTER => $fields[StudIssueKeys::REPORTER] = [StudIssueKeys::ACCOUNT_ID => $this->jiraService?->getCurrentUserAccountId()],
+            StudIssueKeys::ASSIGNEE => $fields[StudIssueKeys::ASSIGNEE] = [StudIssueKeys::ACCOUNT_ID => $fieldValues['assigneeOption'] ?? $this->jiraService?->getCurrentUserAccountId()],
             'summary' => $fields[StudIssueKeys::TITLE] = $fieldValues['title'],
             StudIssueKeys::DESCRIPTION => $fields[StudIssueKeys::DESCRIPTION] = $fieldValues['descriptionAdf'] ?? [],
             'issue type', 'issuetype' => $fields[StudIssueKeys::ISSUE_TYPE] = [StudIssueKeys::ID => $fieldValues['issueTypeId']],
@@ -159,7 +153,7 @@ class IssueFieldResolver
             if (strtolower($name) === StudIssueKeys::ASSIGNEE) {
                 $accountId = $assigneeOption !== null
                     ? $assigneeOption
-                    : $this->jiraService->getCurrentUserAccountId();
+                    : $this->jiraService?->getCurrentUserAccountId();
                 $fields[StudIssueKeys::ASSIGNEE] = [StudIssueKeys::ACCOUNT_ID => $accountId];
 
                 break;
@@ -195,8 +189,7 @@ class IssueFieldResolver
         array $allFieldsMeta,
         array &$fields,
         ?string $labelsOption,
-        ?string $originalEstimateOption,
-        mixed $translator = null
+        ?string $originalEstimateOption
     ): array {
         $skipped = [];
         $labelsPayloadKey = $this->findOptionalFieldKey($allFieldsMeta, StudIssueKeys::LABELS, StudIssueKeys::LABELS);
@@ -290,6 +283,10 @@ class IssueFieldResolver
      */
     public function getExtraRequiredFieldsList(string $projectKey, string $issueTypeId, array $extraRequiredFieldIds): string
     {
+        if ($this->jiraService === null) {
+            return implode(', ', $extraRequiredFieldIds);
+        }
+
         try {
             $allFields = $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
         } catch (\Throwable) {

@@ -6,6 +6,65 @@ namespace App\Service;
 
 class CommandMap
 {
+    private const TOOL_COMMANDS = [
+        'completion' => [
+            'alias' => null,
+            'description_key' => 'help.command_completion',
+            'options' => [],
+            'arguments' => ['<shell>'],
+        ],
+        'docs:generate' => [
+            'alias' => 'dg',
+            'description_key' => 'help.command_docs_generate',
+            'options' => [],
+            'arguments' => [],
+        ],
+        'docs:check' => [
+            'alias' => 'dc',
+            'description_key' => 'help.command_docs_check',
+            'options' => [],
+            'arguments' => [],
+        ],
+        'help' => [
+            'alias' => null,
+            'description_key' => 'help.command_help',
+            'options' => [],
+            'arguments' => ['[<command>]'],
+        ],
+        'projects:list' => [
+            'alias' => 'pj',
+            'description_key' => 'help.command_projects_list',
+            'options' => [],
+            'arguments' => [],
+        ],
+        'projects:workflow' => [
+            'alias' => null,
+            'description_key' => 'help.command_projects_workflow',
+            'options' => [
+                ['name' => '--project', 'shortcut' => null, 'description_key' => 'help.option_projects_workflow_project', 'argument' => 'KEY'],
+            ],
+            'arguments' => [],
+        ],
+        'projects:labels' => [
+            'alias' => null,
+            'description_key' => 'help.command_projects_labels',
+            'options' => [
+                ['name' => '--project', 'shortcut' => null, 'description_key' => 'help.option_projects_labels_project', 'argument' => 'KEY'],
+                ['name' => '--groups-only', 'shortcut' => null, 'description_key' => 'help.option_projects_labels_groups_only', 'argument' => null],
+            ],
+            'arguments' => [],
+        ],
+        'update' => [
+            'alias' => 'up',
+            'description_key' => 'help.command_update',
+            'options' => [
+                ['name' => '--info', 'shortcut' => '-i', 'description_key' => 'help.option_update_info', 'argument' => null],
+                ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
+            ],
+            'arguments' => [],
+        ],
+    ];
+
     /**
      * Command names to translation keys and metadata (description, options, arguments).
      *
@@ -15,9 +74,9 @@ class CommandMap
     {
         return array_merge(
             self::configCommands(),
-            self::itemCommands(),
+            ItemCommandMap::commands(),
             self::branchCommands(),
-            self::gitCommands(),
+            WorkflowCommandMap::commands(),
             self::confluenceCommands(),
             self::systemCommands(),
         );
@@ -84,141 +143,6 @@ class CommandMap
     /**
      * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
      */
-    private static function itemCommands(): array
-    {
-        return array_merge(
-            self::itemListCommands(),
-            self::itemActionCommands(),
-        );
-    }
-
-    /**
-     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
-     */
-    private static function itemListCommands(): array
-    {
-        return [
-            'items:list' => [
-                'alias' => 'ls',
-                'description_key' => 'help.command_items_list',
-                'options' => [
-                    ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_all', 'argument' => null],
-                    ['name' => '--project', 'shortcut' => '-p', 'description_key' => 'help.option_project', 'argument' => '<key>'],
-                    ['name' => '--sort', 'shortcut' => '-s', 'description_key' => 'help.option_items_list_sort', 'argument' => '<value>'],
-                ],
-                'arguments' => [],
-            ],
-            'items:search' => [
-                'alias' => 'search',
-                'description_key' => 'help.command_items_search',
-                'options' => [],
-                'arguments' => ['<jql>'],
-            ],
-            'items:show' => [
-                'alias' => 'sh',
-                'description_key' => 'help.command_items_show',
-                'options' => [],
-                'arguments' => ['<key>'],
-            ],
-            'items:download' => [
-                'alias' => 'idl',
-                'description_key' => 'help.command_items_download',
-                'options' => [
-                    ['name' => '--url', 'shortcut' => null, 'description_key' => 'help.option_items_download_url', 'argument' => '<url>'],
-                    ['name' => '--path', 'shortcut' => null, 'description_key' => 'help.option_items_download_path', 'argument' => '<dir>'],
-                ],
-                'arguments' => ['[<key>]'],
-            ],
-            'items:upload' => [
-                'alias' => 'iup',
-                'description_key' => 'help.command_items_upload',
-                'options' => [
-                    ['name' => '--file', 'shortcut' => '-f', 'description_key' => 'help.option_items_upload_file', 'argument' => '<path>'],
-                ],
-                'arguments' => ['<key>'],
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
-     */
-    private static function itemCreateCommand(): array
-    {
-        return [
-            'items:create' => [
-                'alias' => 'ic',
-                'description_key' => 'help.command_items_create',
-                'options' => [
-                    ['name' => '--project', 'shortcut' => '-p', 'description_key' => 'help.option_items_create_project', 'argument' => '<key>'],
-                    ['name' => '--type', 'shortcut' => '-t', 'description_key' => 'help.option_items_create_type', 'argument' => '<type>'],
-                    ['name' => '--summary', 'shortcut' => '-m', 'description_key' => 'help.option_items_create_summary', 'argument' => '<text>'],
-                    ['name' => '--description', 'shortcut' => '-d', 'description_key' => 'help.option_items_create_description', 'argument' => '<text>'],
-                    ['name' => '--description-format', 'shortcut' => null, 'description_key' => 'help.option_items_create_description_format', 'argument' => '<plain|markdown>'],
-                    ['name' => '--parent', 'shortcut' => null, 'description_key' => 'help.option_items_create_parent', 'argument' => '<key>'],
-                    ['name' => '--fields', 'shortcut' => '-F', 'description_key' => 'help.option_fields', 'argument' => '<fields>'],
-                ],
-                'arguments' => [],
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
-     */
-    private static function itemUpdateCommand(): array
-    {
-        return [
-            'items:update' => [
-                'alias' => 'iu',
-                'description_key' => 'help.command_items_update',
-                'options' => [
-                    ['name' => '--summary', 'shortcut' => '-m', 'description_key' => 'help.option_items_update_summary', 'argument' => '<text>'],
-                    ['name' => '--description', 'shortcut' => '-d', 'description_key' => 'help.option_items_update_description', 'argument' => '<text>'],
-                    ['name' => '--description-format', 'shortcut' => null, 'description_key' => 'help.option_items_update_description_format', 'argument' => '<plain|markdown>'],
-                    ['name' => '--fields', 'shortcut' => '-F', 'description_key' => 'help.option_fields', 'argument' => '<fields>'],
-                ],
-                'arguments' => ['<key>'],
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
-     */
-    private static function itemActionCommands(): array
-    {
-        return array_merge(
-            self::itemCreateCommand(),
-            self::itemUpdateCommand(),
-            [
-                'items:transition' => [
-                    'alias' => 'tx',
-                    'description_key' => 'help.command_items_transition',
-                    'options' => [],
-                    'arguments' => ['[<key>]'],
-                ],
-                'items:start' => [
-                    'alias' => 'start',
-                    'description_key' => 'help.command_items_start',
-                    'options' => [],
-                    'arguments' => ['<key>'],
-                ],
-                'items:takeover' => [
-                    'alias' => 'to',
-                    'description_key' => 'help.command_items_takeover',
-                    'options' => [
-                        ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
-                    ],
-                    'arguments' => ['<key>'],
-                ],
-            ],
-        );
-    }
-
-    /**
-     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
-     */
     private static function branchCommands(): array
     {
         return [
@@ -246,14 +170,6 @@ class CommandMap
                 'arguments' => [],
             ],
         ];
-    }
-
-    /**
-     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
-     */
-    private static function gitCommands(): array
-    {
-        return WorkflowCommandMap::commands();
     }
 
     /**
@@ -306,7 +222,8 @@ class CommandMap
     private static function systemCommands(): array
     {
         return array_merge(
-            self::toolCommands(),
+            self::TOOL_COMMANDS,
+            self::releaseAndDeployCommands(),
             self::filterCommands(),
         );
     }
@@ -330,74 +247,6 @@ class CommandMap
                 'arguments' => ['<filterName>'],
             ],
         ];
-    }
-
-    /**
-     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
-     */
-    private static function toolCommands(): array
-    {
-        return array_merge(
-            [
-                'completion' => [
-                    'alias' => null,
-                    'description_key' => 'help.command_completion',
-                    'options' => [],
-                    'arguments' => ['<shell>'],
-                ],
-                'docs:generate' => [
-                    'alias' => 'dg',
-                    'description_key' => 'help.command_docs_generate',
-                    'options' => [],
-                    'arguments' => [],
-                ],
-                'docs:check' => [
-                    'alias' => 'dc',
-                    'description_key' => 'help.command_docs_check',
-                    'options' => [],
-                    'arguments' => [],
-                ],
-                'help' => [
-                    'alias' => null,
-                    'description_key' => 'help.command_help',
-                    'options' => [],
-                    'arguments' => ['[<command>]'],
-                ],
-                'projects:list' => [
-                    'alias' => 'pj',
-                    'description_key' => 'help.command_projects_list',
-                    'options' => [],
-                    'arguments' => [],
-                ],
-                'projects:workflow' => [
-                    'alias' => null,
-                    'description_key' => 'help.command_projects_workflow',
-                    'options' => [
-                        ['name' => '--project', 'shortcut' => null, 'description_key' => 'help.option_projects_workflow_project', 'argument' => 'KEY'],
-                    ],
-                    'arguments' => [],
-                ],
-                'projects:labels' => [
-                    'alias' => null,
-                    'description_key' => 'help.command_projects_labels',
-                    'options' => [
-                        ['name' => '--project', 'shortcut' => null, 'description_key' => 'help.option_projects_labels_project', 'argument' => 'KEY'],
-                        ['name' => '--groups-only', 'shortcut' => null, 'description_key' => 'help.option_projects_labels_groups_only', 'argument' => null],
-                    ],
-                    'arguments' => [],
-                ],
-                'update' => [
-                    'alias' => 'up',
-                    'description_key' => 'help.command_update',
-                    'options' => [
-                        ['name' => '--info', 'shortcut' => '-i', 'description_key' => 'help.option_update_info', 'argument' => null],
-                        ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
-                    ],
-                    'arguments' => [],
-                ],
-            ],
-            self::releaseAndDeployCommands(),
-        );
     }
 
     /**

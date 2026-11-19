@@ -31,7 +31,7 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle();
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         $helper->initSection($logger, 'test.section');
 
@@ -49,7 +49,7 @@ class ResponderHelperTest extends TestCase
 
         $helper = new ResponderHelper($this->translator, $colorHelper);
         $io = $this->createSymfonyStyle();
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         $helper->initSection($logger, 'test.section');
 
@@ -61,7 +61,7 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle();
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         $helper->initSection($logger, 'test.section', ['key' => 'value']);
 
@@ -74,7 +74,7 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         $helper->verboseComment($logger, 'test.verbose');
 
@@ -86,7 +86,7 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_NORMAL);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         $helper->verboseComment($logger, 'test.verbose');
 
@@ -103,7 +103,7 @@ class ResponderHelperTest extends TestCase
 
         $helper = new ResponderHelper($this->translator, $colorHelper);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         $helper->verboseComment($logger, 'test.verbose');
 
@@ -115,7 +115,7 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         $helper->verboseComment($logger, 'test.msg', ['jql' => 'SELECT *']);
 
@@ -127,7 +127,7 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         $helper->verboseNote($logger, 'test.note');
 
@@ -139,7 +139,7 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_NORMAL);
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
 
         $helper->verboseNote($logger, 'test.note');
 

@@ -13,14 +13,15 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class UpdateReleaseFetcher
 {
+    private readonly ReleaseAssetDownloader $assetDownloader;
+
     public function __construct(
-        private readonly string $repoOwner,
-        private readonly string $repoName,
+        private readonly UpdateRepositoryContext $repository,
         private readonly string $currentVersion,
-        private readonly FileSystem $fileSystem,
-        private readonly ?string $gitToken = null,
+        FileSystem $fileSystem,
         private readonly ?HttpClientInterface $httpClient = null,
     ) {
+        $this->assetDownloader = new ReleaseAssetDownloader($repository, $fileSystem, $httpClient);
     }
 
     /**
@@ -33,15 +34,15 @@ class UpdateReleaseFetcher
             'User-Agent' => 'stud-cli',
         ];
 
-        if ($this->gitToken) {
-            $headers['Authorization'] = 'Bearer ' . $this->gitToken;
+        if ($this->repository->token) {
+            $headers['Authorization'] = 'Bearer ' . $this->repository->token;
         }
 
         $client = $this->httpClient ?? HttpClient::createForBaseUri('https://api.github.com', HttpClientDefaults::withLimits([
             'headers' => $headers,
         ]));
 
-        return new GithubGitHostingAdapter($this->gitToken ?? '', $this->repoOwner, $this->repoName, $client);
+        return new GithubGitHostingAdapter(new GithubApiClient($this->repository->token ?? '', $this->repository->owner, $this->repository->name, $client));
     }
 
     /**
@@ -154,8 +155,6 @@ class UpdateReleaseFetcher
      */
     public function downloadPhar(array $pharAsset, WorkflowEntryRecorder $recorder, callable $logVerbose): ?string
     {
-        $tempFile = sys_get_temp_dir() . '/stud.phar.new';
-
         $assetId = $pharAsset['id'] ?? null;
         if (! $assetId) {
             $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_asset_id'));
@@ -163,29 +162,11 @@ class UpdateReleaseFetcher
             return null;
         }
 
-        $apiUrl = "https://api.github.com/repos/{$this->repoOwner}/{$this->repoName}/releases/assets/{$assetId}";
+        $apiUrl = $this->assetDownloader->assetUrl($assetId);
         $logVerbose('Downloading from', $apiUrl);
 
         try {
-            $headers = [
-                'User-Agent' => 'stud-cli',
-                'Accept' => 'application/octet-stream',
-            ];
-
-            if ($this->gitToken) {
-                $headers['Authorization'] = 'Bearer ' . $this->gitToken;
-            }
-
-            // @codeCoverageIgnoreStart
-            $downloadClient = $this->httpClient ?? HttpClient::create(HttpClientDefaults::withTransferLimits([
-                'headers' => $headers,
-            ]));
-            // @codeCoverageIgnoreEnd
-
-            $response = $downloadClient->request('GET', $apiUrl);
-            $this->fileSystem->filePutContents($tempFile, $response->getContent());
-
-            return $tempFile;
+            return $this->assetDownloader->download($apiUrl);
         } catch (\Exception $e) {
             // @codeCoverageIgnoreStart
             $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_download', ['error' => $e->getMessage()]));

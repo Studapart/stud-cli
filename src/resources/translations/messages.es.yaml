@@ -266,6 +266,8 @@ item:
     save_linear_state: '¿Quieres guardar este estado como estado inicial predeterminado para este proyecto?'
     linear_state_saved: 'Estado inicial de Linear guardado en la configuración del proyecto.'
     using_advanced_base: 'La base configurada ''%configured%'' está detrás de ''%resolved%''; usando ''%resolved%'' como base.'
+    error_fetch: "No se pudo obtener origin, así que no se creó ninguna rama ni se cambió a una rama remota."
+    warning_fetch_local: "No se pudo obtener origin (%error%). Se cambió a la rama local existente."
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.
@@ -507,6 +509,7 @@ sync:
   already_up_to_date: "Already up to date. The base branch has no new commits."
   success: "✅ Branch %branch% has been rebased onto %base%."
   error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  error_fetch: "Could not fetch from origin. Sync stopped. %error%"
   help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 cache:
   clear:
@@ -675,10 +678,8 @@ branch:
     confirm_prompt: Are you sure you want to rename this branch? (Y/n)
     renaming_local: Renaming local branch...
     renaming_remote: Renaming remote branch...
-    updating_pr: Updating Pull Request...
     creating_new_pr: Creating new Pull Request for renamed branch...
     pr_creation_failed: '⚠️ Warning: Failed to create new Pull Request. You may need to run stud submit manually.'
-    pr_update_failed: '⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually.'
     commenting_pr: Adding comment to Pull Request...
     success: ✅ Branch renamed successfully from %oldName% to %newName%
     no_pr_found: No Pull Request found for this branch.
@@ -696,6 +697,7 @@ commit:
   found_logical: 'SHA de commit lógico encontrado: %sha%'
   creating_fixup: Creando commit fixup para %sha%...
   fixup_success: ✅ Cambios guardados como fixup para el commit %sha%.
+  note_message_unused: "El mensaje de commit indicado no se ha usado. El cambio se ha guardado como fixup."
   note_no_logical: No se encontró commit lógico anterior o se usó el flag --new. Iniciando asistente interactivo...
   note_clean_working_tree: El árbol de trabajo está limpio. Abortando commit.
   error_no_key: 'No se pudo encontrar una clave de Jira en el nombre de su rama actual.
@@ -791,10 +793,14 @@ update:
   portable_unmanaged_symlink: 'Portable update failed: ~/.local/bin/stud does not point to a managed portable install. Re-run setup-stud.sh --portable to repair the installation.'
   portable_symlink_failed: 'Portable update failed: could not switch the managed stud symlink. The previous version was kept active.'
   portable_success: Portable stud updated to %version%.
-  portable_cleanup_prompt: Remove older portable versions now?
-  portable_cleanup_failed: Could not remove older portable version at %path%. It was left on disk.
-  portable_cleanup_schedule_failed: Could not schedule removal of older portable version at %path%. It was left on disk.
-  portable_cleanup_deferred: 'Previous portable version will be removed after this command exits: %paths%.'
+  cleanup_prompt: "Remove older stud versions on the next command run?"
+  cleanup_scheduled: "Older versions will be removed by the next stud command that runs the new version."
+  cleanup_mark_failed: "Could not record the cleanup request. Older versions were left on disk."
+  cleanup_failed: "Could not clean up %path%. It was left on disk and will be retried. To cancel the cleanup, delete %marker%."
+  phar_success: "PHAR stud updated to %version%."
+  phar_unmanaged_symlink: "PHAR update failed: ~/.local/bin/stud is a symlink outside the managed install. The previous version was kept active. Run setup-stud.sh --phar --force to switch to the managed install."
+  phar_unmanaged_file: "PHAR update failed: ~/.local/bin/stud is a file that is not the running stud. The previous version was kept active. Run setup-stud.sh --phar --force to switch to the managed install."
+  phar_install_failed: "PHAR update failed: could not install the new version or switch ~/.local/bin/stud. The previous version was kept active."
   portable_update_failed: 'Portable update failed.
 
     Error: %error%'
@@ -899,7 +905,7 @@ help:
   option_items_download_path: "Directorio destino relativo al cwd (creado si falta); por defecto .cursor/stud-downloads"
   option_items_upload_file: "Ruta de archivo local relativa al cwd; repite -f/--file para varios archivos"
   option_commit_new: Crear un nuevo commit lógico en lugar de un fixup
-  option_commit_message: Omitir el prompt interactivo y usar el mensaje proporcionado para el commit
+  option_commit_message: Mensaje para un nuevo commit lógico. Si ya existe uno, pase --new; si no, el cambio se guarda como fixup
   option_commit_all: Preparar todos los cambios antes de hacer commit (restaura el comportamiento anterior)
   option_push_no_please: "Tras un push normal fallido, no ejecutar ni ofrecer stud please"
   option_flatten: "Aplastar los commits fixup cuando sea seguro"

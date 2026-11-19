@@ -159,14 +159,4 @@ class EffectiveProviderResolverTest extends TestCase
             $result['providers'],
         );
     }
-
-    public function testIsDualPmWithCredentialsFalseWhenGlobalListsSingleProvider(): void
-    {
-        $method = new \ReflectionMethod(EffectiveProviderResolver::class, 'isDualPmWithCredentials');
-        \App\Util\ReflectionAccessor::ensureAccessible($method);
-
-        $result = $method->invoke($this->resolver, ['ISSUE_TRACKER_PROVIDERS' => ['jira']]);
-
-        $this->assertFalse($result);
-    }
 }

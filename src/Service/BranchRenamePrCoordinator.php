@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Contract\WorkflowEntryRecorder;
+use App\DTO\BranchRenamePostActions;
 use App\DTO\MessageRef;
 use App\DTO\SubmitOptions;
 use App\Enum\WorkflowChannel;
@@ -13,18 +14,11 @@ use App\Service\Prompt\PromptInterface;
 
 class BranchRenamePrCoordinator
 {
-    /**
-     * @param array<string, mixed> $jiraConfig
-     */
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly IssueTrackerPort $issueTracker,
         private readonly ?GitHostingPort $githubProvider,
-        private readonly array $jiraConfig,
-        private readonly string $baseBranch,
-        private readonly mixed $translator,
+        private readonly SubmitHandler $submitHandler,
         private readonly PromptInterface $prompt,
-        private readonly CanConvertToMarkdownInterface $htmlConverter,
     ) {
     }
 
@@ -57,9 +51,15 @@ class BranchRenamePrCoordinator
     }
 
     /**
+     * Renaming pushes the new branch name and deletes the old one, so the existing pull request
+     * cannot follow the rename. A new pull request is created instead.
+     *
+     * GitHub's "Update a pull request" endpoint does not accept a `head` branch (checked 2026-11-12).
+     * This may change, so re-check before reintroducing a PATCH.
+     *
      * @param array<string, mixed> $pr
      */
-    public function updatePullRequestAfterRename(
+    public function createPullRequestAfterRename(
         WorkflowEntryRecorder $recorder,
         array $pr,
         string $oldName,
@@ -71,8 +71,8 @@ class BranchRenamePrCoordinator
 
         $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.creating_new_pr'), WorkflowChannel::Git);
 
-        $submitHandler = $this->createSubmitHandler();
-        $submitResult = $submitHandler->handle(new SubmitOptions());
+        $submitResult = $this->submitHandler->handle(new SubmitOptions());
+        $recorder->absorbResponse($submitResult);
         if ($submitResult->exitCode !== 0) {
             $recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.pr_creation_failed'));
 
@@ -80,19 +80,6 @@ class BranchRenamePrCoordinator
         }
 
         $this->commentOnNewPullRequest($recorder, $oldName, $newName);
-    }
-
-    public function createSubmitHandler(): SubmitHandler
-    {
-        return new SubmitHandler(
-            $this->gitRepository,
-            $this->issueTracker,
-            $this->githubProvider,
-            new SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
-            $this->baseBranch,
-            $this->translator,
-            $this->prompt,
-        );
     }
 
     public function commentOnNewPullRequest(WorkflowEntryRecorder $recorder, string $oldName, string $newName): void
@@ -119,25 +106,19 @@ class BranchRenamePrCoordinator
         }
     }
 
-    /**
-     * @param array<string, mixed>|null $pr
-     */
     public function handlePostRenameActions(
         WorkflowEntryRecorder $recorder,
-        ?array $pr,
-        string $targetBranch,
-        string $newBranchName,
-        bool $quiet,
+        BranchRenamePostActions $input,
     ): void {
-        if ($pr !== null && $this->githubProvider !== null) {
-            $this->updatePullRequestAfterRename($recorder, $pr, $targetBranch, $newBranchName);
+        if ($input->pr !== null && $this->githubProvider !== null) {
+            $this->createPullRequestAfterRename($recorder, $input->pr, $input->targetBranch, $input->newBranchName);
         }
 
-        $recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.success', ['oldName' => $targetBranch, 'newName' => $newBranchName]));
+        $recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.success', ['oldName' => $input->targetBranch, 'newName' => $input->newBranchName]));
 
-        if ($pr === null && $this->githubProvider !== null) {
+        if ($input->pr === null && $this->githubProvider !== null) {
             $recorder->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.no_pr_found'));
-            if ($quiet || $this->prompt->confirm(MessageRef::key('branch.rename.create_pr_prompt'), true)) {
+            if ($input->quiet || $this->prompt->confirm(MessageRef::key('branch.rename.create_pr_prompt'), true)) {
                 $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.switching_for_submit'), WorkflowChannel::Git);
                 $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, "Run 'stud submit' to create a Pull Request.");
             }

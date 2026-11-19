@@ -34,8 +34,7 @@ class ConfluenceShowHandlerTest extends TestCase
     {
         return new ConfluenceShowHandler(
             $this->wiki,
-            $this->adfConverter,
-            $this->translator
+            $this->adfConverter
         );
     }
 

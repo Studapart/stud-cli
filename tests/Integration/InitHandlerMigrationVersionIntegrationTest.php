@@ -138,16 +138,16 @@ class InitHandlerMigrationVersionIntegrationTest extends TestCase
         $io = new SymfonyStyle($input, $output);
 
         // Create handler with the IO that has the input stream
-        $logger = new Logger($io, []);
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
+        $providerResolver = new GlobalConfigProviderResolver();
         $handler = new InitHandler(
-            $this->fileSystem,
-            'config.yml',
+            new \App\Service\GlobalConfigStore($this->fileSystem, 'config.yml'),
             $logger,
             new InitPromptCollector(
                 $logger,
-                new GitTokenPromptResolver(),
                 new MessageRenderer($this->translationService),
-                new GlobalConfigProviderResolver(),
+                $providerResolver,
+                \App\Handler\GlobalInit\InitPromptCollectors::defaults($logger, new GitTokenPromptResolver(), $providerResolver),
             ),
         );
 
@@ -175,7 +175,8 @@ class InitHandlerMigrationVersionIntegrationTest extends TestCase
         $yamlContent = \Symfony\Component\Yaml\Yaml::dump($legacyConfig, 2, 2);
         $this->fileSystem->write('config.yml', $yamlContent);
 
-        $logger = new Logger(new SymfonyStyle(new ArrayInput([]), new BufferedOutput()), []);
+        $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
+        $logger = new Logger($io, new \App\Service\WorkflowChannelColorizer([]), new \App\Service\OutputVerbosityGate($io));
         $migration = new Migration20260619102828000_ProviderLists($logger, $this->translationService);
         $executor = new MigrationExecutor(
             new CommandOutputBuffer($logger, $this->createStub(PromptInterface::class)),

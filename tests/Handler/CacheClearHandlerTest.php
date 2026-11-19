@@ -26,7 +26,7 @@ class CacheClearHandlerTest extends CommandTestCase
         $this->fileSystem = new FileSystem($this->flysystem);
 
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new CacheClearHandler($this->translationService, $this->fileSystem);
+        $this->handler = new CacheClearHandler($this->fileSystem);
 
         $this->tempCacheDir = '/test/home';
         $this->tempCacheFile = $this->tempCacheDir . '/.cache/stud/last_update_check.json';
@@ -92,7 +92,7 @@ class CacheClearHandlerTest extends CommandTestCase
             ->with($this->tempCacheFile)
             ->willThrowException(new \RuntimeException('Delete failed'));
 
-        $handler = new CacheClearHandler($this->translationService, $mockFileSystem);
+        $handler = new CacheClearHandler($mockFileSystem);
 
         try {
             $result = $handler->handle();
@@ -109,7 +109,7 @@ class CacheClearHandlerTest extends CommandTestCase
 
     public function testConstructorAcceptsFileSystemDirectly(): void
     {
-        $handler = new CacheClearHandler($this->translationService, $this->fileSystem);
+        $handler = new CacheClearHandler($this->fileSystem);
 
         $this->assertInstanceOf(CacheClearHandler::class, $handler);
     }

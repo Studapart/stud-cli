@@ -4,19 +4,12 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
-use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigFieldMap;
 use App\Config\ProjectStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
-use App\Service\FileSystem;
 use App\Service\GitRepository;
-use App\Service\GitSetupService;
-use App\Service\GitTokenPromptResolver;
-use App\Service\GlobalConfigProviderResolver;
-use App\Service\ProjectMetadataPromptService;
-use App\Service\ProjectScopeKeyResolver;
 use App\Service\Prompt\PromptInterface;
 
 /**
@@ -26,17 +19,10 @@ class ConfigProjectInitPromptCollector
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly GitSetupService $gitSetupService,
-        mixed $_translator,
+        private readonly ProjectGitPrompts $gitPrompts,
         private readonly PromptInterface $prompt,
-        private readonly GitTokenPromptResolver $gitTokenPromptResolver,
-        private readonly FileSystem $fileSystem,
-        private readonly string $globalConfigPath,
-        private readonly GlobalConfigProviderResolver $providerResolver,
-        private readonly ProjectMetadataPromptService $metadataPrompts,
-        private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
+        private readonly ProjectInitPromptContext $context,
     ) {
-        unset($_translator);
     }
 
     /**
@@ -50,45 +36,46 @@ class ConfigProjectInitPromptCollector
         $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.project_init.interactive_hint'));
 
         $patches = [];
-        if ($this->providerResolver->collectsJira($globalIssueTrackerProviders)
-            && $this->providerResolver->collectsLinear($globalIssueTrackerProviders)) {
+        if ($this->context->global->providers->collectsJira($globalIssueTrackerProviders)
+            && $this->context->global->providers->collectsLinear($globalIssueTrackerProviders)) {
             $patches = array_merge($patches, $this->promptIssueTrackerProvider($existing));
         }
 
-        $effectiveProvider = $this->resolveEffectiveIssueTrackerProvider(
-            $this->mergeProjectConfig($existing, $patches),
-            $globalIssueTrackerProviders,
-        );
+        $trackers = $this->resolveTrackers($this->mergeProjectConfig($existing, $patches), $globalIssueTrackerProviders);
 
         $patches = array_merge($patches, $this->promptProjectKey($existing));
-        $mergedAfterProjectKey = $this->mergeProjectConfig($existing, $patches);
-        if ($this->shouldRunLinearTeamKeyPrompt($effectiveProvider, $globalIssueTrackerProviders)) {
-            $patches = array_merge($patches, $this->promptLinearTeamKey($mergedAfterProjectKey));
-            $mergedAfterProjectKey = $this->mergeProjectConfig($existing, $patches);
-        }
-        if ($this->shouldRunJiraPrompts($effectiveProvider)) {
-            $patches = array_merge($patches, $this->promptJiraDefaultProject($existing));
-            $patches = array_merge($patches, $this->promptConfluenceDefaultSpace($existing));
-            $patches = array_merge($patches, $this->promptTransitionFromWorkflow($mergedAfterProjectKey, $recorder));
-        }
-        if ($this->shouldRunLinearPrompts($effectiveProvider, $globalIssueTrackerProviders)) {
-            $patches = array_merge($patches, $this->promptLinearFields($mergedAfterProjectKey, $recorder));
-        }
-        $patches = array_merge($patches, $this->promptBaseBranch($existing, $recorder));
+        $trackerPrompts = new ProjectInitTrackerPrompts($this->prompt, $this->context);
+        $patches = array_merge(
+            $patches,
+            $trackerPrompts->patches($trackers, $existing, $this->mergeProjectConfig($existing, $patches), $recorder),
+        );
+        $patches = array_merge($patches, $this->gitPrompts->baseBranchPatches($existing, $recorder));
         $patches = array_merge($patches, $this->promptLabelDefaults($existing));
-        $patches = array_merge($patches, $this->promptGitProvider($existing, $recorder));
-        $patches = array_merge($patches, $this->promptGitlabInstanceUrl($existing));
-        $patches = array_merge($patches, $this->promptGithubToken($existing, $recorder));
-        $patches = array_merge($patches, $this->promptGitlabToken($existing, $recorder));
+        $patches = array_merge($patches, $this->gitPrompts->hostingPatches($existing, $recorder));
         $credentialPrompts = new ProjectIssueTrackerCredentialPrompts($this->prompt);
-        if ($this->shouldRunJiraPrompts($effectiveProvider)) {
+        if ($trackers->jira) {
             $patches = array_merge($patches, $credentialPrompts->jiraPatches($existing));
         }
-        if ($this->shouldRunLinearPrompts($effectiveProvider, $globalIssueTrackerProviders)) {
+        if ($trackers->linear) {
             $patches = array_merge($patches, $credentialPrompts->linearPatches());
         }
 
         return $patches;
+    }
+
+    /**
+     * @param array<string, mixed> $mergedConfig
+     * @param list<string> $globalIssueTrackerProviders
+     */
+    protected function resolveTrackers(array $mergedConfig, array $globalIssueTrackerProviders): ProjectInitTrackers
+    {
+        $effectiveProvider = $this->resolveEffectiveIssueTrackerProvider($mergedConfig, $globalIssueTrackerProviders);
+
+        return new ProjectInitTrackers(
+            jira: $this->shouldRunJiraPrompts($effectiveProvider),
+            linear: $this->shouldRunLinearPrompts($effectiveProvider, $globalIssueTrackerProviders),
+            linearTeamKey: $this->shouldRunLinearTeamKeyPrompt($effectiveProvider, $globalIssueTrackerProviders),
+        );
     }
 
     /**
@@ -111,93 +98,11 @@ class ConfigProjectInitPromptCollector
     }
 
     /**
-     * @param array<string, mixed> $mergedConfig
-     * @return array<string, mixed>
-     */
-    protected function promptLinearFields(array $mergedConfig, WorkflowEntryRecorder $recorder): array
-    {
-        $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($mergedConfig);
-        if ($scopeKey === null) {
-            return [];
-        }
-
-        $patches = [];
-        $startStateId = $this->metadataPrompts->chooseLinearStartStateId($recorder, $scopeKey, $mergedConfig);
-        if ($startStateId !== null) {
-            $patches['linearStartStateId'] = $startStateId;
-        }
-
-        $labelGroupId = $this->metadataPrompts->chooseLinearTypeLabelGroupId($recorder, $scopeKey, $mergedConfig);
-        if ($labelGroupId !== null) {
-            $patches['linearTypeLabelGroupId'] = $labelGroupId;
-            /** @var array<string, string>|null $branchPrefixes */
-            $branchPrefixes = $this->metadataPrompts->buildLinearBranchPrefixMap(
-                $recorder,
-                $scopeKey,
-                $mergedConfig,
-                $labelGroupId,
-            );
-            if ($branchPrefixes !== null) {
-                $patches['linearTypeBranchPrefixes'] = $branchPrefixes;
-            }
-        }
-
-        return $patches;
-    }
-
-    /**
-     * @param array<string, mixed> $mergedConfig
-     * @return array<string, mixed>
-     */
-    protected function promptTransitionFromWorkflow(array $mergedConfig, WorkflowEntryRecorder $recorder): array
-    {
-        $projectKey = $this->resolveProjectKey($mergedConfig);
-        if ($projectKey === null) {
-            return [];
-        }
-
-        $transitionId = $this->metadataPrompts->chooseJiraTransitionId($recorder, $projectKey, $mergedConfig);
-        if ($transitionId === null) {
-            return [];
-        }
-
-        return ['transitionId' => $transitionId];
-    }
-
-    /**
-     * @param array<string, mixed> $config
-     */
-    protected function resolveProjectKey(array $config): ?string
-    {
-        if (! isset($config['projectKey']) || ! is_string($config['projectKey'])) {
-            return null;
-        }
-        $key = strtoupper(trim($config['projectKey']));
-
-        return $key !== '' ? $key : null;
-    }
-
-    /**
      * @return list<string>
      */
     protected function readGlobalIssueTrackerProviders(): array
     {
-        if (! $this->fileSystem->fileExists($this->globalConfigPath)) {
-            return [IssueTrackerProvider::Jira->value];
-        }
-
-        try {
-            $config = $this->fileSystem->parseFile($this->globalConfigPath);
-        } catch (\Throwable) {
-            return [IssueTrackerProvider::Jira->value];
-        }
-
-        $providers = GlobalStudConfigKeys::readIssueTrackerProvidersList($config);
-        if ($providers !== null) {
-            return $this->providerResolver->normalizeIssueTrackerProviders($providers);
-        }
-
-        return $this->providerResolver->inferDefaultIssueTrackerProviders($config);
+        return $this->context->global->readIssueTrackerProviders();
     }
 
     /**
@@ -206,8 +111,8 @@ class ConfigProjectInitPromptCollector
      */
     protected function resolveEffectiveIssueTrackerProvider(array $existing, array $globalIssueTrackerProviders): string
     {
-        $hasJira = $this->providerResolver->collectsJira($globalIssueTrackerProviders);
-        $hasLinear = $this->providerResolver->collectsLinear($globalIssueTrackerProviders);
+        $hasJira = $this->context->global->providers->collectsJira($globalIssueTrackerProviders);
+        $hasLinear = $this->context->global->providers->collectsLinear($globalIssueTrackerProviders);
 
         if ($hasJira && ! $hasLinear) {
             return IssueTrackerProvider::Jira->value;
@@ -236,8 +141,8 @@ class ConfigProjectInitPromptCollector
         }
 
         return $effectiveProvider === IssueTrackerProvider::Auto->value
-            && $this->providerResolver->collectsJira($globalIssueTrackerProviders)
-            && $this->providerResolver->collectsLinear($globalIssueTrackerProviders);
+            && $this->context->global->providers->collectsJira($globalIssueTrackerProviders)
+            && $this->context->global->providers->collectsLinear($globalIssueTrackerProviders);
     }
 
     /**
@@ -245,47 +150,13 @@ class ConfigProjectInitPromptCollector
      */
     protected function shouldRunLinearTeamKeyPrompt(string $effectiveProvider, array $globalIssueTrackerProviders): bool
     {
-        if (! $this->providerResolver->collectsJira($globalIssueTrackerProviders)
-            || ! $this->providerResolver->collectsLinear($globalIssueTrackerProviders)) {
+        if (! $this->context->global->providers->collectsJira($globalIssueTrackerProviders)
+            || ! $this->context->global->providers->collectsLinear($globalIssueTrackerProviders)) {
             return false;
         }
 
         return $effectiveProvider === IssueTrackerProvider::Linear->value
             || $effectiveProvider === IssueTrackerProvider::Auto->value;
-    }
-
-    /**
-     * @param array<string, mixed> $mergedConfig
-     * @return array<string, mixed>
-     */
-    protected function promptLinearTeamKey(array $mergedConfig): array
-    {
-        $jiraKey = $this->resolveProjectKey($mergedConfig);
-        if ($jiraKey === null) {
-            return [];
-        }
-
-        $existingLinear = isset($mergedConfig['linearTeamKey']) && is_string($mergedConfig['linearTeamKey'])
-            ? strtoupper(trim($mergedConfig['linearTeamKey']))
-            : '';
-        $default = $existingLinear !== '' ? $existingLinear : $jiraKey;
-        $answer = $this->prompt->ask(
-            MessageRef::key('config.project_init.prompt_linear_team_key'),
-            $default,
-        );
-        if ($answer === null || trim((string) $answer) === '') {
-            return [];
-        }
-
-        $value = strtoupper(trim((string) $answer));
-        if ($value === $jiraKey && $existingLinear === '') {
-            return [];
-        }
-        if ($value === $existingLinear) {
-            return [];
-        }
-
-        return ['linearTeamKey' => $value];
     }
 
     /**
@@ -322,68 +193,6 @@ class ConfigProjectInitPromptCollector
         }
 
         return ['projectKey' => strtoupper(trim((string) $answer))];
-    }
-
-    /**
-     * @param array<string, mixed> $existing
-     * @return array<string, mixed>
-     */
-    protected function promptJiraDefaultProject(array $existing): array
-    {
-        $current = isset($existing['JIRA_DEFAULT_PROJECT']) ? (string) $existing['JIRA_DEFAULT_PROJECT'] : '';
-        $answer = $this->prompt->ask(
-            MessageRef::key('config.project_init.prompt_jira_default_project'),
-            $current !== '' ? $current : null
-        );
-        if ($answer === null || trim((string) $answer) === '') {
-            return [];
-        }
-
-        return ['jiraDefaultProject' => strtoupper(trim((string) $answer))];
-    }
-
-    /**
-     * @param array<string, mixed> $existing
-     * @return array<string, mixed>
-     */
-    protected function promptConfluenceDefaultSpace(array $existing): array
-    {
-        $current = isset($existing['CONFLUENCE_DEFAULT_SPACE']) ? (string) $existing['CONFLUENCE_DEFAULT_SPACE'] : '';
-        $answer = $this->prompt->ask(
-            MessageRef::key('config.project_init.prompt_confluence_default_space'),
-            $current !== '' ? $current : null
-        );
-        if ($answer === null || trim((string) $answer) === '') {
-            return [];
-        }
-
-        return ['confluenceDefaultSpace' => trim((string) $answer)];
-    }
-
-    /**
-     * @param array<string, mixed> $existing
-     * @return array<string, mixed>
-     */
-    protected function promptBaseBranch(array $existing, WorkflowEntryRecorder $recorder): array
-    {
-        $current = isset($existing['baseBranch']) ? (string) $existing['baseBranch'] : '';
-        $detected = $this->gitSetupService->detectDefaultBaseBranchName();
-        if ($detected !== null) {
-            $recorder->addNote(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('config.base_branch_detected', ['branch' => $detected])
-            );
-        }
-        $default = $current !== '' ? $current : ($detected ?? 'develop');
-        $answer = $this->prompt->ask(
-            MessageRef::key('config.project_init.prompt_base_branch'),
-            $default
-        );
-        if ($answer === null || trim((string) $answer) === '') {
-            return [];
-        }
-
-        return ['baseBranch' => trim((string) $answer)];
     }
 
     /**
@@ -428,90 +237,5 @@ class ConfigProjectInitPromptCollector
         }
 
         return [$inputKey => $normalized];
-    }
-
-    /**
-     * @param array<string, mixed> $existing
-     * @return array<string, mixed>
-     */
-    protected function promptGitProvider(array $existing, WorkflowEntryRecorder $recorder): array
-    {
-        $current = isset($existing['gitProvider']) ? (string) $existing['gitProvider'] : '';
-        $parsed = $this->gitRepository->parseGitUrl('origin');
-        $detected = $parsed['provider'] ?? null;
-        if ($current !== '' && in_array($current, ['github', 'gitlab'], true)) {
-            return [];
-        }
-        if ($detected !== null) {
-            $recorder->addNote(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('config.git_provider_detected', ['provider' => $detected])
-            );
-        }
-        $choice = $this->prompt->choice(
-            MessageRef::key('config.project_init.prompt_git_provider'),
-            ['github', 'gitlab'],
-            in_array($detected, ['github', 'gitlab'], true) ? $detected : 'github'
-        );
-
-        return ['gitProvider' => $choice];
-    }
-
-    /**
-     * @param array<string, mixed> $existing
-     * @return array<string, mixed>
-     */
-    protected function promptGitlabInstanceUrl(array $existing): array
-    {
-        $current = isset($existing['gitlabInstanceUrl']) ? (string) $existing['gitlabInstanceUrl'] : '';
-        $answer = $this->prompt->ask(
-            MessageRef::key('config.project_init.prompt_gitlab_instance_url'),
-            $current !== '' ? $current : null
-        );
-        if ($answer === null || trim((string) $answer) === '') {
-            return [];
-        }
-
-        return ['gitlabInstanceUrl' => trim((string) $answer)];
-    }
-
-    /**
-     * @param array<string, mixed> $existing
-     * @return array<string, mixed>
-     */
-    protected function promptGithubToken(array $existing, WorkflowEntryRecorder $recorder): array
-    {
-        $has = isset($existing['githubToken']) && is_string($existing['githubToken']) && trim($existing['githubToken']) !== '';
-        $recorder->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.project_init.prompt_github_token_hint'));
-        $answer = $this->prompt->askHidden(MessageRef::key('config.project_init.prompt_github_token'));
-        if ($has && $answer !== null && trim((string) $answer) === '.') {
-            return [];
-        }
-        $token = $this->gitTokenPromptResolver->tokenFromUserInput($answer === null ? null : (string) $answer);
-        if ($token === null) {
-            return [];
-        }
-
-        return ['githubToken' => $token];
-    }
-
-    /**
-     * @param array<string, mixed> $existing
-     * @return array<string, mixed>
-     */
-    protected function promptGitlabToken(array $existing, WorkflowEntryRecorder $recorder): array
-    {
-        $has = isset($existing['gitlabToken']) && is_string($existing['gitlabToken']) && trim($existing['gitlabToken']) !== '';
-        $recorder->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.project_init.prompt_gitlab_token_hint'));
-        $answer = $this->prompt->askHidden(MessageRef::key('config.project_init.prompt_gitlab_token'));
-        if ($has && $answer !== null && trim((string) $answer) === '.') {
-            return [];
-        }
-        $token = $this->gitTokenPromptResolver->tokenFromUserInput($answer === null ? null : (string) $answer);
-        if ($token === null) {
-            return [];
-        }
-
-        return ['gitlabToken' => $token];
     }
 }

@@ -114,6 +114,6 @@ Resolution order and ambiguous-prefix errors are defined in SCI-182. Distinct pr
 ## 6. References
 
 * Linear product docs (paraphrased): Initiatives = goal-aligned project lists; Teams own issues; Projects = outcome-bound work M2M with teams.
-* Epic: `.cursor/specs/SCI-143/TECH_SPEC.md`
-* Dual provider: `.cursor/specs/SCI-182/TECH_SPEC.md`
-* Linear list/discovery: `.cursor/specs/SCI-164/TECH_SPEC.md`, SCI-155, SCI-156
+* Epic: SCI-143
+* Dual provider: SCI-182
+* Linear list/discovery: SCI-164, SCI-155, SCI-156

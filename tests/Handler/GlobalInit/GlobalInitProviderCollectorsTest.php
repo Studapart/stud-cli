@@ -102,4 +102,35 @@ class GlobalInitProviderCollectorsTest extends TestCase
         $this->assertSame('keep-github', $result['GITHUB_TOKEN']);
         $this->assertSame('gl-token', $result['GITLAB_TOKEN']);
     }
+
+    public function testGitTokensCollectorPromptsGithubThenGitlabAndFallsBackToLegacyToken(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->exactly(2))
+            ->method('askHidden')
+            ->willReturnOnConsecutiveCalls('', ' gl-token ');
+        $recorder = $this->createMock(WorkflowEntryRecorder::class);
+        $recorder->expects($this->once())->method('addSection');
+        $recorder->expects($this->once())->method('addText');
+
+        $collector = new GitProviderTokensCollector(
+            new GlobalConfigProviderResolver(),
+            new InitPromptInputHelper($prompt),
+            new GitTokenPromptResolver(),
+            $prompt,
+        );
+
+        $context = new GlobalInitPromptContext(
+            ['GIT_TOKEN' => 'legacy-token', 'GIT_PROVIDER' => 'github'],
+            [],
+            false,
+            $recorder,
+            ['github', 'gitlab'],
+            ['jira'],
+        );
+
+        $result = $collector->collect($context);
+
+        $this->assertSame(['GITHUB_TOKEN' => 'legacy-token', 'GITLAB_TOKEN' => 'gl-token'], $result);
+    }
 }

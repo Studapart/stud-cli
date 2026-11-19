@@ -1553,7 +1553,7 @@ None.
 | Option | Description |
 | --- | --- |
 | `--new` | Create a new logical commit instead of a fixup |
-| `--message <message><br>`-m <message>`` | Bypass the interactive prompter and use the provided message for the commit |
+| `--message <message><br>`-m <message>`` | Message for a new logical commit. With an existing logical commit, pass --new or the change is saved as a fixup |
 | `--all<br>`-a`` | Stage all changes before committing (restores old behavior) |
 | `--flatten` | Squash fixup commits when it is safe |
 | `--quiet<br>`-q`` | Non-interactive: use defaults, no prompts |
@@ -1802,7 +1802,7 @@ None.
 | Option | Description |
 | --- | --- |
 | `--new` | Create a new logical commit instead of a fixup |
-| `--message <message><br>`-m <message>`` | Bypass the interactive prompter and use the provided message for the commit |
+| `--message <message><br>`-m <message>`` | Message for a new logical commit. With an existing logical commit, pass --new or the change is saved as a fixup |
 | `--all<br>`-a`` | Stage all changes before committing (restores old behavior) |
 | `--quiet<br>`-q`` | Non-interactive: use defaults, no prompts |
 | `--no-please` | After a failed normal push, do not run or prompt for stud please |

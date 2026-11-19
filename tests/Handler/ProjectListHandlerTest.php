@@ -10,6 +10,8 @@ use App\Handler\ProjectListHandler;
 use App\Response\ProjectListResponse;
 use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
+use App\Service\IssueTrackerProviderFanOut;
+use App\Service\IssueTrackerProvidersQueryResolver;
 use App\Tests\CommandTestCase;
 
 class ProjectListHandlerTest extends CommandTestCase
@@ -67,7 +69,7 @@ class ProjectListHandlerTest extends CommandTestCase
         $portSupplier = $this->createStub(\App\Service\IssueTrackerPortSupplier::class);
         $portSupplier->method('resolve')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
         $portSupplier->method('resolveForProvider')->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
-        $handler = new ProjectListHandler($portSupplier, [], []);
+        $handler = $this->createHandler($portSupplier, [], []);
 
         $this->issueTracker->expects($this->once())->method('listTeams')->willReturn([]);
 
@@ -81,7 +83,7 @@ class ProjectListHandlerTest extends CommandTestCase
             'ok' => false,
             'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured'),
         ]);
-        $handler = new ProjectListHandler($portSupplier, [], []);
+        $handler = $this->createHandler($portSupplier, [], []);
 
         $response = $handler->handle(null);
 
@@ -122,7 +124,7 @@ class ProjectListHandlerTest extends CommandTestCase
             },
         );
 
-        $handler = new ProjectListHandler(
+        $handler = $this->createHandler(
             $supplier,
             $this->dualGlobalConfig(),
             $this->dualProjectConfig(),
@@ -156,7 +158,7 @@ class ProjectListHandlerTest extends CommandTestCase
             'ok' => false,
             'error' => \App\DTO\MessageRef::key('issue_tracker_provider.not_configured'),
         ]);
-        $handler = new ProjectListHandler($supplier, [], []);
+        $handler = $this->createHandler($supplier, [], []);
 
         $response = $handler->handle('jira');
 
@@ -181,7 +183,7 @@ class ProjectListHandlerTest extends CommandTestCase
             },
         );
 
-        $handler = new ProjectListHandler(
+        $handler = $this->createHandler(
             $supplier,
             $this->dualGlobalConfig(),
             $this->dualProjectConfig(),
@@ -226,10 +228,27 @@ class ProjectListHandlerTest extends CommandTestCase
         $portSupplier->method('resolveForProvider')
             ->willReturn(['ok' => true, 'provider' => 'jira', 'port' => $this->issueTracker]);
 
-        $this->handler = new ProjectListHandler(
+        $this->handler = $this->createHandler(
             $portSupplier,
             ['ISSUE_TRACKER_PROVIDERS' => ['jira']],
             ['issueTrackerProvider' => 'jira'],
         );
+    }
+
+    /**
+     * @param array<string, mixed> $globalConfig
+     * @param array<string, mixed> $projectConfig
+     */
+    private function createHandler(
+        IssueTrackerPortSupplier $portSupplier,
+        array $globalConfig = [],
+        array $projectConfig = [],
+    ): ProjectListHandler {
+        return new ProjectListHandler(new IssueTrackerProviderFanOut(
+            $portSupplier,
+            $globalConfig,
+            $projectConfig,
+            new IssueTrackerProvidersQueryResolver(),
+        ));
     }
 }

@@ -14,9 +14,7 @@ use App\Enum\BranchCleanupRemoteAction;
 use App\Enum\WorkflowChannel;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Response\WorkflowResponse;
-use App\Service\BranchCleanupExecutor;
-use App\Service\BranchCleanupPlanner;
-use App\Service\BranchDeletionEligibilityResolver;
+use App\Service\BranchCleanupPipeline;
 use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 
@@ -26,9 +24,7 @@ class BranchCleanHandler implements GitRepositoryAware
 
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly BranchDeletionEligibilityResolver $eligibilityResolver,
-        private readonly BranchCleanupExecutor $cleanupExecutor,
-        private readonly BranchCleanupPlanner $cleanupPlanner,
+        private readonly BranchCleanupPipeline $pipeline,
         private readonly ?string $configuredBaseBranch,
         private readonly PromptInterface $prompt,
     ) {
@@ -175,7 +171,7 @@ class BranchCleanHandler implements GitRepositoryAware
      */
     protected function findBranchesToClean(?string $baseBranch, bool $quiet): array
     {
-        return $this->cleanupPlanner->findBranchesToClean($this->recorder, $baseBranch, $quiet);
+        return $this->pipeline->planner->findBranchesToClean($this->recorder, $baseBranch, $quiet);
     }
 
     protected function buildCleanupPlan(
@@ -184,12 +180,12 @@ class BranchCleanHandler implements GitRepositoryAware
         bool $remoteExists,
         bool $quiet,
     ): BranchCleanupPlan {
-        return $this->cleanupPlanner->buildCleanupPlan($branch, $eligibility, $remoteExists, $quiet);
+        return $this->pipeline->planner->buildCleanupPlan($branch, $eligibility, $remoteExists, $quiet);
     }
 
     protected function resolveAutomaticRemoteAction(bool $remoteExists, bool $quiet): BranchCleanupRemoteAction
     {
-        return $this->cleanupPlanner->resolveAutomaticRemoteAction($remoteExists, $quiet);
+        return $this->pipeline->planner->resolveAutomaticRemoteAction($remoteExists, $quiet);
     }
 
     /**
@@ -197,7 +193,7 @@ class BranchCleanHandler implements GitRepositoryAware
      */
     protected function fetchAllBranches(): array
     {
-        return $this->cleanupPlanner->fetchAllBranches($this->recorder);
+        return $this->pipeline->planner->fetchAllBranches($this->recorder);
     }
 
     /**
@@ -205,12 +201,12 @@ class BranchCleanHandler implements GitRepositoryAware
      */
     protected function fetchRemoteBranchesSet(): array
     {
-        return $this->cleanupPlanner->fetchRemoteBranchesSet($this->recorder);
+        return $this->pipeline->planner->fetchRemoteBranchesSet($this->recorder);
     }
 
     protected function resolveBaseBranch(bool $quiet): ?string
     {
-        $resolved = $this->eligibilityResolver->resolveBaseBranch($this->configuredBaseBranch);
+        $resolved = $this->pipeline->eligibility->resolveBaseBranch($this->configuredBaseBranch);
         if ($resolved !== null || $quiet) {
             return $resolved;
         }
@@ -314,7 +310,7 @@ class BranchCleanHandler implements GitRepositoryAware
      */
     protected function deleteBranches(array $cleanupPlans, bool $quiet): int
     {
-        return $this->cleanupExecutor->execute($cleanupPlans, $quiet, $this->recorder);
+        return $this->pipeline->executor->execute($cleanupPlans, $quiet, $this->recorder);
     }
 
     /**
