@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.1] - 2026-11-19
+
 ### Fixed
 
 - **Release workflow uses a supported macOS runner:** The `darwin-arm64` portable build runs on `macos-15`. GitHub retired the `macos-14` image on 2026-11-02, so a job that still requested it failed before it started.
