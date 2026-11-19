@@ -56,6 +56,14 @@ class UpdateHandler
             return $this->recorder()->toResponse(0);
         }
 
+        return $this->installRelease($installContext, $release, $quiet);
+    }
+
+    /**
+     * @param array<string, mixed> $release
+     */
+    private function installRelease(UpdateInstallContext $installContext, array $release, bool $quiet): WorkflowResponse
+    {
         if ($installContext->mode === UpdateInstallContext::MODE_PORTABLE) {
             return $this->recorder()->toResponse($this->handlePortableUpdate($installContext, $release, $quiet));
         }
@@ -71,7 +79,34 @@ class UpdateHandler
             return $this->recorder()->toResponse($this->cleanupAndReturn($tempFile, $exitCode));
         }
 
+        if ($installContext->mode === UpdateInstallContext::MODE_PHAR) {
+            return $this->recorder()->toResponse($this->handleManagedPharUpdate($installContext, $release, $tempFile, $quiet));
+        }
+
         return $this->recorder()->toResponse($this->installer->replaceBinary($this->recorder(), $tempFile, $this->target));
+    }
+
+    /**
+     * @param array<string, mixed> $release
+     */
+    private function handleManagedPharUpdate(
+        UpdateInstallContext $installContext,
+        array $release,
+        string $tempFile,
+        bool $quiet,
+    ): int {
+        $version = ltrim((string) ($release['tag_name'] ?? ''), 'v');
+        $exitCode = $this->cleanupAndReturn($tempFile, $this->installer->pharActivator()->activate(
+            $installContext,
+            $tempFile,
+            $version,
+            $this->recorder(),
+        ));
+        if ($exitCode === 0) {
+            $this->installer->requestCleanup($this->recorder(), $quiet);
+        }
+
+        return $exitCode;
     }
 
     /**
@@ -95,7 +130,12 @@ class UpdateHandler
         }
         // @codeCoverageIgnoreEnd
 
-        return $this->createPortableUpdateService()->update($installContext, $release, $quiet, $this->recorder());
+        $exitCode = $this->createPortableUpdateService()->update($installContext, $release, $this->recorder());
+        if ($exitCode === 0) {
+            $this->installer->requestCleanup($this->recorder(), $quiet);
+        }
+
+        return $exitCode;
     }
 
     /**

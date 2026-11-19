@@ -6,10 +6,13 @@ namespace App\Tests\Service;
 
 use App\Service\UpdateInstallContext;
 use App\Service\UpdateInstallDetector;
+use App\Tests\Support\RestoresServerHome;
 use PHPUnit\Framework\TestCase;
 
 class UpdateInstallDetectorTest extends TestCase
 {
+    use RestoresServerHome;
+
     private string $workspace;
     private string $home;
 
@@ -20,22 +23,93 @@ class UpdateInstallDetectorTest extends TestCase
         $this->workspace = dirname(__DIR__, 2) . '/.cursor/tmp/update-detector-test-' . bin2hex(random_bytes(4));
         $this->home = $this->workspace . '/home';
         mkdir($this->home, 0777, true);
-        $_SERVER['HOME'] = $this->home;
+        $this->pointHomeAt($this->home);
     }
 
     protected function tearDown(): void
     {
         $this->removeDirectory($this->workspace);
 
+        $this->restoreServerHome();
+
         parent::tearDown();
     }
 
-    public function testDetectsRegularPharInstall(): void
+    public function testDetectsPharOutsideManagedPathAsInPlace(): void
     {
         $context = (new UpdateInstallDetector())->detect($this->workspace . '/stud.phar', '1.0.0');
 
-        self::assertSame(UpdateInstallContext::MODE_PHAR, $context->mode);
+        self::assertSame(UpdateInstallContext::MODE_PHAR_IN_PLACE, $context->mode);
         self::assertFalse($context->legacyPortableLayout);
+        self::assertNull($context->managedSymlink);
+    }
+
+    public function testDetectsPharInManagedDirectoryAsManaged(): void
+    {
+        $pharFile = $this->home . '/.local/share/stud-portable/phar/1.0.0-stud.phar';
+        mkdir(dirname($pharFile), 0777, true);
+        file_put_contents($pharFile, 'phar');
+
+        $context = (new UpdateInstallDetector())->detect($pharFile, '1.0.0');
+
+        self::assertSame(UpdateInstallContext::MODE_PHAR, $context->mode);
+    }
+
+    public function testDetectsPlainFileAtManagedPathAsManaged(): void
+    {
+        mkdir($this->home . '/.local/bin', 0777, true);
+        file_put_contents($this->home . '/.local/bin/stud', 'phar');
+
+        $context = (new UpdateInstallDetector())->detect($this->home . '/.local/bin/stud', '1.0.0');
+
+        self::assertSame(UpdateInstallContext::MODE_PHAR, $context->mode);
+    }
+
+    public function testDetectsManagedSymlinkTargetAsManaged(): void
+    {
+        $pharFile = $this->home . '/.local/share/stud-portable/phar/1.0.0-stud.phar';
+        mkdir(dirname($pharFile), 0777, true);
+        file_put_contents($pharFile, 'phar');
+        mkdir($this->home . '/.local/bin', 0777, true);
+        symlink($pharFile, $this->home . '/.local/bin/stud');
+
+        $context = (new UpdateInstallDetector())->detect($pharFile, '1.0.0');
+
+        self::assertSame(UpdateInstallContext::MODE_PHAR, $context->mode);
+    }
+
+    public function testPharRunningFromForeignSymlinkTargetIsManagedForRefusal(): void
+    {
+        $foreign = $this->workspace . '/foreign/stud.phar';
+        mkdir(dirname($foreign), 0777, true);
+        file_put_contents($foreign, 'phar');
+        mkdir($this->home . '/.local/bin', 0777, true);
+        symlink($foreign, $this->home . '/.local/bin/stud');
+
+        $context = (new UpdateInstallDetector())->detect($foreign, '1.0.0');
+
+        self::assertSame(UpdateInstallContext::MODE_PHAR, $context->mode);
+    }
+
+    public function testPharIsInPlaceWhenHomeIsUnset(): void
+    {
+        $previousServerHome = $_SERVER['HOME'] ?? null;
+        $previousEnvHome = getenv('HOME');
+        unset($_SERVER['HOME']);
+        putenv('HOME');
+
+        try {
+            $context = (new UpdateInstallDetector())->detect($this->workspace . '/stud.phar', '1.0.0');
+        } finally {
+            if ($previousServerHome !== null) {
+                $_SERVER['HOME'] = $previousServerHome;
+            }
+            if (is_string($previousEnvHome)) {
+                putenv('HOME=' . $previousEnvHome);
+            }
+        }
+
+        self::assertSame(UpdateInstallContext::MODE_PHAR_IN_PLACE, $context->mode);
     }
 
     public function testDetectsVersionedPortableInstallFromManifest(): void
@@ -71,7 +145,7 @@ class UpdateInstallDetectorTest extends TestCase
 
         $context = (new UpdateInstallDetector())->detect($bundleRoot . '/app/stud.phar', '1.0.0');
 
-        self::assertSame(UpdateInstallContext::MODE_PHAR, $context->mode);
+        self::assertSame(UpdateInstallContext::MODE_PHAR_IN_PLACE, $context->mode);
     }
 
     public function testPortableContextAllowsMissingHomeForManagedSymlink(): void

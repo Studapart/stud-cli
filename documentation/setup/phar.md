@@ -20,11 +20,15 @@ Omitting `--phar` does the same thing.
 
 ## Updating
 
-PHAR installs keep the existing single-binary update behavior:
+PHAR installs store each version as its own file under `~/.local/share/stud-portable/phar/<version>-stud.phar`, and `~/.local/bin/stud` is a symlink to the active one:
 
 ```bash
 stud update
 ```
+
+An update installs the new version as its own file, then switches the `~/.local/bin/stud` symlink to it. The running copy is never overwritten. A plain PHAR already at `~/.local/bin/stud` is kept as the versioned file for its own version, and the link then points at the new one. A PHAR that runs from another location (for example `/usr/local/bin/stud`) is replaced in place, as before, and no older copy is kept. If `~/.local/bin/stud` links to that PHAR, the update stops instead, and `setup-stud.sh --phar --force` switches to the managed layout.
+
+When you answer yes to the cleanup prompt, the update only records that consent. A later `stud` command that already runs the new version removes the older copies. If that removal fails, the command shows a warning and retries on the next run. To cancel a cleanup that keeps failing, delete `~/.local/share/stud-portable/.cleanup-pending`. If `~/.local/bin/stud` is a symlink to a file outside the managed install, the update stops and keeps the current version. Run `setup-stud.sh --phar --force` to switch it to the managed layout.
 
 Preview release notes before updating:
 
@@ -37,7 +41,7 @@ If you installed globally with `sudo`, updates may require elevated privileges. 
 
 Packaged PHAR always disables Castor’s AI-agent environment guessing. `stud --agent` remains the only switch for JSON agent mode. See [packaging and Castor agent detection](../development/packaging-and-castor-agent-detection.md).
 
-Portable installs also support `stud update`, but they update by installing a complete portable bundle and switching the managed symlink instead of replacing a PHAR in place.
+Portable installs use the same symlink switch. Each update installs a complete portable bundle, and older bundles are removed only under the cleanup rules above.
 
 ## CI and Non-Interactive Install
 

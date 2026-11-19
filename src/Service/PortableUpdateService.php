@@ -7,7 +7,6 @@ namespace App\Service;
 use App\Config\HttpClientDefaults;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
-use App\Service\Prompt\PromptInterface;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Process\Process;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -16,15 +15,12 @@ class PortableUpdateService
 {
     private WorkflowEntryRecorder $recorder;
 
-    protected readonly PortableOldVersionCleaner $oldVersionCleaner;
-
     public function __construct(
         protected readonly UpdateRepositoryContext $repository,
-        protected readonly PromptInterface $prompt,
+        protected readonly OldVersionCleaner $oldVersionCleaner,
+        protected readonly ManagedSymlinkSwitcher $switcher,
         protected readonly ?HttpClientInterface $httpClient = null,
-        ?PortableOldVersionCleaner $oldVersionCleaner = null,
     ) {
-        $this->oldVersionCleaner = $oldVersionCleaner ?? new PortableOldVersionCleaner($prompt);
     }
 
     /**
@@ -32,7 +28,7 @@ class PortableUpdateService
      *
      * @param array<string, mixed> $release
      */
-    public function update(UpdateInstallContext $context, array $release, bool $quiet, WorkflowEntryRecorder $recorder): int
+    public function update(UpdateInstallContext $context, array $release, WorkflowEntryRecorder $recorder): int
     {
         $this->recorder = $recorder;
         if ($context->legacyPortableLayout) {
@@ -45,6 +41,10 @@ class PortableUpdateService
         }
 
         $version = ltrim((string) ($release['tag_name'] ?? ''), 'v');
+        if (! ManagedInstallPaths::isVersion($version)) {
+            return $this->fail('update.portable_update_failed', ['error' => 'unexpected release version']);
+        }
+
         $artifactName = "stud-portable-{$version}-{$platform}.tar.gz";
         $portableAsset = $this->findAsset($release, $artifactName);
         $checksumsAsset = $this->findAsset($release, 'checksums.txt');
@@ -55,12 +55,15 @@ class PortableUpdateService
         return $this->installPortableAsset($context, [
             'portable' => $portableAsset,
             'checksums' => $checksumsAsset,
-        ], $artifactName, $quiet);
+        ], $artifactName);
     }
 
-    protected function fail(string $translationKey): int
+    /**
+     * @param array<string, string> $parameters
+     */
+    protected function fail(string $translationKey, array $parameters = []): int
     {
-        $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key($translationKey));
+        $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key($translationKey, $parameters));
 
         return 1;
     }
@@ -87,7 +90,6 @@ class PortableUpdateService
         UpdateInstallContext $context,
         array $assets,
         string $artifactName,
-        bool $quiet,
     ): int {
         $workspace = $this->createWorkspace($context->portableRoot);
 
@@ -105,7 +107,7 @@ class PortableUpdateService
                 return 1;
             }
 
-            return $this->activateBundle($context, $extractedRoot, $artifactName, $quiet);
+            return $this->activateBundle($context, $extractedRoot, $artifactName);
         } catch (\Throwable $e) {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_update_failed', ['error' => $e->getMessage()]));
 
@@ -237,7 +239,6 @@ class PortableUpdateService
         UpdateInstallContext $context,
         string $extractedRoot,
         string $artifactName,
-        bool $quiet,
     ): int {
         $version = $this->versionFromArtifact($artifactName, (string) $context->platform);
         $versionRoot = $context->portableRoot . '/' . $context->platform . '/' . $version;
@@ -254,14 +255,11 @@ class PortableUpdateService
             return $this->fail('update.portable_extract_failed');
         }
 
-        if (! $this->switchSymlink((string) $context->managedSymlink, $versionRoot . '/stud', (string) $previousTarget)) {
-            // @codeCoverageIgnoreStart
-            return 1;
-            // @codeCoverageIgnoreEnd
+        if (! $this->switcher->switch((string) $context->managedSymlink, $versionRoot . '/stud')) {
+            return $this->fail('update.portable_symlink_failed');
         }
 
         $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_success', ['version' => $version]));
-        $this->oldVersionCleaner->cleanup($context, $version, $quiet, $this->recorder);
 
         return 0;
     }
@@ -291,31 +289,5 @@ class PortableUpdateService
     protected function isManagedTarget(string $target, string $portableRoot): bool
     {
         return str_starts_with($target, rtrim($portableRoot, '/') . '/');
-    }
-
-    protected function switchSymlink(string $symlinkPath, string $newTarget, string $previousTarget): bool
-    {
-        $temporaryLink = $symlinkPath . '.new';
-        @unlink($temporaryLink);
-        if (! symlink($newTarget, $temporaryLink)) {
-            // @codeCoverageIgnoreStart
-            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_symlink_failed'));
-
-            return false;
-            // @codeCoverageIgnoreEnd
-        }
-
-        if (@rename($temporaryLink, $symlinkPath)) {
-            return true;
-        }
-
-        // @codeCoverageIgnoreStart
-        @unlink($temporaryLink);
-        @unlink($symlinkPath);
-        @symlink($previousTarget, $symlinkPath);
-        $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_symlink_failed'));
-
-        return false;
-        // @codeCoverageIgnoreEnd
     }
 }
