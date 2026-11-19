@@ -56,6 +56,14 @@ class UpdateHandler
             return $this->recorder()->toResponse(0);
         }
 
+        return $this->installRelease($installContext, $release, $quiet);
+    }
+
+    /**
+     * @param array<string, mixed> $release
+     */
+    private function installRelease(UpdateInstallContext $installContext, array $release, bool $quiet): WorkflowResponse
+    {
         if ($installContext->mode === UpdateInstallContext::MODE_PORTABLE) {
             return $this->recorder()->toResponse($this->handlePortableUpdate($installContext, $release, $quiet));
         }
