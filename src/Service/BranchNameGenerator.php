@@ -14,7 +14,7 @@ class BranchNameGenerator
     public const PREFIX_CHORE = 'chore';
 
     public function __construct(
-        private readonly IssueTrackerPort $provider,
+        private readonly IssueTrackerReadPort $provider,
     ) {
     }
 

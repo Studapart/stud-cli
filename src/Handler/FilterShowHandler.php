@@ -9,8 +9,8 @@ use App\DTO\ResponseMessage;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\FilterShowResponse;
-use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerProviderFanOut;
+use App\Service\IssueTrackerReadPort;
 
 class FilterShowHandler implements JiraAware, LinearAware
 {
@@ -23,7 +23,7 @@ class FilterShowHandler implements JiraAware, LinearAware
     {
         $result = $this->fanOut->collect(
             $providerOverride,
-            fn (IssueTrackerPort $port): array => $port->runFilterOrView($filterName),
+            fn (IssueTrackerReadPort $port): array => $port->runFilterOrView($filterName),
             'filter.show.error_fetch',
             false,
         );

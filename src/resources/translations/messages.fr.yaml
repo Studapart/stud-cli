@@ -266,6 +266,8 @@ item:
     save_linear_state: 'Voulez-vous enregistrer cet état comme état de démarrage par défaut pour ce projet ?'
     linear_state_saved: 'État de démarrage Linear enregistré dans la configuration du projet.'
     using_advanced_base: 'La base configurée ''%configured%'' est en retard sur ''%resolved%'' ; utilisation de ''%resolved%'' comme base.'
+    error_fetch: "Impossible de récupérer origin, donc aucune branche n'a été créée ni extraite depuis le dépôt distant."
+    warning_fetch_local: "Impossible de récupérer origin (%error%). Basculement vers la branche locale existante."
     switching_branch: 'Basculement vers la branche existante : %branch%'
     switching_remote_branch: 'Basculement vers la branche distante : %branch%'
     success_switched: Basculement vers la branche '%branch%'.
@@ -507,6 +509,7 @@ sync:
   already_up_to_date: "Already up to date. The base branch has no new commits."
   success: "✅ Branch %branch% has been rebased onto %base%."
   error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  error_fetch: "Could not fetch from origin. Sync stopped. %error%"
   help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 cache:
   clear:

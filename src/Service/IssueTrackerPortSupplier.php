@@ -12,7 +12,10 @@ use App\Exception\IssueTrackerException;
 use App\Exception\IssueTrackerResolutionException;
 
 /**
- * Resolves the active work-item provider and builds the matching {@see IssueTrackerPort}.
+ * Resolves the active work-item provider and builds the matching port.
+ *
+ * Lookups get the {@see IssueTrackerReadPort}. Only {@see resolveFullPortForProvider()} returns the
+ * full {@see IssueTrackerPort}, for creating a work item from a looked-up provider.
  *
  * Keeps HTTP clients out of handlers; wired once in castor.php.
  */
@@ -30,7 +33,7 @@ class IssueTrackerPortSupplier
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig
      *
-     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
+     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerReadPort}|array{ok: false, error: MessageRef}
      */
     public function resolve(array $globalConfig, array $projectConfig): array
     {
@@ -47,9 +50,33 @@ class IssueTrackerPortSupplier
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig
      *
-     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
+     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerReadPort}|array{ok: false, error: MessageRef}
      */
     public function resolveForProvider(string $provider, array $globalConfig, array $projectConfig): array
+    {
+        return $this->providerPortResult($provider, $globalConfig, $projectConfig);
+    }
+
+    /**
+     * Same resolution and errors as {@see resolveForProvider()}, with the full port for item creation.
+     *
+     * @param array<string, mixed> $globalConfig
+     * @param array<string, mixed> $projectConfig
+     *
+     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
+     */
+    public function resolveFullPortForProvider(string $provider, array $globalConfig, array $projectConfig): array
+    {
+        return $this->providerPortResult($provider, $globalConfig, $projectConfig);
+    }
+
+    /**
+     * @param array<string, mixed> $globalConfig
+     * @param array<string, mixed> $projectConfig
+     *
+     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
+     */
+    private function providerPortResult(string $provider, array $globalConfig, array $projectConfig): array
     {
         $globalConfig = $this->withProjectCredentials($globalConfig, $projectConfig);
 
@@ -68,7 +95,7 @@ class IssueTrackerPortSupplier
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig
      *
-     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
+     * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerReadPort}|array{ok: false, error: MessageRef}
      */
     public function resolveForDiscovery(string $scopeKey, array $globalConfig, array $projectConfig): array
     {

@@ -11,7 +11,7 @@ use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ItemDownloadResponse;
 use App\Service\FileSystem;
-use App\Service\IssueTrackerPort;
+use App\Service\IssueTrackerReadPort;
 
 class ItemDownloadHandler implements JiraAware, LinearAware
 {
@@ -19,7 +19,7 @@ class ItemDownloadHandler implements JiraAware, LinearAware
 
     public function __construct(
         private readonly FileSystem $fileSystem,
-        private readonly IssueTrackerPort $provider,
+        private readonly IssueTrackerReadPort $provider,
     ) {
     }
 

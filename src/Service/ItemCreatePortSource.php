@@ -51,7 +51,7 @@ class ItemCreatePortSource
             return $this->resolver;
         }
 
-        $resolution = $this->resolver->resolveForProvider($provider, $this->globalConfig, $this->projectConfig);
+        $resolution = $this->resolver->resolveFullPortForProvider($provider, $this->globalConfig, $this->projectConfig);
 
         return $resolution['ok'] ? $resolution['port'] : $resolution['error'];
     }

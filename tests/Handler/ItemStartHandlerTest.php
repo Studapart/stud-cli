@@ -1560,7 +1560,78 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->assertWorkflowEntry($response, 'item.start.success_switched', ['branch' => 'feat/TPW-35-different-branch']);
     }
 
-    public function testHandleCreatesBranchFromResolvedLocalWhenLocalIsAhead(): void
+    public function testHandleFetchFailureStopsCreate(): void
+    {
+        $response = $this->handleWithFetchFailure(['local' => [], 'remote' => []]);
+
+        $this->assertWorkflowExitCode($response, 1);
+        $this->assertWorkflowEntry($response, 'item.start.error_fetch');
+        $this->assertSame('could not resolve host', $this->fetchFailureDetails($response));
+    }
+
+    public function testHandleFetchFailureStopsRemoteSwitch(): void
+    {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->gitBranchService->expects($this->never())->method('switchToRemoteBranch');
+        $response = $this->handleWithFetchFailure(['local' => [], 'remote' => ['feat/TPW-35-other']]);
+
+        $this->assertWorkflowExitCode($response, 1);
+        $this->assertWorkflowEntry($response, 'item.start.error_fetch');
+    }
+
+    public function testHandleFetchFailureWarnsAndSwitchesLocalBranch(): void
+    {
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->gitBranchService->expects($this->once())
+            ->method('switchBranch')
+            ->with('feat/TPW-35-mine');
+        $response = $this->handleWithFetchFailure(['local' => ['feat/TPW-35-mine'], 'remote' => []]);
+
+        $this->assertWorkflowExitCode($response, 0);
+        $this->assertWorkflowEntry($response, 'item.start.warning_fetch_local', ['error' => 'could not resolve host']);
+        $this->assertWorkflowEntry($response, 'item.start.success_switched', ['branch' => 'feat/TPW-35-mine']);
+    }
+
+    /**
+     * @param array{local: array<string>, remote: array<string>} $branches
+     */
+    private function handleWithFetchFailure(array $branches): WorkflowResponse
+    {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->bindSubject();
+        $this->issueTracker->method('getIssue')->willReturn(new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        ));
+        $this->gitBranchService->method('findBranchesByIssueKey')->willReturn($branches);
+        $this->gitRepository->method('fetch')->willThrowException(new \App\Exception\GitException(
+            'Git command failed: git fetch origin',
+            'could not resolve host',
+        ));
+        $this->gitRepository->expects($this->never())->method('createBranch');
+
+        return $this->handler->handle('TPW-35');
+    }
+
+    private function fetchFailureDetails(WorkflowResponse $response): ?string
+    {
+        foreach ($response->entries as $entry) {
+            if ($entry->message instanceof \App\DTO\MessageRef && $entry->message->key === 'item.start.error_fetch') {
+                return $entry->technicalDetails;
+            }
+        }
+
+        return null;
+    }
+
+    public function testHandleCreatesBranchFromRemoteWhenConfiguredBaseIsLocal(): void
     {
         $workItem = new WorkItem(
             id: '10001',
@@ -1577,7 +1648,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $gitRepository = $this->createMock(GitRepository::class);
         $gitBranchService = $this->createStub(GitBranchService::class);
         $gitBranchService->method('resolveLatestBaseBranch')
-            ->willReturn('develop');
+            ->willReturn('origin/develop');
 
         $this->issueTracker
             ->method('getIssue')
@@ -1589,19 +1660,26 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $gitRepository->expects($this->once())
             ->method('createBranch')
-            ->with('feat/TPW-35-my-awesome-feature', 'develop');
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
         $handler = ItemStartHandlerTestKit::create(
             ItemStartHandlerTestKit::workflows($gitRepository, $this->issueTracker, $this->prompt),
             new \App\Handler\ItemStartBranchPlanner(new \App\Handler\BranchActionResolver()),
-            new \App\Handler\ItemBranchWorkspace($gitRepository, $gitBranchService, 'origin/develop'),
+            new \App\Handler\ItemBranchWorkspace($gitRepository, $gitBranchService, 'develop'),
             []
         );
 
         $response = $handler->handle('TPW-35');
 
         $this->assertWorkflowExitCode($response, 0);
-        $this->assertWorkflowEntry($response, 'item.start.success', ['branch' => 'feat/TPW-35-my-awesome-feature', 'base' => 'develop']);
+        $this->assertWorkflowEntry($response, 'item.start.using_advanced_base', [
+            'configured' => 'develop',
+            'resolved' => 'origin/develop',
+        ]);
+        $this->assertWorkflowEntry($response, 'item.start.success', [
+            'branch' => 'feat/TPW-35-my-awesome-feature',
+            'base' => 'origin/develop',
+        ]);
     }
 
     public function testHandleNoVerboseLogWhenResolvedMatchesConfigured(): void

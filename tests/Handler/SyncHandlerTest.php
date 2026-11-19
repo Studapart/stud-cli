@@ -153,6 +153,26 @@ class SyncHandlerTest extends CommandTestCase
         $this->assertFalse($result->isSuccess());
     }
 
+    public function testHandleFetchFailureStops(): void
+    {
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-42-my-feature');
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->expects($this->once())->method('fetch')->willThrowException(new \App\Exception\GitException(
+            'Git command failed: git fetch origin',
+            'could not resolve host',
+        ));
+        $this->gitBranchService->expects($this->never())->method('resolveLatestBaseBranch');
+        $this->gitRepository->expects($this->never())->method('tryRebase');
+
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch);
+        $result = $handler->handle();
+
+        $this->assertFalse($result->isSuccess());
+        $this->assertMessageRef($result->getErrorMessage(), 'sync.error_fetch', ['error' => 'could not resolve host']);
+    }
+
     public function testHandleOnBaseBranchWithoutOriginPrefix(): void
     {
         $this->gitRepository = $this->createMock(GitRepository::class);

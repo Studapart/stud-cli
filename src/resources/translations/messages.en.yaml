@@ -266,6 +266,8 @@ item:
     save_linear_state: "Would you like to save this state as the default start state for this project?"
     linear_state_saved: "Linear start state saved to project config."
     using_advanced_base: "Configured base '%configured%' is behind '%resolved%'; using '%resolved%' as base."
+    error_fetch: "Could not fetch from origin, so no branch was created or checked out from the remote."
+    warning_fetch_local: "Could not fetch from origin (%error%). Switched to the existing local branch."
   takeover:
     section: "Taking over issue %key%"
     error_dirty_working: "Your working directory is not clean. Please commit your changes before taking over an issue."
@@ -526,6 +528,7 @@ sync:
   already_up_to_date: "Already up to date. The base branch has no new commits."
   success: "✅ Branch %branch% has been rebased onto %base%."
   error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  error_fetch: "Could not fetch from origin. Sync stopped. %error%"
   help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 
 # Cache Clear Handler

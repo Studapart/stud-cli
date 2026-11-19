@@ -266,6 +266,8 @@ item:
     save_linear_state: '¿Quieres guardar este estado como estado inicial predeterminado para este proyecto?'
     linear_state_saved: 'Estado inicial de Linear guardado en la configuración del proyecto.'
     using_advanced_base: 'La base configurada ''%configured%'' está detrás de ''%resolved%''; usando ''%resolved%'' como base.'
+    error_fetch: "No se pudo obtener origin, así que no se creó ninguna rama ni se cambió a una rama remota."
+    warning_fetch_local: "No se pudo obtener origin (%error%). Se cambió a la rama local existente."
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.
@@ -507,6 +509,7 @@ sync:
   already_up_to_date: "Already up to date. The base branch has no new commits."
   success: "✅ Branch %branch% has been rebased onto %base%."
   error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  error_fetch: "Could not fetch from origin. Sync stopped. %error%"
   help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 cache:
   clear:

@@ -266,6 +266,8 @@ item:
     save_linear_state: 'Wil je deze status opslaan als standaard startstatus voor dit project?'
     linear_state_saved: 'Linear startstatus opgeslagen in projectconfiguratie.'
     using_advanced_base: 'Geconfigureerde basis ''%configured%'' loopt achter op ''%resolved%''; ''%resolved%'' wordt als basis gebruikt.'
+    error_fetch: "Ophalen van origin is mislukt, dus er is geen branch gemaakt of van de remote uitgecheckt."
+    warning_fetch_local: "Ophalen van origin is mislukt (%error%). Overgeschakeld naar de bestaande lokale branch."
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.
@@ -507,6 +509,7 @@ sync:
   already_up_to_date: "Already up to date. The base branch has no new commits."
   success: "✅ Branch %branch% has been rebased onto %base%."
   error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  error_fetch: "Could not fetch from origin. Sync stopped. %error%"
   help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 cache:
   clear:

@@ -266,6 +266,8 @@ item:
     save_linear_state: 'Wil jy hierdie status as verstek beginstatus vir hierdie projek stoor?'
     linear_state_saved: 'Linear beginstatus in projekkonfigurasie gestoor.'
     using_advanced_base: 'Gekonfigureerde basis ''%configured%'' is agter ''%resolved%''; gebruik ''%resolved%'' as basis.'
+    error_fetch: "Kon nie van origin af haal nie, so geen tak is geskep of vanaf die afgeleë tak nagegaan nie."
+    warning_fetch_local: "Kon nie van origin af haal nie (%error%). Oorgeskakel na die bestaande plaaslike tak."
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.
@@ -507,6 +509,7 @@ sync:
   already_up_to_date: "Already up to date. The base branch has no new commits."
   success: "✅ Branch %branch% has been rebased onto %base%."
   error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  error_fetch: "Could not fetch from origin. Sync stopped. %error%"
   help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 cache:
   clear:

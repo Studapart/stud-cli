@@ -9,8 +9,8 @@ use App\DTO\Project;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ProjectListResponse;
-use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerProviderFanOut;
+use App\Service\IssueTrackerReadPort;
 
 class ProjectListHandler implements JiraAware, LinearAware
 {
@@ -23,7 +23,7 @@ class ProjectListHandler implements JiraAware, LinearAware
     {
         $result = $this->fanOut->collect(
             $providerOverride,
-            fn (IssueTrackerPort $port): array => $port->listTeams(),
+            fn (IssueTrackerReadPort $port): array => $port->listTeams(),
             'project.list.error_fetch',
         );
         if ($result instanceof MessageRef) {

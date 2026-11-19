@@ -30,7 +30,7 @@ final class ItemCreatePortSourceTest extends TestCase
 
         $suppliers = $this->createMock(IssueTrackerPortSupplier::class);
         $suppliers->expects($this->once())
-            ->method('resolveForProvider')
+            ->method('resolveFullPortForProvider')
             ->with('linear', $global, $project)
             ->willReturn(['ok' => true, 'provider' => 'linear', 'port' => $port]);
 
@@ -44,7 +44,7 @@ final class ItemCreatePortSourceTest extends TestCase
     {
         $error = MessageRef::key('issue_tracker_provider.invalid_override', ['%value%' => 'linear']);
         $suppliers = $this->createStub(IssueTrackerPortSupplier::class);
-        $suppliers->method('resolveForProvider')->willReturn(['ok' => false, 'error' => $error]);
+        $suppliers->method('resolveFullPortForProvider')->willReturn(['ok' => false, 'error' => $error]);
 
         $source = ItemCreatePortSource::lookedUp($suppliers, [], []);
 

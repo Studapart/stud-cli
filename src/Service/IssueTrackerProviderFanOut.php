@@ -30,7 +30,7 @@ class IssueTrackerProviderFanOut
     /**
      * @template T
      *
-     * @param \Closure(IssueTrackerPort): list<T> $fetch
+     * @param \Closure(IssueTrackerReadPort): list<T> $fetch
      *
      * @return ProviderFanOutResult<T>|MessageRef
      */
@@ -77,7 +77,7 @@ class IssueTrackerProviderFanOut
     /**
      * @template T
      *
-     * @param \Closure(IssueTrackerPort): list<T> $fetch
+     * @param \Closure(IssueTrackerReadPort): list<T> $fetch
      *
      * @return array{ok: true, items: list<T>}|array{ok: false, error: MessageRef, fetchFailed: bool}
      */

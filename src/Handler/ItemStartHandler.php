@@ -10,6 +10,7 @@ use App\DTO\WorkflowRecorder;
 use App\DTO\WorkItem;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
+use App\Exception\GitException;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
@@ -44,7 +45,10 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Ji
             $this->workflows->transition($recorder, $key, $projectConfig);
         }
 
-        $this->openBranch($recorder, $issue, $key, $projectConfig);
+        $fetchFailure = $this->openBranch($recorder, $issue, $key, $projectConfig);
+        if ($fetchFailure instanceof WorkflowResponse) {
+            return $fetchFailure;
+        }
 
         return $recorder->toResponse(0);
     }
@@ -69,13 +73,50 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Ji
     /**
      * @param array<string, mixed> $projectConfig
      */
-    private function openBranch(WorkflowEntryRecorder $recorder, WorkItem $issue, string $key, array $projectConfig): void
+    private function openBranch(WorkflowRecorder $recorder, WorkItem $issue, string $key, array $projectConfig): ?WorkflowResponse
     {
         $branchName = $this->planner->branchName($issue, $key, $this->workflows->branchPrefix($recorder, $issue, $projectConfig));
         $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.generated_branch', ['branch' => $branchName]), WorkflowChannel::Git);
+        $action = $this->planner->resolveAction($branchName, $this->branches->findBranches($key));
         $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.fetching_changes'), WorkflowChannel::Git);
-        $this->branches->fetch();
+
+        try {
+            $this->branches->fetch();
+        } catch (GitException $e) {
+            return $this->recoverFromFetchFailure($recorder, $action, $branchName, $e);
+        }
+
         $action = $this->planner->resolveAction($branchName, $this->branches->findBranches($key));
         $this->branches->applyStartAction($recorder, $action, $branchName);
+
+        return null;
+    }
+
+    /**
+     * @param array{action: string, branch: string} $action
+     */
+    private function recoverFromFetchFailure(
+        WorkflowRecorder $recorder,
+        array $action,
+        string $branchName,
+        GitException $e,
+    ): ?WorkflowResponse {
+        if ($action['action'] === BranchAction::SWITCH_LOCAL) {
+            $recorder->addWarning(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                MessageRef::key('item.start.warning_fetch_local', ['error' => $e->getTechnicalDetails()]),
+            );
+            $this->branches->applyStartAction($recorder, $action, $branchName);
+
+            return null;
+        }
+
+        $recorder->addErrorWithDetails(
+            WorkflowEntryRecorder::VERBOSITY_NORMAL,
+            MessageRef::key('item.start.error_fetch'),
+            $e->getTechnicalDetails(),
+        );
+
+        return $recorder->toResponse(1);
     }
 }
